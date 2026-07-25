@@ -16,9 +16,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ChainScope — on-chain research copilot",
+  title: "ChainScope — live on-chain research and actions",
   description:
-    "Ask ChainScope about your on-chain activity — agents backed by live Graph subgraph data.",
+    "Ask ChainScope about your on-chain activity — agents backed by live Graph data, Python analysis, and one-click actions.",
 };
 
 export default function RootLayout({

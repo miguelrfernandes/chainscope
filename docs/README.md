@@ -1,10 +1,14 @@
 # ChainScope
 
-ChainScope is a conversational analytics platform for web3 data. Users ask
-questions in natural language; a team of specialized AI agents pulls live
-on-chain data via [The Graph](https://thegraph.com/) API, analyzes it in a
-sandboxed Python environment (pandas, plotting), and returns answers,
-tables, and charts back to the user.
+ChainScope is a conversational analytics and action platform for web3 data.
+Users ask questions in natural language; a team of specialized AI agents
+pulls live on-chain data via [The Graph](https://thegraph.com/) API,
+analyzes it in a sandboxed Python environment (pandas, plotting), and
+returns answers, tables, charts, and suggested actions back to the user.
+
+The public homepage is the marketing surface at `/`; the working demo lives
+under `/app`, where the live chat experience, wallet context, and action
+cards are rendered.
 
 Beyond answering questions, ChainScope's **yield advisor** agent acts on
 what it finds: it detects wallet assets sitting idle, checks the current
@@ -14,14 +18,14 @@ wallet (Aave v3 on Sepolia testnet), nothing is simulated.
 
 ## Stack
 
-| Layer      | Tech                                              |
-|------------|----------------------------------------------------|
-| Frontend   | Next.js                                            |
-| Backend    | FastAPI                                            |
-| Agents     | LangGraph + LangChain                              |
-| Inference  | OpenRouter, or 0G Compute Router (config swap, see [setup.md](./setup.md)) |
-| Observability | LangSmith                                       |
-| Data       | The Graph API (subgraph queries) + live Sepolia RPC reads |
+| Layer         | Tech                                                                       |
+| ------------- | -------------------------------------------------------------------------- |
+| Frontend      | Next.js                                                                    |
+| Backend       | FastAPI                                                                    |
+| Agents        | LangGraph + LangChain                                                      |
+| Inference     | OpenRouter, or 0G Compute Router (config swap, see [setup.md](./setup.md)) |
+| Observability | LangSmith                                                                  |
+| Data          | The Graph API (subgraph queries) + live Sepolia RPC reads                  |
 
 ## Docs index
 

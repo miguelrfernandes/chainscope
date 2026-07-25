@@ -4,7 +4,8 @@
 
 - Node.js (for the Next.js frontend)
 - Python 3.11+ and a package manager (`uv` or `pip`) for the FastAPI backend
-- API keys: LLM provider (Anthropic/OpenAI, whichever the agents use),
+- API keys: LLM provider (OpenAI in production, optionally OpenRouter/0G for
+  fallback or experimentation),
   LangSmith, Subgraph MCP endpoint/key, and a code-sandbox provider key if
   using a hosted sandbox (see [python-sandbox.md](./python-sandbox.md))
 
@@ -13,8 +14,11 @@
 Backend (`.env` in the FastAPI service):
 
 ```
-OPENROUTER_API_KEY=...
-LLM_PROVIDER=openrouter         # or "0g" to route through 0G Compute Router instead
+OPENAI_API_KEY=...
+OPENAI_MODEL=gpt-4o-mini
+LLM_PROVIDER=openai              # production default; set to "openrouter" or "0g" only if needed
+
+OPENROUTER_API_KEY=...          # optional fallback / local experimentation
 ZG_API_KEY=...                  # only needed if LLM_PROVIDER=0g — from pc.testnet.0g.ai
 ZG_MODEL=llama-3.3-70b-instruct # confirm against pc.testnet.0g.ai's live model catalog
 LANGCHAIN_TRACING_V2=true
@@ -30,9 +34,9 @@ HEDERA_NATIVE_TRANSFER_STRATEGY_ADDRESS=...    # deployed NativeTransferStrategy
 ```
 
 See `backend/.env.example` for the full list. Swapping `LLM_PROVIDER` to
-`0g` is a config-only change (`app/core/llm.py`) — both providers are the
-same `ChatOpenAI` client pointed at a different OpenAI-compatible
-`base_url`.
+`0g` is a config-only change (`app/core/llm.py`) — the providers are all
+`ChatOpenAI` clients pointed at different OpenAI-compatible `base_url`
+values.
 
 Frontend (`.env.local` in the Next.js app):
 

@@ -35,6 +35,35 @@ def test_zg_fallback_to_openrouter(monkeypatch):
     get_settings.cache_clear()
 
 
+def test_chainscope_defaults_to_openai(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "chainscope")
+    get_settings.cache_clear()
+
+    calls = []
+
+    class FakeChatOpenAI:
+        def __init__(self, **kwargs):
+            calls.append({"kwargs": kwargs})
+
+        def with_config(self, **kwargs):
+            calls[-1]["config"] = kwargs
+            return self
+
+    monkeypatch.setattr("app.core.llm.ChatOpenAI", FakeChatOpenAI)
+
+    llm = get_llm(temperature=0.25, max_tokens=9)
+
+    assert llm is not None
+    assert calls[0]["kwargs"]["model"] == "gpt-4o-mini"
+    assert calls[0]["kwargs"]["base_url"] == "https://api.openai.com/v1"
+    assert calls[0]["kwargs"]["api_key"] == "test-key"
+    assert calls[0]["kwargs"]["temperature"] == 0.25
+    assert calls[0]["kwargs"]["max_tokens"] == 9
+    assert calls[0]["config"]["metadata"]["provider"] == "openai"
+    assert "llm_provider:openai" in calls[0]["config"]["tags"]
+    get_settings.cache_clear()
+
+
 def test_get_llm_metadata_and_tags(monkeypatch):
     monkeypatch.setenv("LLM_PROVIDER", "0g")
     get_settings.cache_clear()

@@ -20,7 +20,22 @@ const STEPS = [
   {
     n: "04",
     title: "Analyze & answer",
-    body: "A Python sandbox crunches the result with pandas. The answer streams back with charts, tables, and the exact subgraph it came from.",
+    body: "A Python sandbox crunches the result with pandas. The answer streams back with charts, tables, citations, and, when relevant, an action card.",
+  },
+];
+
+const HIGHLIGHTS = [
+  {
+    title: "Find what you forgot",
+    body: "Cross-reference wallet history, protocol positions, and live subgraphs to surface idle assets, stale LPs, and unclaimed rewards.",
+  },
+  {
+    title: "Answer with receipts",
+    body: "Every claim stays traceable to the actual query used, so the evidence is visible instead of buried in the prompt.",
+  },
+  {
+    title: "Act when it matters",
+    body: "When the output should become a transaction, the demo can surface a one-click action instead of stopping at prose.",
   },
 ];
 
@@ -30,16 +45,16 @@ const AGENTS = [
     body: "Balances, transfers, and PnL across every chain your wallet touches.",
   },
   {
-    name: "DeFi research agent",
-    body: "Rates, utilization, and liquidity across lending and DEX protocols.",
+    name: "Discovery agent",
+    body: "Finds forgotten deposits, dust LPs, and unclaimed rewards across protocols and chains.",
   },
   {
     name: "Risk monitor agent",
     body: "Watches your lending positions and flags liquidation risk before it's urgent.",
   },
   {
-    name: "Governance agent",
-    body: "Summarizes DAO proposals and where the vote currently stands.",
+    name: "Yield advisor agent",
+    body: "Surfaces idle assets and points to the highest-confidence next step when they could be earning yield.",
   },
   {
     name: "Trading agent",
@@ -85,32 +100,52 @@ export function Landing() {
           href="/app"
           className="border border-[var(--accent)] bg-[var(--accent)] px-3.5 py-1.5 text-[13px] font-medium text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/85"
         >
-          launch app →
+          open demo →
         </Link>
       </nav>
 
       <header className="animate-fade-up py-16 sm:py-24">
-        <h1 className="max-w-2xl font-[family-name:var(--font-display)] text-4xl italic leading-[1.15] text-[var(--ink)] sm:text-5xl">
-          Talk to your on-chain activity.
+        <p className="text-xs uppercase tracking-[0.24em] text-[var(--accent)]">
+          Live web3 research copilot
+        </p>
+        <h1 className="mt-3 max-w-2xl font-[family-name:var(--font-display)] text-4xl italic leading-[1.15] text-[var(--ink)] sm:text-5xl">
+          Ask a question. Get live answers. Trigger the next step.
         </h1>
         <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-[var(--ink-dim)]">
-          ChainScope is a team of specialized AI agents that query live
-          blockchain data through The Graph, analyze it in a Python sandbox,
-          and answer in plain English — with every claim traceable back to
-          the subgraph it came from.
+          ChainScope routes questions to specialist agents, queries live Graph
+          data, analyzes the result in a Python sandbox, and can surface
+          one-click actions when the answer should become a transaction.
         </p>
         <div className="mt-8 flex items-center gap-4">
           <Link
             href="/app"
             className="border border-[var(--accent)] bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/85"
           >
-            launch chainscope →
+            launch live demo →
           </Link>
           <span className="text-xs text-[var(--ink-faint)]">
-            no wallet needed to look around — the demo is fully scripted
+            no wallet needed to look around — connect one when you want saved
+            threads and action cards
           </span>
         </div>
       </header>
+
+      <section className="border-t border-[var(--border)] py-12">
+        <div className="grid gap-4 sm:grid-cols-3">
+          {HIGHLIGHTS.map((item, i) => (
+            <div
+              key={item.title}
+              className="animate-fade-up opacity-0 border border-[var(--border)] bg-[var(--bg-raised)]/50 p-5"
+              style={{ animationDelay: `${i * 90}ms` }}
+            >
+              <h2 className="font-medium text-[var(--ink)]">{item.title}</h2>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--ink-dim)]">
+                {item.body}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <section className="border-t border-[var(--border)] py-16">
         <h2 className="mb-8 text-xs uppercase tracking-wider text-[var(--ink-faint)]">
@@ -181,8 +216,8 @@ export function Landing() {
 
       <footer className="mt-auto flex flex-col gap-2 border-t border-[var(--border)] py-8 text-xs text-[var(--ink-faint)] sm:flex-row sm:items-center sm:justify-between">
         <span>
-          ChainScope — a paper-prototype entry for ETHLisbon 2026&apos;s
-          Best AI Use Case of The Graph bounty.
+          ChainScope — built for ETHLisbon 2026&apos;s Best AI Use Case of The
+          Graph bounty.
         </span>
         <Link href="/app" className="text-[var(--accent)] hover:underline">
           open the demo →

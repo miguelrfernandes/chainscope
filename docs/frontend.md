@@ -1,16 +1,22 @@
 # Frontend
 
-Next.js app providing the chat interface and rendering agent-generated
-tables/charts.
+Next.js app providing the homepage landing page at `/`, the chat interface
+under `/app`, and the components that render agent-generated tables/charts.
+
+The landing page should stay aligned with the public pitch: live Graph data,
+Python analysis, and action cards when the answer should become a
+transaction.
 
 ## Suggested layout
 
 ```
 frontend/
   app/
-    page.tsx              # chat UI
+    page.tsx              # landing page
+    app/page.tsx          # chat UI
     api/                  # (optional) thin proxy routes if not calling backend directly
   components/
+    Landing.tsx           # homepage experience
     Chat/
       MessageList.tsx
       MessageInput.tsx
@@ -115,7 +121,7 @@ integration exists for it:
 Alongside HashConnect, a second path is planned for wallets that only speak
 `window.ethereum` (MetaMask): Hedera's JSON-RPC relay (testnet chain id
 `296`, `https://testnet.hashio.io/api`) accepts plain `eth_sendTransaction`s
-against the same accounts. This reuses the *existing* EVM plumbing rather
+against the same accounts. This reuses the _existing_ EVM plumbing rather
 than adding a new wallet integration:
 
 - `ensureHederaTestnet` in `lib/wallet.ts`, mirroring `ensureSepolia`, adds/

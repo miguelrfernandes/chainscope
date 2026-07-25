@@ -1,9 +1,13 @@
 import contextvars
+
 from langchain_openai import ChatOpenAI
 
 from app.core.config import get_settings
 
-OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+OPENAI_PROVIDER = "openai"
+OPENROUTER_PROVIDER = "openrouter"
+CHAINSCOPE_PROVIDER = "chainscope"
+ZERO_G_PROVIDER = "0g"
 
 _current_llm_provider: contextvars.ContextVar[str | None] = contextvars.ContextVar(
     "current_llm_provider", default=None
@@ -24,26 +28,48 @@ def get_llm(
     llm_provider: str | None = None,
 ):
     settings = get_settings()
-    effective_provider = (
-        llm_provider or _current_llm_provider.get() or settings.llm_provider
-    )
-    if effective_provider == "chainscope":
-        effective_provider = "openrouter"
+    effective_provider = llm_provider or _current_llm_provider.get() or settings.llm_provider
+    if effective_provider == CHAINSCOPE_PROVIDER:
+        effective_provider = OPENAI_PROVIDER
 
     tokens = max_tokens or settings.openrouter_max_tokens
 
-    openrouter_llm = ChatOpenAI(
+    def _build_llm(
+        *,
+        provider: str,
+        model: str,
+        base_url: str,
+        api_key: str | None,
+    ):
+        llm_kwargs = {
+            "model": model,
+            "base_url": base_url,
+            "temperature": temperature,
+            "max_tokens": tokens,
+        }
+        if api_key:
+            llm_kwargs["api_key"] = api_key
+
+        return ChatOpenAI(**llm_kwargs).with_config(
+            tags=[f"llm_provider:{provider}"],
+            metadata={"llm_provider": provider, "provider": provider},
+        )
+
+    openai_llm = _build_llm(
+        provider=OPENAI_PROVIDER,
+        model=settings.openai_model,
+        base_url=settings.openai_base_url,
+        api_key=settings.openai_api_key,
+    )
+
+    openrouter_llm = _build_llm(
+        provider=OPENROUTER_PROVIDER,
         model=settings.openrouter_model,
         base_url=settings.openrouter_base_url,
         api_key=settings.openrouter_api_key,
-        temperature=temperature,
-        max_tokens=tokens,
-    ).with_config(
-        tags=["llm_provider:openrouter"],
-        metadata={"llm_provider": "openrouter", "provider": "openrouter"},
     )
 
-    if effective_provider == "0g":
+    if effective_provider == ZERO_G_PROVIDER:
         # 0G Compute Router: an OpenAI-compatible gateway in front of the 0G
         # Compute Network's decentralized, TEE-verified inference providers.
         zg_llm = ChatOpenAI(
@@ -54,10 +80,12 @@ def get_llm(
             max_tokens=tokens,
         ).with_config(
             tags=["llm_provider:0g"],
-            metadata={"llm_provider": "0g", "provider": "0g"},
+            metadata={"llm_provider": ZERO_G_PROVIDER, "provider": ZERO_G_PROVIDER},
         )
         # Use 0G as primary with OpenRouter as automatic fallback if 0G errors or times out
         return zg_llm.with_fallbacks([openrouter_llm])
 
-    return openrouter_llm
+    if effective_provider == OPENROUTER_PROVIDER:
+        return openrouter_llm
 
+    return openai_llm
