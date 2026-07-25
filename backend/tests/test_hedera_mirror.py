@@ -64,6 +64,22 @@ async def test_get_transaction_by_id_evm_hash():
 
 
 @pytest.mark.asyncio
+async def test_get_transaction_by_id_evm_hash_non_contract():
+    import httpx
+
+    with patch("app.tools.hedera_mirror._get", new_callable=AsyncMock) as mock_get:
+        mock_get.side_effect = httpx.HTTPStatusError("Not Found", request=None, response=None)
+        tx_res = await get_transaction_by_id(
+            "0xb5096553fb09ab11abb9819cac9b1721cee3dec5d58c1ed662cce7f356a0f0c5"
+        )
+        assert tx_res == {"transactions": []}
+        assert mock_get.call_count == 3
+        mock_get.assert_called_with(
+            "/api/v1/contracts/results/0xb5096553fb09ab11abb9819cac9b1721cee3dec5d58c1ed662cce7f356a0f0c5"
+        )
+
+
+@pytest.mark.asyncio
 async def test_get_hedera_account_calls_expected_path():
     with patch("app.tools.hedera_mirror._get", new_callable=AsyncMock) as mock_get:
         mock_get.return_value = {"account": "0.0.1234"}

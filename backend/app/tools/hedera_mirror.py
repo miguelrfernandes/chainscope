@@ -4,6 +4,7 @@ account/token/HCS data, the same role Subgraph MCP plays for EVM chains. See
 docs/agents.md.
 """
 
+import asyncio
 from typing import Any
 
 import httpx
@@ -89,10 +90,9 @@ async def get_hedera_token_info(token_id: str) -> dict:
 
 @tool
 async def get_hedera_topic_messages(topic_id: str, limit: int = 10) -> dict:
-    """Get recent messages submitted to a Hedera Consensus Service (HCS) topic,
-    most recent first.
+    """Get recent consensus messages submitted to an HCS topic, most recent first.
 
-    `topic_id` is a Hedera topic ID like "0.0.9101"."""
+    `topic_id` is a Hedera HCS topic ID like "0.0.9101"."""
     return await _get(f"/api/v1/topics/{topic_id}/messages", {"limit": limit, "order": "desc"})
 
 
@@ -116,10 +116,16 @@ async def get_transaction_by_id(transaction_id: str) -> dict:
     webhook (app/api/agent_actions.py) to verify a signed seed funding transfer
     actually landed on-chain before activating an agent."""
     if transaction_id.startswith("0x"):
-        try:
-            contract_res = await _get(f"/api/v1/contracts/results/{transaction_id}")
-        except httpx.HTTPError:
-            return await _get(f"/api/v1/transactions/{transaction_id}")
+        contract_res: dict = {}
+        for attempt in range(3):
+            try:
+                contract_res = await _get(f"/api/v1/contracts/results/{transaction_id}")
+                break
+            except httpx.HTTPError:
+                if attempt < 2:
+                    await asyncio.sleep(1.0)
+                else:
+                    return {"transactions": []}
 
         ts = contract_res.get("timestamp")
         if not ts:
@@ -159,7 +165,14 @@ async def get_account_by_address_or_id(address_or_id: str) -> dict:
     account number that Hedera auto-creation assigns the first time a
     managed agent's EVM address is funded, since that account_id isn't known
     until the seed funding transaction actually lands."""
-    return await _get(f"/api/v1/accounts/{address_or_id}")
+    for attempt in range(3):
+        try:
+            return await _get(f"/api/v1/accounts/{address_or_id}")
+        except httpx.HTTPError:
+            if attempt < 2:
+                await asyncio.sleep(1.0)
+            else:
+                raise
 
 
 HEDERA_MIRROR_TOOLS = [

@@ -187,3 +187,33 @@ def test_confirm_agent_returns_400_when_account_not_found_yet(client):
 
     assert response.status_code == 400
     assert get_agent_by_name("0xowner", "yield-bot")["status"] == "PENDING"
+
+
+def test_confirm_agent_activates_on_evm_transaction_hash(client):
+    save_agent("0xowner", "yield-bot", EVM_ADDRESS, "enc-key-1")
+
+    with (
+        patch("app.api.agent_actions.get_transaction_by_id", new_callable=AsyncMock) as mock_get_tx,
+        patch(
+            "app.api.agent_actions.get_account_by_address_or_id", new_callable=AsyncMock
+        ) as mock_get_account,
+    ):
+        mock_get_tx.return_value = {"transactions": [{"result": "SUCCESS"}]}
+        mock_get_account.return_value = {"account": "0.0.78492", "balance": {"balance": 100_000_000}}
+        response = client.post(
+            "/api/actions/confirm-agent",
+            json={
+                "owner_address": "0xowner",
+                "agent_name": "yield-bot",
+                "tx_id": "0xb5096553fb09ab11abb9819cac9b1721cee3dec5d58c1ed662cce7f356a0f0c5",
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ACTIVE"
+    assert body["agent"]["status"] == "ACTIVE"
+    assert body["agent"]["account_id"] == "0.0.78492"
+    stored = get_agent_by_name("0xowner", "yield-bot")
+    assert stored["status"] == "ACTIVE"
+    assert stored["account_id"] == "0.0.78492"
