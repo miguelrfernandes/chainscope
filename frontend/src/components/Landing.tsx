@@ -90,9 +90,6 @@ export function Landing() {
       </nav>
 
       <header className="animate-fade-up py-16 sm:py-24">
-        <p className="mb-4 text-[11px] uppercase tracking-wider text-[var(--accent)]">
-          ⌁ built for ethlisbon 2026 — best ai use case of the graph
-        </p>
         <h1 className="max-w-2xl font-[family-name:var(--font-display)] text-4xl italic leading-[1.15] text-[var(--ink)] sm:text-5xl">
           Talk to your on-chain activity.
         </h1>
