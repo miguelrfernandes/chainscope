@@ -372,6 +372,49 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "hedera-list-agents",
+    question: "Which Hedera sub-agents do I have registered in my vault?",
+    agent: "Hedera agent",
+    steps: [
+      { agent: "Orchestrator", text: "Routing to Hedera agent..." },
+      {
+        agent: "Hedera agent",
+        text: "Querying Agent Vault database for sub-agents registered to wallet 0x8f2a...c91b...",
+      },
+      {
+        agent: "Hedera agent",
+        text: "Fetching active balances and status for sub-agent accounts on Hedera testnet Mirror Node...",
+      },
+    ],
+    answer:
+      "You currently have **1 managed Hedera sub-agent** registered to your wallet:\n\n- **YieldSentinel** (`0.0.78492`, EVM Alias: `0x78492...b4a1`)\n  - **Status**: Active (AES-256-GCM encrypted in Vault)\n  - **Balance**: 1 HBAR\n  - **Active Schedules**: Daily portfolio drift scan & hourly HSS transfer loop",
+    sources: [
+      {
+        label: "ChainScope Agent Vault",
+        id: "chainscope/agent-vault",
+        query: "SELECT owner_address, agent_name, account_id, status FROM managed_agents WHERE owner_address = '0x8f2a...c91b'",
+      },
+      {
+        label: "Hedera Mirror Node — Account Balances",
+        id: "hedera/account-balances-0.0.78492",
+        query: "GET /api/v1/accounts/0.0.78492",
+      },
+    ],
+    table: {
+      title: "Registered Managed Agents",
+      columns: ["Agent Name", "Account ID", "EVM Alias", "Status", "Balance"],
+      rows: [
+        {
+          "Agent Name": "YieldSentinel",
+          "Account ID": "0.0.78492",
+          "EVM Alias": "0x78492...b4a1",
+          Status: "ACTIVE",
+          Balance: "1 HBAR",
+        },
+      ],
+    },
+  },
+  {
     id: "hedera-schedule-loop",
     question: "Schedule an autonomous loop for YieldSentinel to scan its token holdings daily and rebalance allocations if drift exceeds 5%",
     agent: "Hedera agent",

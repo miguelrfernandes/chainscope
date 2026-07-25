@@ -10,6 +10,7 @@ from app.tools.hedera_provisioner import (
     create_account_on_hedera,
     decrypt_private_key,
     encrypt_private_key,
+    list_hedera_agents,
     make_provision_hedera_agent_tool,
     provision_hedera_agent,
 )
@@ -117,3 +118,18 @@ def test_create_account_on_hedera_with_operator_credentials(monkeypatch):
         assert evm == "0x000000000000000000000000000000000001869f"
 
     get_settings.cache_clear()
+
+
+def test_list_hedera_agents_tool_execution():
+    owner = "0xowner_for_listing"
+    provision_hedera_agent.invoke({"name": "AgentA", "owner_wallet_address": owner})
+    provision_hedera_agent.invoke({"name": "AgentB", "owner_wallet_address": owner})
+
+    res_str = list_hedera_agents.invoke({"owner_wallet_address": owner})
+    data = json.loads(res_str)
+    assert data["status"] == "success"
+    assert data["count"] == 2
+    names = [a["agent_name"] for a in data["agents"]]
+    assert "AgentA" in names
+    assert "AgentB" in names
+

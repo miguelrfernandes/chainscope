@@ -1,7 +1,7 @@
 from app.agents.specialists._shared import run_specialist
 from app.agents.state import GraphState
 from app.tools.hedera_mirror import HEDERA_MIRROR_TOOLS
-from app.tools.hedera_provisioner import provision_hedera_agent
+from app.tools.hedera_provisioner import list_hedera_agents, provision_hedera_agent
 
 LABEL = "Hedera agent"
 
@@ -12,6 +12,7 @@ account, recent transactions, token metadata, HCS topic messages, and provisioni
 Hedera sub-agents. This is a separate network from the Ethereum/EVM chains the other specialists
 cover.
 
+If the user asks to list, check, or view their Hedera sub-agents (e.g. "Which agents do I have?"), invoke the list_hedera_agents tool.
 If the user asks to create or provision a Hedera agent (e.g. "Create a Hedera agent named X..."), invoke the provision_hedera_agent tool with the requested name.
 
 Use get_hedera_account for balance/key/memo lookups, get_hedera_account_tokens
@@ -25,8 +26,9 @@ results (convert tinybars to HBAR: divide by 100,000,000)."""
 
 
 async def hedera_node(state: GraphState) -> dict:
-    tools = HEDERA_MIRROR_TOOLS + [provision_hedera_agent]
+    tools = HEDERA_MIRROR_TOOLS + [provision_hedera_agent, list_hedera_agents]
     return await run_specialist(
         state, key="hedera", label=LABEL, system_prompt=SYSTEM_PROMPT, tools=tools
     )
+
 

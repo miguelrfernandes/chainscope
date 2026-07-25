@@ -199,3 +199,11 @@ def provision_hedera_agent(name: str, owner_wallet_address: str = "0xdefault_own
     """
     return _provision_hedera_agent(name, owner_wallet_address=owner_wallet_address)
 
+
+@tool
+def list_hedera_agents(owner_wallet_address: str = "0xdefault_owner") -> str:
+    """Lists all managed Hedera sub-agents registered to the given owner wallet address in the Vault."""
+    agents = Vault.list_agents(owner_wallet_address)
+    return json.dumps({"status": "success", "count": len(agents), "agents": agents}, indent=2)
+
+
