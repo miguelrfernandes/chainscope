@@ -114,6 +114,30 @@ async def build_recurring_hbar_transfer_actions(
         except Exception:
             pass
 
+    if factory_address == "0x0000000000000000000000000000000000000000":
+        import time
+
+        hss_precompile = "0x000000000000000000000000000000000000016b"
+        expiry_second = int(time.time()) + max(interval_seconds, 3600)
+        gas_limit = 100000
+        SCHEDULE_CALL_SELECTOR = "6f5bfde8"
+        calldata = (
+            "0x"
+            + SCHEDULE_CALL_SELECTOR
+            + _encode_address(resolved_recipient)
+            + _encode_uint(expiry_second)
+            + _encode_uint(gas_limit)
+            + _encode_uint(amount_wei)
+            + _encode_bytes_payload(b"")
+        )
+        payload = {
+            "human_message": f"Schedule transfer of {amount_hbar} HBAR to {resolved_recipient} via Hedera Schedule Service (0x16b)",
+            "to": hss_precompile,
+            "value": hex_value,
+            "data": calldata,
+        }
+        return json.dumps(payload)
+
     steps = []
     target_vault = existing_vault
 
