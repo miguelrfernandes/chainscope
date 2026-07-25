@@ -63,9 +63,16 @@ async def run_specialist(
     state: GraphState, *, key: str, label: str, system_prompt: str, tools: list[BaseTool]
 ) -> dict:
     tool_node = ToolNode(tools, handle_tool_errors=True)
-    agent = create_react_agent(get_llm(), tools=tool_node, prompt=system_prompt)
+    agent = create_react_agent(
+        get_llm(),
+        tools=tool_node,
+        prompt=system_prompt,
+    )
 
-    result = await agent.ainvoke({"messages": [HumanMessage(content=state["question"])]})
+    result = await agent.ainvoke(
+        {"messages": [HumanMessage(content=state["question"])]},
+        config={"recursion_limit": 15},
+    )
     messages = result["messages"]
 
     steps = []
