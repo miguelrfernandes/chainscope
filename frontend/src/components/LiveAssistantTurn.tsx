@@ -31,35 +31,39 @@ export function LiveAssistantTurn({
 
   return (
     <div className="flex flex-col gap-3">
-      {!live.answer && (
+      {live.steps.length > 0 && (
         <div className="flex flex-col gap-2 border-l-2 border-[var(--border)] py-1 pl-3.5 text-[13px]">
-          {live.steps.length === 0 ? (
-            <div className="flex items-baseline gap-2 text-[var(--ink-dim)]">
-              <span className="relative shrink-0 text-[var(--accent)]">
-                <span className="animate-caret">▮</span>
-              </span>
-              <span className="text-[var(--ink)]">Contacting ChainScope agents...</span>
-            </div>
-          ) : (
-            live.steps.map((step, i) => {
-              const isLast = i === live.steps.length - 1;
-              return (
-                <div key={i} className="flex items-baseline gap-2 text-[var(--ink-dim)]">
-                  {isLast ? (
-                    <span className="relative shrink-0 text-[var(--accent)]">
-                      <span className="animate-caret">▮</span>
-                    </span>
-                  ) : (
-                    <span className="shrink-0 text-[var(--success)]">✓</span>
-                  )}
-                  <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-[var(--accent)]">
-                    {step.agent}
+          {live.steps.map((step, i) => {
+            const isLast = !live.answer && i === live.steps.length - 1;
+            return (
+              <div key={i} className="flex items-baseline gap-2 text-[var(--ink-dim)]">
+                {isLast ? (
+                  <span className="relative shrink-0 text-[var(--accent)]">
+                    <span className="animate-caret">▮</span>
                   </span>
-                  <span className="text-[var(--ink)]">{step.text}</span>
-                </div>
-              );
-            })
-          )}
+                ) : (
+                  <span className="shrink-0 text-[var(--success)]">✓</span>
+                )}
+                <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-[var(--accent)]">
+                  {step.agent}
+                </span>
+                <span className={live.answer ? "text-[var(--ink-faint)]" : "text-[var(--ink)]"}>
+                  {step.text}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {!live.answer && live.steps.length === 0 && (
+        <div className="flex flex-col gap-2 border-l-2 border-[var(--border)] py-1 pl-3.5 text-[13px]">
+          <div className="flex items-baseline gap-2 text-[var(--ink-dim)]">
+            <span className="relative shrink-0 text-[var(--accent)]">
+              <span className="animate-caret">▮</span>
+            </span>
+            <span className="text-[var(--ink)]">Contacting ChainScope agents...</span>
+          </div>
         </div>
       )}
 
