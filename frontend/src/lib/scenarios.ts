@@ -406,13 +406,13 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: "hedera-scheduled-transfer",
-    question: "Schedule a recurring transfer of 1 HBAR every 1 hour to account 0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB using Hedera Schedule Service",
+    question: "Schedule a recurring transfer of 1 HBAR every 1 hour to YieldSentinel agent (0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB) using Hedera Schedule Service",
     agent: "Hedera agent",
     steps: [
       { agent: "Orchestrator", text: "Routing to Hedera wallet action agent..." },
       {
         agent: "Hedera wallet action agent",
-        text: "Resolving recipient 0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB and checking connected EVM wallet on Hedera testnet...",
+        text: "Resolving YieldSentinel agent account 0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB and checking connected EVM wallet on Hedera testnet...",
       },
       {
         agent: "Hedera wallet action agent",
@@ -424,7 +424,7 @@ export const SCENARIOS: Scenario[] = [
       },
     ],
     answer:
-      "Successfully prepared a recurring transfer sequence of **1 HBAR every 3600 seconds** (1 hour) to `0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB` using Hedera's Schedule Service (HSS) precompile (`0x16b`). The 4-step execution plan (create ScheduledVault, configure interval, deposit initial 1 HBAR, and call `scheduleNextRun`) is ready for your connected EVM wallet to sign.",
+      "Successfully prepared a recurring transfer sequence of **1 HBAR every 3600 seconds** (1 hour) to YieldSentinel agent (`0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB`) using Hedera's Schedule Service (HSS) precompile (`0x16b`). The 4-step execution plan (create ScheduledVault, configure interval, deposit initial 1 HBAR, and call `scheduleNextRun`) is ready for your connected EVM wallet to sign.",
     sources: [
       {
         label: "Hedera Schedule Service (HSS) Precompile",
@@ -440,8 +440,8 @@ export const SCENARIOS: Scenario[] = [
     actions: [
       {
         id: "schedule-recurring-hbar",
-        label: "Schedule 1 HBAR transfer every hour (HSS)",
-        description: "Set up a recurring 1 HBAR transfer using Hedera Schedule Service precompiles for your EVM wallet.",
+        label: "Schedule 1 HBAR transfer every hour to YieldSentinel (HSS)",
+        description: "Set up a recurring 1 HBAR transfer to YieldSentinel agent using Hedera Schedule Service precompiles for your EVM wallet.",
         protocol: "Hedera Schedule Service · Testnet",
         value: "1 HBAR / 1h",
         cta: "Sign Scheduled Sequence",
