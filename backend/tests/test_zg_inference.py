@@ -32,3 +32,15 @@ def test_zg_fallback_to_openrouter(monkeypatch):
     res = llm.invoke("Ping")
     assert res.content
     get_settings.cache_clear()
+
+
+def test_get_llm_metadata_and_tags(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "0g")
+    get_settings.cache_clear()
+
+    llm = get_llm()
+    assert "llm_provider:0g" in llm.runnable.config.get("tags", [])
+    assert llm.runnable.config.get("metadata", {}).get("provider") == "0g"
+    get_settings.cache_clear()
+
+
