@@ -127,19 +127,25 @@ export function ChatShell() {
     ];
   }, [promptOffset]);
 
-  // Build conversation turns for suggestions (only live turns, not demo scenarios)
+  // Build conversation turns for suggestions (only live turns, not demo scenarios).
+  // Truncated to keep token usage low: last 6 turns, user msgs ≤300 chars, answers ≤600 chars.
   const suggestionTurns = useMemo((): ConversationTurn[] => {
     if (messages.length === 0) return [];
     const result: ConversationTurn[] = [];
     for (const m of messages) {
       if (m.role === "user") {
-        result.push({ role: "user", text: m.text });
+        const text = m.text.length > 300 ? m.text.slice(0, 300) + "…" : m.text;
+        result.push({ role: "user", text });
       } else if (m.role === "assistant" && m.kind === "live" && m.live.answer) {
-        result.push({ role: "assistant", text: m.live.answer });
+        const ans = m.live.answer;
+        const text = ans.length > 600 ? ans.slice(0, 600) + "…" : ans;
+        result.push({ role: "assistant", text });
       }
     }
-    return result;
+    // Only send the last 6 turns (3 exchanges) to keep context focused
+    return result.slice(-6);
   }, [messages]);
+
 
   const dynamicSuggestions = useSuggestions(suggestionTurns);
 

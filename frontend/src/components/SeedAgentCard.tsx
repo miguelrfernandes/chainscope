@@ -104,11 +104,17 @@ export function SeedAgentCard({
         await confirmAgent(ownerAddress, payload.name, hash);
         setActivated(true);
       } catch (confirmErr) {
-        const confirmMsg =
-          confirmErr && typeof confirmErr === "object" && "message" in confirmErr
-            ? String((confirmErr as { message: unknown }).message)
-            : "Agent activation confirmation failed.";
-        setError(`Transfer succeeded on-chain, but agent activation failed: ${confirmMsg}`);
+        try {
+          await new Promise((r) => setTimeout(r, 3000));
+          await confirmAgent(ownerAddress, payload.name, hash);
+          setActivated(true);
+        } catch {
+          const confirmMsg =
+            confirmErr && typeof confirmErr === "object" && "message" in confirmErr
+              ? String((confirmErr as { message: unknown }).message)
+              : "Agent activation confirmation failed.";
+          setError(`Transfer succeeded on-chain, but agent activation failed: ${confirmMsg}`);
+        }
       }
       setState("done");
     } catch (err) {
@@ -147,11 +153,17 @@ export function SeedAgentCard({
         await confirmAgent(ownerAddress, payload.name, id);
         setActivated(true);
       } catch (confirmErr) {
-        const confirmMsg =
-          confirmErr && typeof confirmErr === "object" && "message" in confirmErr
-            ? String((confirmErr as { message: unknown }).message)
-            : "Agent activation confirmation failed.";
-        setError(`Transfer succeeded on-chain, but agent activation failed: ${confirmMsg}`);
+        try {
+          await new Promise((r) => setTimeout(r, 3000));
+          await confirmAgent(ownerAddress, payload.name, id);
+          setActivated(true);
+        } catch {
+          const confirmMsg =
+            confirmErr && typeof confirmErr === "object" && "message" in confirmErr
+              ? String((confirmErr as { message: unknown }).message)
+              : "Agent activation confirmation failed.";
+          setError(`Transfer succeeded on-chain, but agent activation failed: ${confirmMsg}`);
+        }
       }
       setState("done");
     } catch (err) {
