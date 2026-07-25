@@ -118,7 +118,10 @@ async def build_recurring_hbar_transfer_actions(
         import time
 
         hss_precompile = "0x000000000000000000000000000000000000016b"
-        expiry_second = int(time.time()) + max(interval_seconds, 3600)
+        delay = max(interval_seconds, 3600)
+        expiry_second = int(time.time()) + delay
+        hours = delay // 3600
+        time_desc = f"{hours}h" if hours >= 1 else f"{delay}s"
         gas_limit = 100000
         SCHEDULE_CALL_SELECTOR = "6f5bfde8"
         calldata = (
@@ -131,7 +134,7 @@ async def build_recurring_hbar_transfer_actions(
             + _encode_bytes_payload(b"")
         )
         payload = {
-            "human_message": f"Schedule transfer of {amount_hbar} HBAR to {resolved_recipient} via Hedera Schedule Service (0x16b)",
+            "human_message": f"Schedule transfer of {amount_hbar} HBAR to {resolved_recipient} (executes in {time_desc} via Hedera Schedule Service 0x16b)",
             "to": hss_precompile,
             "value": hex_value,
             "data": calldata,

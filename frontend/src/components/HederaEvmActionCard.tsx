@@ -102,17 +102,25 @@ export function HederaEvmActionCard({ payload }: { payload: HederaEvmActionPaylo
 
         {state === "done" ? (
           <div className="flex shrink-0 flex-col items-end gap-1 max-w-full min-w-0">
-            {hashes.map((h, i) => (
-              <a
-                key={h}
-                href={`https://hashscan.io/testnet/transaction/${h}`}
-                target="_blank"
-                rel="noreferrer"
-                className="max-w-full truncate border border-[var(--success)]/40 px-3 py-1.5 text-xs text-[var(--success)] transition hover:border-[var(--success)]"
-              >
-                ✓ {shortenAddressInText(steps[i]?.label ?? `step ${i + 1}`)} · {h.slice(0, 10)}…
-              </a>
-            ))}
+            {hashes.map((h, i) => {
+              const labelText =
+                steps.length === 1
+                  ? "view on HashScan"
+                  : steps[i]?.label
+                  ? shortenAddressInText(steps[i].label)
+                  : `step ${i + 1}`;
+              return (
+                <a
+                  key={h}
+                  href={`https://hashscan.io/testnet/transaction/${h}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="max-w-full truncate border border-[var(--success)]/40 px-3 py-1.5 text-xs text-[var(--success)] transition hover:border-[var(--success)]"
+                >
+                  ✓ {labelText} · {h.slice(0, 10)}…
+                </a>
+              );
+            })}
           </div>
         ) : (
           <button
