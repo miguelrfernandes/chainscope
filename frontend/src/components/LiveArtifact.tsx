@@ -63,7 +63,7 @@ export function LiveArtifact({
     return <EvmActionCard payload={payload} />;
   }
 
-  if (artifact.type === "action/hedera-evm-tx") {
+  if (artifact.type === "action/hedera-evm-tx" || artifact.type === "action/hedera-evm-tx-batch") {
     let payload: HederaEvmActionPayload;
     try {
       payload = JSON.parse(artifact.data);
