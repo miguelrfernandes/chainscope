@@ -24,6 +24,9 @@ GRAPH_MCP_URL=...               # Subgraph MCP server endpoint
 GRAPH_API_KEY=...               # if the MCP endpoint requires one
 PINAX_API_TOKEN=...             # Pinax Token API, used by the portfolio agent
 SEPOLIA_RPC_URL=...             # public Sepolia RPC, used by the yield advisor's idle-balance checks
+# Planned (MetaMask/EVM-relay Hedera actions — see agents.md):
+HEDERA_SCHEDULE_FACTORY_ADDRESS=...            # deployed ScheduledVaultFactory, Hedera testnet
+HEDERA_NATIVE_TRANSFER_STRATEGY_ADDRESS=...    # deployed NativeTransferStrategy, Hedera testnet
 ```
 
 See `backend/.env.example` for the full list. Swapping `LLM_PROVIDER` to

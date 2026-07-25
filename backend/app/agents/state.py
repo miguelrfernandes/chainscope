@@ -16,6 +16,8 @@ SpecialistName = Literal[
     "hedera",
     "hedera_action",
     "hedera_wallet_action",
+    "saucerswap",
+    "uniswap",
 ]
 
 SPECIALISTS: tuple[SpecialistName, ...] = (
@@ -27,6 +29,8 @@ SPECIALISTS: tuple[SpecialistName, ...] = (
     "hedera",
     "hedera_action",
     "hedera_wallet_action",
+    "saucerswap",
+    "uniswap",
 )
 
 

@@ -22,7 +22,7 @@ from app.core.config import get_settings
 
 def _get_encryption_key(secret_key: Optional[str] = None) -> bytes:
     """Derive a 32-byte key for AES-256-GCM encryption."""
-    key_source = secret_key or getattr(get_settings(), "agent_vault_encryption_key", "chainscope-agent-vault-secret-key-32b")
+    key_source = secret_key or get_settings().agent_vault_encryption_key
     return hashlib.sha256(key_source.encode("utf-8")).digest()
 
 

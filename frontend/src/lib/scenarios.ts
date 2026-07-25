@@ -364,6 +364,67 @@ export const SCENARIOS: Scenario[] = [
       },
     ],
   },
+  {
+    id: "saucerswap-apr",
+    question: "What's the best APR I can get farming on SaucerSwap right now?",
+    agent: "SaucerSwap agent",
+    steps: [
+      { agent: "Orchestrator", text: "Routing to SaucerSwap agent..." },
+      {
+        agent: "SaucerSwap agent",
+        text: "Fetching SaucerSwap farms/pools/token prices to compute pool APRs...",
+      },
+    ],
+    answer:
+      "The top farm on SaucerSwap right now is the **SAUCE/XSAUCE pool at ~18.4% APR** (~$1.1M TVL staked), followed by **HBAR/SAUCE at ~12.7% APR**. APRs are computed live from current SAUCE + HBAR emission rates against USD-priced TVL, so they move with token prices and staked amounts — worth rechecking before committing size.",
+    sources: [
+      {
+        label: "SaucerSwap REST API — farms/pools/tokens",
+        id: "saucerswap/rest-api/farms-pools-tokens",
+        query: "GET /farms, GET /pools, GET /tokens (api.saucerswap.finance)",
+      },
+    ],
+    table: {
+      title: "Top SaucerSwap farms by APR",
+      columns: ["Pair", "APR", "TVL Staked"],
+      rows: [
+        { Pair: "SAUCE/XSAUCE", APR: "18.4%", "TVL Staked": "$1.1M" },
+        { Pair: "HBAR/SAUCE", APR: "12.7%", "TVL Staked": "$2.4M" },
+        { Pair: "USDC/HBAR", APR: "9.1%", "TVL Staked": "$3.8M" },
+      ],
+    },
+  },
+  {
+    id: "saucerswap-swap",
+    question: "Connected wallet: 0x8f2a19b4d3f0c9a17e6b2d4c8a5f31e0b6c7c91b — Swap 10 SAUCE for WHBAR on SaucerSwap",
+    agent: "SaucerSwap agent",
+    steps: [
+      { agent: "Orchestrator", text: "Routing to SaucerSwap agent..." },
+      {
+        agent: "SaucerSwap agent",
+        text: "Building SaucerSwap V2 swap: 10 SAUCE -> WHBAR...",
+      },
+    ],
+    answer:
+      "Built a SaucerSwap V2 swap: **10 SAUCE → WHBAR** via SwapRouter's `exactInput` (0.30% fee tier). It's a two-step transaction — an ERC20 approve followed by the swap itself — ready for your connected wallet to sign below. Nothing has executed yet.",
+    sources: [
+      {
+        label: "SaucerSwap V2 SwapRouter — Hedera Testnet",
+        id: "saucerswap/swaprouter-v2-testnet",
+        query: "exactInput((bytes,address,uint256,uint256,uint256)) on 0.0.1414040",
+      },
+    ],
+    actions: [
+      {
+        id: "saucerswap-swap-tx",
+        label: "Swap 10 SAUCE for WHBAR",
+        description: "Approve + swap 10 SAUCE for WHBAR on SaucerSwap V2 (Hedera testnet).",
+        protocol: "SaucerSwap V2 · Hedera Testnet",
+        value: "10 SAUCE",
+        cta: "Execute Swap",
+      },
+    ],
+  },
 ];
 
 const HISTORY_AGO = ["2h ago", "yesterday", "2d ago", "3d ago", "4d ago", "6d ago"];

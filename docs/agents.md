@@ -80,11 +80,45 @@ a different safety model than the yield advisor:
   `.env.example`); without them the action agent raises clearly on first
   use rather than silently no-opping. The read-only `hedera` specialist
   works fine without these.
-- **Planned next step**: `AgentMode.RETURN_BYTES` (also supported by the
-  underlying SDK) would let the user's own Hedera wallet sign instead,
-  matching the yield advisor's model — this needs a Hedera wallet connector
-  added to the frontend first (today it only has an EVM/Sepolia wallet via
-  wagmi/viem), so it's deferred until that lands.
+- A second specialist, `hedera_wallet_action` (below), covers the case
+  where the *user's own* wallet should sign instead of the backend
+  operator, matching the yield advisor's model — see the next section for
+  how it splits across wallet types.
+
+### Hedera wallet action agent — two signing paths, kept side by side
+
+`hedera_wallet_action.py` builds transactions for the user's own connected
+wallet to sign — the backend never holds the keys or broadcasts. There are
+two distinct paths, chosen automatically by which wallet is connected
+(`CONNECTED_HEDERA_RE`/`CONNECTED_EVM_RE`), not a user toggle. They aren't a
+migration from one to the other — they cover different wallets and
+different capability surfaces:
+
+- **HashPack, via HashConnect** (`AgentMode.RETURN_BYTES`, shipped) — native
+  Hedera SDK transaction bytes, returned as an `action/hedera-tx-bytes`
+  artifact. Covers the full curated tool surface: HBAR transfer, HCS topic
+  create/submit, HTS token create/mint/associate. MetaMask cannot sign
+  these — it has no concept of a Hedera `TransferTransaction`.
+- **MetaMask, via Hedera's JSON-RPC relay** *(planned)* — plain
+  `eth_sendTransaction`s, returned as `action/hedera-evm-tx`. Covers native
+  HBAR value transfers directly, plus anything Hedera exposes as a System
+  Contract precompile at a fixed address — HTS at `0x167`, the Schedule
+  Service at `0x16b`. HCS has no System Contract equivalent, so topic
+  create/submit stays HashPack-only regardless of which wallet is
+  connected.
+- If a request needs a HashPack-only capability (e.g. HCS) but only
+  MetaMask is connected, the agent should ask the user to connect a
+  Hedera-native wallet rather than attempt something MetaMask can't sign.
+
+**Planned**: a recurring/scheduled HBAR transfer (e.g. "send 1 HBAR to X
+every hour"), signed entirely through MetaMask via a small deployed
+`ScheduledVaultFactory`/`ScheduledVault` contract pair (vendored from
+[hedera-dev/scaffold-hbar](https://github.com/hedera-dev/scaffold-hbar)'s
+`templates/payments-scheduler`) that self-reschedules using the HSS
+precompile (`IHederaScheduleService.scheduleCall`, `0x16b`), returned as a
+multi-step `action/hedera-evm-tx-batch` artifact. This one is inherently
+MetaMask-only in the other direction — HashConnect has no path to a System
+Contract call at all, so it's not offered to HashPack users.
 
 ### Managed Hedera Agent Accounts — User-Wallet Provisioning & Funding Architecture
 
@@ -107,41 +141,23 @@ flowchart TD
    - Account balances, token associations, and transaction histories are immutably stored on the Hedera ledger and publicly queryable via the Hedera Mirror Node API (`/api/v1/accounts/0.0.XXXXX`).
 
 2. **Backend Persistence (Encrypted Vault Store)**:
-   - **Database Schema / Store**: Agents are stored in a local SQLite / PostgreSQL database (or JSON vault store in development) under an `agent_accounts` table:
-     - `id`: Unique agent UUID.
-     - `owner_wallet_address`: User's primary connected EVM/Hedera wallet address (`0x...`).
+   - **Database Schema / Store**: Agents are stored in a local SQLite database
+     (`app/core/agent_store.py`, path configurable via `managed_agent_db_path`)
+     under a `managed_agents` table, one row per `(owner_address, agent_name)`:
+     - `id`: Autoincrementing row id.
+     - `owner_address`: User's connected wallet address, the key used to look
+       up an owner's agents.
+     - `agent_name`: User-chosen label for the agent, unique per owner.
      - `account_id`: Hedera account ID (`0.0.XXXXX`).
-     - `evm_address`: Hedera EVM alias (`0x...`).
-     - `encrypted_private_key`: Private key encrypted via AES-256-GCM using an application key (`AGENT_VAULT_ENCRYPTION_KEY`).
-     - `name` & `metadata`: Custom label/role assigned to the agent.
-     - `created_at` & `updated_at`: Timestamps.
+     - `encrypted_private_key`: Private key encrypted via AES-256-GCM
+       (`app/tools/hedera_provisioner.py`).
+     - `status`: Lifecycle state, `PENDING` until the seed-funding tx is
+       confirmed, then `ACTIVE`.
+     - `created_at`: Timestamp.
 
 3. **Session & State Hydration**:
    - When a user interacts with the app, the backend queries `get_user_agents(owner_wallet_address)`.
    - The Hedera Specialist node hydrates its state with the user's active agents, loading credentials into temporary per-request `HederaLangchainToolkit` contexts to execute authorized sub-agent actions securely.
-
-#### OpenClaw ACP (Agent Communication Protocol) Integration — Cron Jobs, Loops & Multi-Agent Harnesses:
-
-Yes! By using **OpenClaw ACP** (`openclaw acp` / `/acp spawn`), Chainscope's Hedera agents can run persistent autonomous loops, cron jobs, and inter-agent communication:
-
-```mermaid
-flowchart LR
-    IDE_UI[IDE / Web UI / Cron] -->|1. ACP stdio / WebSocket| OpenClawGateway[OpenClaw Gateway]
-    OpenClawGateway -->|2. /acp spawn Hedera Loop| ACPSession[OpenClaw ACP Agent Harness]
-    ACPSession -->|3. Fetch Encrypted Credentials| Vault[(Chainscope Agent Vault)]
-    ACPSession -->|4. Execute Hedera Actions| HederaNetwork[Hedera Testnet 0.0.x]
-    ACPSession -->|5. Stream Status & Receipts| OpenClawGateway
-```
-
-##### Key OpenClaw ACP Capabilities for Hedera Agents:
-1. **ACP Session Bridge (`openclaw acp`)**:
-   - Establishes a stdio/WebSocket tunnel between external runtime harnesses/IDEs and the Chainscope agent backend.
-   - Preserves session state (`agent:<id>:acp:<uuid>`) across application restarts so background loops maintain execution history and state.
-2. **Autonomous Loop & Cron Scheduling**:
-   - Natural language commands (*"Run a balance check loop every 1 hour and transfer 1 HBAR if balance < 10 HBAR"*) register persistent cron triggers in OpenClaw's Gateway.
-   - Upon trigger, OpenClaw spawns an ACP session harness that hydrates the agent's key from the Chainscope Vault, evaluates on-chain condition logic via Hedera Mirror Node, and signs transactions.
-3. **Inter-Agent Sub-Agent Delegation (`/acp spawn`)**:
-   - Enables multi-agent workflows where a primary orchestrator agent uses ACP to spawn sub-agents (e.g. one ACP sub-agent monitors Hedera liquidity while another executes HBAR transfers).
 
 ##### Robust Human-in-the-Loop (HITL) Integration Architecture:
 
@@ -152,9 +168,9 @@ To prevent unnecessary chat dialog loops (*"Do you want to use account X as paye
    - Rather than stopping to ask text questions in chat, the agent immediately invokes the action tool to construct unsigned transaction bytes (`return_bytes`).
 
 2. **Visual Interactive Action Cards (Frontend HITL)**:
-   - The payload is returned as a structured UI artifact (`action/hedera-tx-bytes` or `action/yield-supply`).
+   - The payload is returned as a structured UI artifact (`action/hedera-tx-bytes`, `action/yield-supply`, or, once the MetaMask path lands, `action/hedera-evm-tx`/`action/hedera-evm-tx-batch`).
    - The frontend renders an interactive **Action Card** showing full transaction parameters (Sender, Recipient, Amount, Network Fee, Memo).
-   - The transaction **never executes automatically** — the user reviews the exact details on-screen and approves or rejects it with 1 click in their connected wallet (HashPack / Metamask).
+   - The transaction **never executes automatically** — the user reviews the exact details on-screen and approves or rejects it with 1 click in their connected wallet. Today that's HashPack only for `action/hedera-tx-bytes`; MetaMask support is the planned `action/hedera-evm-tx` path described above, a separate artifact type rather than the same one signed by a different wallet.
 
 ```mermaid
 flowchart TD

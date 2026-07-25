@@ -96,6 +96,80 @@ export async function ensureHederaTestnet(provider: EthereumProvider): Promise<v
   }
 }
 
+const KNOWN_CHAINS: Record<
+  number,
+  {
+    chainIdHex: string;
+    chainName: string;
+    nativeCurrency: { name: string; symbol: string; decimals: number };
+    rpcUrls: string[];
+    blockExplorerUrls: string[];
+  }
+> = {
+  1: {
+    chainIdHex: "0x1",
+    chainName: "Ethereum Mainnet",
+    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+    rpcUrls: ["https://cloudflare-eth.com"],
+    blockExplorerUrls: ["https://etherscan.io"],
+  },
+  8453: {
+    chainIdHex: "0x2105",
+    chainName: "Base",
+    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+    rpcUrls: ["https://mainnet.base.org"],
+    blockExplorerUrls: ["https://basescan.org"],
+  },
+  11155111: {
+    chainIdHex: "0xaa36a7",
+    chainName: "Sepolia",
+    nativeCurrency: { name: "Sepolia ETH", symbol: "ETH", decimals: 18 },
+    rpcUrls: ["https://ethereum-sepolia-rpc.publicnode.com"],
+    blockExplorerUrls: ["https://sepolia.etherscan.io"],
+  },
+  296: {
+    chainIdHex: "0x128",
+    chainName: "Hedera Testnet",
+    nativeCurrency: { name: "HBAR", symbol: "HBAR", decimals: 18 },
+    rpcUrls: ["https://testnet.hashio.io/api"],
+    blockExplorerUrls: ["https://hashscan.io/testnet"],
+  },
+};
+
+/** Switches the connected wallet to the target chain ID, adding it first if unknown. */
+export async function ensureChain(provider: EthereumProvider, chainId: number): Promise<void> {
+  const chain = KNOWN_CHAINS[chainId];
+  const chainIdHex = chain?.chainIdHex ?? `0x${chainId.toString(16)}`;
+  try {
+    await provider.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: chainIdHex }],
+    });
+  } catch (err) {
+    const code = (err as { code?: number } | null)?.code;
+    if (code !== 4902 || !chain) throw err;
+    await provider.request({
+      method: "wallet_addEthereumChain",
+      params: [
+        {
+          chainId: chain.chainIdHex,
+          chainName: chain.chainName,
+          nativeCurrency: chain.nativeCurrency,
+          rpcUrls: chain.rpcUrls,
+          blockExplorerUrls: chain.blockExplorerUrls,
+        },
+      ],
+    });
+  }
+}
+
+export function explorerTxUrl(chainId: number | null, hash: string): string {
+  if (chainId === 8453) return `https://basescan.org/tx/${hash}`;
+  if (chainId === 11155111) return `https://sepolia.etherscan.io/tx/${hash}`;
+  if (chainId === 296) return `https://hashscan.io/testnet/transaction/${hash}`;
+  return `https://etherscan.io/tx/${hash}`;
+}
+
 export async function sendTransaction(
   provider: EthereumProvider,
   from: string,

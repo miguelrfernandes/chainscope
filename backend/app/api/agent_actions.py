@@ -16,6 +16,11 @@ from app.tools.hedera_mirror import get_transaction_by_id
 
 router = APIRouter(prefix="/api/actions")
 
+# The seed funding action always asks for exactly 1 HBAR (see
+# hedera_provisioner.py) — a transfer credits the agent's account with
+# fewer tinybars than this can't be the real seed transaction.
+SEED_AMOUNT_TINYBARS = 100_000_000
+
 
 class ConfirmAgentRequest(BaseModel):
     owner_address: str
@@ -41,12 +46,30 @@ async def confirm_agent(req: ConfirmAgentRequest):
         ) from exc
 
     transactions = result.get("transactions", [])
-    if not any(tx.get("result") == "SUCCESS" for tx in transactions):
+
+    def _funds_agent(tx: dict) -> bool:
+        if tx.get("result") != "SUCCESS":
+            return False
+        return any(
+            transfer.get("account") == agent["account_id"]
+            and transfer.get("amount", 0) >= SEED_AMOUNT_TINYBARS
+            for transfer in tx.get("transfers", [])
+        )
+
+    if not any(_funds_agent(tx) for tx in transactions):
         raise HTTPException(
             status_code=400,
-            detail="Seed funding transaction was not found or did not succeed on Hedera.",
+            detail="Seed funding transaction was not found, did not succeed, or did not "
+            f"credit {agent['account_id']} with at least 1 HBAR.",
         )
 
     set_agent_status(req.owner_address, req.agent_name, "ACTIVE")
-    agent["status"] = "ACTIVE"
-    return {"status": "ACTIVE", "agent": agent}
+    return {
+        "status": "ACTIVE",
+        "agent": {
+            "agent_name": agent["agent_name"],
+            "account_id": agent["account_id"],
+            "status": "ACTIVE",
+            "created_at": agent["created_at"],
+        },
+    }

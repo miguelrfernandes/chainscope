@@ -101,10 +101,37 @@ integration exists for it:
   `Transaction` via `@hashgraph/sdk`, and calls HashConnect's
   `sendTransaction` to sign + broadcast through the paired wallet — the
   Hedera equivalent of `LiveActionCard.tsx`'s `eth_sendTransaction` flow.
+  This is HashPack-only: MetaMask has no concept of a raw Hedera SDK
+  `Transaction`, so connecting it here doesn't work (see
+  [agents.md](./agents.md#hedera-wallet-action-agent--two-signing-paths-kept-side-by-side)
+  for the planned MetaMask-compatible path).
   `action/hedera-tx` (from the AUTONOMOUS-mode `hedera_action` specialist,
   which executes against a backend-held demo account, not the user's
   wallet) renders as a plain already-executed receipt in `LiveArtifact.tsx`
   — no signing needed, nothing to connect.
+
+### Planned: MetaMask via Hedera's JSON-RPC relay
+
+Alongside HashConnect, a second path is planned for wallets that only speak
+`window.ethereum` (MetaMask): Hedera's JSON-RPC relay (testnet chain id
+`296`, `https://testnet.hashio.io/api`) accepts plain `eth_sendTransaction`s
+against the same accounts. This reuses the *existing* EVM plumbing rather
+than adding a new wallet integration:
+
+- `ensureHederaTestnet` in `lib/wallet.ts`, mirroring `ensureSepolia`, adds/
+  switches to Hedera testnet on the already-connected MetaMask provider.
+- A new `HederaEvmActionCard.tsx`, modeled on `LiveActionCard.tsx`, takes an
+  ordered list of `{to, data, value}` steps and signs each via the existing
+  `sendTransaction` (`eth_sendTransaction`) helper — no new wallet SDK.
+- `LiveArtifact.tsx` gains branches for `action/hedera-evm-tx` (a single
+  plain transfer) and `action/hedera-evm-tx-batch` (the multi-step
+  scheduled-transfer flow via the vendored `ScheduledVault` contracts, see
+  [agents.md](./agents.md)).
+- Routing between this and the HashConnect path is automatic, based on
+  which wallet is connected — not a user-facing choice — since the two
+  paths cover different capability surfaces (HashPack: everything
+  including HCS; MetaMask: transfers plus whatever's reachable via Hedera's
+  System Contract precompiles).
 
 ### Human-in-the-Loop (HITL) Action Card Integration Architecture
 
@@ -113,11 +140,11 @@ Chainscope uses a **Client-Side Interceptor & Confirmation Pattern** for fronten
 1. **Stateless Backend Action Emission**:
    - Rather than freezing server threads with LangGraph `interrupt()` calls or waiting on long-lived SSE connections, specialists return structured action artifacts (`action/hedera-tx-bytes` or `action/yield-supply`).
 2. **Visual Review & Signature**:
-   - `LiveArtifact.tsx` intercepts the artifact stream and renders an interactive UI Action Card (`HederaActionCard.tsx` / `LiveActionCard.tsx`).
+   - `LiveArtifact.tsx` intercepts the artifact stream and renders an interactive UI Action Card (`HederaActionCard.tsx` / `LiveActionCard.tsx`, and eventually `HederaEvmActionCard.tsx`).
    - The user visually reviews transaction metadata (Payer, Target, Amount, Network Fee) in the UI before clicking **Sign & Execute**.
 3. **Wallet Broadcast & Webhook Sync**:
-   - React invokes the connected wallet SDK (HashConnect / Metamask) for local signature.
-   - Upon broadcast, the transaction hash is reported to `/api/actions/confirm-hedera`, updating backend vault state and displaying HashScan explorer links cleanly.
+   - React invokes the connected wallet SDK for local signature — HashConnect today; MetaMask via `eth_sendTransaction` is the planned second path (see above), not an alternative signer for the same artifact.
+   - For the managed-agent seed-funding flow specifically, the broadcast transaction id is reported to `POST /api/actions/confirm-agent` (`app/api/agent_actions.py`), which verifies it against the Hedera Mirror Node and flips the agent's stored status to `ACTIVE`. Ordinary transfer/HCS/HTS actions are stateless request/response and don't hit this endpoint — nothing is persisted backend-side for them.
 
 ## Deployment
 

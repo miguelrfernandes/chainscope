@@ -28,7 +28,17 @@ def test_confirm_agent_activates_on_successful_transaction(client):
     save_agent("0xowner", "yield-bot", "0.0.1001", "enc-key-1")
 
     with patch("app.api.agent_actions.get_transaction_by_id", new_callable=AsyncMock) as mock_get_tx:
-        mock_get_tx.return_value = {"transactions": [{"result": "SUCCESS"}]}
+        mock_get_tx.return_value = {
+            "transactions": [
+                {
+                    "result": "SUCCESS",
+                    "transfers": [
+                        {"account": "0.0.9999", "amount": -100_100_000},
+                        {"account": "0.0.1001", "amount": 100_000_000},
+                    ],
+                }
+            ]
+        }
         response = client.post(
             "/api/actions/confirm-agent",
             json={"owner_address": "0xowner", "agent_name": "yield-bot", "tx_id": "0.0.1001@1699999999.123456789"},
@@ -38,8 +48,35 @@ def test_confirm_agent_activates_on_successful_transaction(client):
     body = response.json()
     assert body["status"] == "ACTIVE"
     assert body["agent"]["status"] == "ACTIVE"
+    assert "encrypted_private_key" not in body["agent"]
     mock_get_tx.assert_called_once_with("0.0.1001@1699999999.123456789")
     assert get_agent_by_name("0xowner", "yield-bot")["status"] == "ACTIVE"
+
+
+def test_confirm_agent_rejects_transaction_not_funding_this_agent(client):
+    save_agent("0xowner", "yield-bot", "0.0.1001", "enc-key-1")
+
+    with patch("app.api.agent_actions.get_transaction_by_id", new_callable=AsyncMock) as mock_get_tx:
+        # A real, successful transaction — just not one that credits this
+        # agent's account with the seed amount.
+        mock_get_tx.return_value = {
+            "transactions": [
+                {
+                    "result": "SUCCESS",
+                    "transfers": [
+                        {"account": "0.0.9999", "amount": -1000},
+                        {"account": "0.0.8888", "amount": 1000},
+                    ],
+                }
+            ]
+        }
+        response = client.post(
+            "/api/actions/confirm-agent",
+            json={"owner_address": "0xowner", "agent_name": "yield-bot", "tx_id": "0.0.8888@1699999999.123456789"},
+        )
+
+    assert response.status_code == 400
+    assert get_agent_by_name("0xowner", "yield-bot")["status"] == "PENDING"
 
 
 def test_confirm_agent_rejects_failed_transaction(client):

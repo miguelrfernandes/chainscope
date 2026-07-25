@@ -3,6 +3,7 @@ import { LiveActionCard, type YieldActionPayload } from "./LiveActionCard";
 import { HederaActionCard, type HederaTxBytesPayload } from "./HederaActionCard";
 import { SeedAgentCard, type SeedAgentPayload } from "./SeedAgentCard";
 import { HederaEvmActionCard, type HederaEvmActionPayload } from "./HederaEvmActionCard";
+import { EvmActionCard, type EvmActionPayload } from "./EvmActionCard";
 
 type HederaExecutedPayload = {
   human_message: string;
@@ -52,7 +53,17 @@ export function LiveArtifact({
     return <HederaActionCard payload={payload} />;
   }
 
-  if (artifact.type === "action/hedera-evm-tx" || artifact.type === "action/hedera-evm-tx-batch") {
+  if (artifact.type === "action/evm-tx-batch") {
+    let payload: EvmActionPayload;
+    try {
+      payload = JSON.parse(artifact.data);
+    } catch {
+      return null;
+    }
+    return <EvmActionCard payload={payload} />;
+  }
+
+  if (artifact.type === "action/hedera-evm-tx") {
     let payload: HederaEvmActionPayload;
     try {
       payload = JSON.parse(artifact.data);

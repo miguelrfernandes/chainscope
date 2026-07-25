@@ -32,6 +32,8 @@ DATA_TOOL_NAMES = QUERY_TOOL_NAMES | HEDERA_TOOL_NAMES | {
     "get_wallet_balances",
     "get_wallet_transfers",
     "check_idle_aave_reserves",
+    "get_saucerswap_pool_aprs",
+    "get_uniswap_quote",
 }
 HEDERA_ACTION_TOOL_NAMES = {
     "transfer_hbar_tool",
@@ -70,6 +72,14 @@ def _describe_tool_call(name: str, args: dict) -> str:
         return f"Fetching transfer history for {args.get('address', '')} ({args.get('network', 'mainnet')}) via Pinax Token API..."
     if name == "check_idle_aave_reserves":
         return f"Checking {args.get('wallet_address', '')} for idle Aave v3 Sepolia reserves via live RPC..."
+    if name == "get_saucerswap_pool_aprs":
+        return "Fetching SaucerSwap farms/pools/token prices to compute pool APRs..."
+    if name == "build_saucerswap_swap_tx":
+        return f"Building SaucerSwap V2 swap: {args.get('amount_in', '')} {args.get('token_in_id', '')} -> {args.get('token_out_id', '')}..."
+    if name == "get_uniswap_quote":
+        return f"Fetching quote for {args.get('amount_in', '')} ({args.get('token_in_address', '')} -> {args.get('token_out_address', '')}) via Uniswap Trading API..."
+    if name == "build_uniswap_swap_tx":
+        return f"Building Uniswap swap: {args.get('amount_in', '')} ({args.get('token_in_address', '')} -> {args.get('token_out_address', '')}) via Trading API..."
     if name == "propose_yield_action":
         return f"Building Aave v3 Sepolia supply transaction for {args.get('amount', '')} {args.get('asset_symbol', '')}..."
     if name == "provision_hedera_agent":
@@ -118,6 +128,10 @@ def _source_id(name: str, args: dict) -> str:
         return f"pinax/token-api/{name}"
     if name == "check_idle_aave_reserves":
         return "aave-v3-sepolia/live-rpc-balances"
+    if name == "get_saucerswap_pool_aprs":
+        return "saucerswap/rest-api/farms-pools-tokens"
+    if name == "get_uniswap_quote":
+        return "uniswap/trading-api/quote"
     if name in HEDERA_TOOL_NAMES:
         return f"hedera-mirror-node/{name}"
     return name

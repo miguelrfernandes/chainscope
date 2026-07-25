@@ -34,6 +34,16 @@ agents. Available specialists: {", ".join(SPECIALISTS)}.
   user wants to act from their own account/funds, not a demo account.
   Neither hedera_action nor hedera_wallet_action are for read-only Hedera
   questions (those go to hedera).
+- saucerswap: SaucerSwap (https://www.saucerswap.finance), Hedera's leading
+  DEX — finding the best farming/liquidity-pool APRs, and building token
+  swap transactions on SaucerSwap for the user's own connected wallet to
+  sign. Route here for "what's the best APR on SaucerSwap", "where should I
+  farm", or "swap <token> for <token> on SaucerSwap" style questions.
+- uniswap: live Uniswap Trading API integration on Ethereum mainnet (chain 1)
+  and Base (chain 8453) for quote-and-swap trade execution. Route here for live
+  Uniswap quotes, routes, or swap transaction requests on Ethereum mainnet or
+  Base (e.g. "quote 1 ETH to USDC on Ethereum", "swap 100 USDC to WETH on Base").
+
 
 Pick every specialist whose domain the question touches — a compound
 question ("compare my Aave and Compound exposure and my wallet balance")
