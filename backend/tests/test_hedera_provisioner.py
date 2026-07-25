@@ -10,6 +10,7 @@ from app.tools.hedera_provisioner import (
     create_account_on_hedera,
     decrypt_private_key,
     encrypt_private_key,
+    get_hedera_agent,
     list_hedera_agents,
     make_provision_hedera_agent_tool,
     provision_hedera_agent,
@@ -132,4 +133,20 @@ def test_list_hedera_agents_tool_execution():
     names = [a["agent_name"] for a in data["agents"]]
     assert "AgentA" in names
     assert "AgentB" in names
+
+
+def test_get_hedera_agent_tool_execution():
+    owner = "0xowner_for_get_agent"
+    prov_res = json.loads(provision_hedera_agent.invoke({"name": "YieldSentinel", "owner_wallet_address": owner}))
+
+    get_res = json.loads(get_hedera_agent.invoke({"name": "YieldSentinel", "owner_wallet_address": owner}))
+    assert get_res["status"] == "success"
+    assert get_res["name"] == "YieldSentinel"
+    assert get_res["account_id"] == prov_res["account_id"]
+    assert get_res["evm_address"] == prov_res["evm_address"]
+
+    not_found_res = json.loads(get_hedera_agent.invoke({"name": "UnknownAgent", "owner_wallet_address": owner}))
+    assert not_found_res["status"] == "error"
+    assert "not found" in not_found_res["message"]
+
 

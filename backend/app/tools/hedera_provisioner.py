@@ -207,3 +207,26 @@ def list_hedera_agents(owner_wallet_address: str = "0xdefault_owner") -> str:
     return json.dumps({"status": "success", "count": len(agents), "agents": agents}, indent=2)
 
 
+@tool
+def get_hedera_agent(name: str, owner_wallet_address: str = "0xdefault_owner") -> str:
+    """Gets details and address information for a specific managed Hedera sub-agent by name from the Vault."""
+    agent = Vault.get_agent(owner_wallet_address, name)
+    if not agent:
+        return json.dumps({"status": "error", "message": f"Agent '{name}' not found for owner '{owner_wallet_address}'."}, indent=2)
+
+    account_id = agent.get("account_id", "")
+    evm_address = agent.get("evm_address") or _account_id_to_evm_alias(account_id)
+    return json.dumps(
+        {
+            "status": "success",
+            "name": agent["agent_name"],
+            "account_id": account_id,
+            "evm_address": evm_address,
+            "lifecycle_status": agent.get("status", "UNKNOWN"),
+            "created_at": agent.get("created_at", ""),
+        },
+        indent=2,
+    )
+
+
+

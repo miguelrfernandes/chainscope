@@ -449,7 +449,7 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: "hedera-scheduled-transfer",
-    question: "Schedule a recurring transfer of 1 HBAR every 1 hour to YieldSentinel agent (0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB) using Hedera Schedule Service",
+    question: "Schedule a recurring transfer of 1 HBAR every 1 hour to YieldSentinel agent using Hedera Schedule Service",
     agent: "Hedera agent",
     steps: [
       { agent: "Orchestrator", text: "Routing to Hedera wallet action agent..." },
