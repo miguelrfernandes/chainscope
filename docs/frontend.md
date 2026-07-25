@@ -31,6 +31,25 @@ frontend/
 - Chart artifacts arrive as plotly/vega-lite JSON specs (preferred) or
   base64 PNGs (fallback) — `ChartRenderer` should handle both.
 
+## Provenance tooltips
+
+Per booth feedback from The Graph team, every source citation in the UI
+(`SourcesRow`, `ProvenanceTag`) should show the actual query used, not
+just a link out to Graph Explorer — this is what makes "live, load-bearing
+Graph data" verifiable at a glance during judging.
+
+- Extend `Source` (`lib/scenarios.ts`) with a `query` field (the GraphQL
+  query string or Token API endpoint + params actually sent) and, where
+  useful, `deploymentId`/`subgraphId`.
+- The backend's SSE payload for each artifact/answer needs to carry this
+  alongside the source id/label — it isn't derivable client-side.
+- Render it as a tooltip (title attr or a small popover) on hover/focus
+  over each `SourcesRow` entry, showing the raw query; keep the existing
+  Explorer link as a secondary action.
+- Apply this to every specialist's output uniformly, not just one — it's
+  cheap per-answer and directly supports the "Effective use of The
+  Graph" and "Demo & clarity" judging criteria.
+
 ## Deployment
 
 Deployed on Vercel (see [setup.md](./setup.md#deployment)). Standard

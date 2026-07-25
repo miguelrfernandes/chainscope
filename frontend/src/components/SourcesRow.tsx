@@ -7,7 +7,11 @@ export function SourcesRow({ sources }: { sources: Source[] }) {
         sources
       </span>
       {sources.map((s) => (
-        <span key={s.id} className="inline-flex items-baseline gap-1.5">
+        <span
+          key={s.id}
+          tabIndex={0}
+          className="group relative inline-flex items-baseline gap-1.5 outline-none"
+        >
           <span className="text-[var(--ink-dim)]">{s.label}</span>
           <span className="text-[var(--ink-faint)]">·</span>
           <a
@@ -18,6 +22,17 @@ export function SourcesRow({ sources }: { sources: Source[] }) {
           >
             {s.id}
           </a>
+          <span
+            role="tooltip"
+            className="pointer-events-none absolute bottom-full left-0 z-10 mb-2 hidden w-max max-w-xs rounded border border-[var(--border)] bg-[var(--bg-raised)] px-2.5 py-2 text-[10px] normal-case leading-relaxed text-[var(--ink)] shadow-lg group-hover:block group-focus:block"
+          >
+            <span className="mb-1 block text-[var(--ink-faint)] uppercase tracking-wider">
+              query
+            </span>
+            <code className="break-words font-mono text-[var(--accent)]">
+              {s.query}
+            </code>
+          </span>
         </span>
       ))}
     </div>

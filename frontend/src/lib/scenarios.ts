@@ -3,7 +3,7 @@ export type AgentStep = {
   text: string;
 };
 
-export type Source = { label: string; id: string };
+export type Source = { label: string; id: string; query: string };
 export type BarDatum = { label: string; value: number; color: string };
 export type LineDatum = { label: string; value: number };
 export type TableRow = Record<string, string>;
@@ -51,8 +51,18 @@ export const SCENARIOS: Scenario[] = [
     answer:
       "Your wallet (0x8f2a...c91b) currently holds **$48,320** across 2 chains. Ethereum mainnet accounts for 71% of holdings, mostly ETH and staked ETH, while Arbitrum holds the rest, largely in USDC and ARB. Your largest single position is 6.2 ETH ($21,750).",
     sources: [
-      { label: "Wallet balances — Ethereum", id: "messari/erc20-balances-ethereum" },
-      { label: "Wallet balances — Arbitrum", id: "messari/erc20-balances-arbitrum" },
+      {
+        label: "Wallet balances — Ethereum",
+        id: "messari/erc20-balances-ethereum",
+        query:
+          "GET /balances/evm/0x8f2a19b4d3f0c9a17e6b2d4c8a5f31e0b6c7c91b?chain=ethereum (Token API)",
+      },
+      {
+        label: "Wallet balances — Arbitrum",
+        id: "messari/erc20-balances-arbitrum",
+        query:
+          "GET /balances/evm/0x8f2a19b4d3f0c9a17e6b2d4c8a5f31e0b6c7c91b?chain=arbitrum (Token API)",
+      },
     ],
     bar: {
       title: "Holdings by asset (USD)",
@@ -99,7 +109,12 @@ export const SCENARIOS: Scenario[] = [
     answer:
       "Aave v3 USDC on Ethereum is currently at **86.4% utilization**, with a supply APY of **4.9%** and variable borrow APY of **6.7%**. Utilization has climbed steadily over the past week, up from 79% — worth watching if you're supplying, since APY tends to spike further as utilization approaches the reserve's optimal threshold (90%).",
     sources: [
-      { label: "Aave v3 Ethereum — reserves", id: "aave/protocol-v3-ethereum" },
+      {
+        label: "Aave v3 Ethereum — reserves",
+        id: "aave/protocol-v3-ethereum",
+        query:
+          "{ reserve(id: \"USDC-0x7d2768...\") { utilizationRate liquidityRate variableBorrowRate } }",
+      },
     ],
     line: {
       title: "USDC reserve utilization, last 7 days",
@@ -133,7 +148,12 @@ export const SCENARIOS: Scenario[] = [
     answer:
       "Your Aave v3 position has a **health factor of 1.34**. You've supplied $32,000 in stETH as collateral against a $19,200 USDC borrow. You're not in immediate danger, but a ~26% drop in stETH price would push your health factor below 1.0 and risk liquidation. Consider adding collateral or repaying part of the loan if you expect volatility.",
     sources: [
-      { label: "Aave v3 Ethereum — user positions", id: "aave/protocol-v3-ethereum" },
+      {
+        label: "Aave v3 Ethereum — user positions",
+        id: "aave/protocol-v3-ethereum",
+        query:
+          "{ userReserve(id: \"0x8f2a19b4...-stETH\") { currentATokenBalance currentTotalDebt } }",
+      },
     ],
     healthFactor: 1.34,
   },
@@ -155,7 +175,12 @@ export const SCENARIOS: Scenario[] = [
     answer:
       "There are **2 active proposals**. UGP-42 (\"Deploy fee switch on 5 additional pools\") is passing with 68% For and quorum already met, voting closes in 3 days. UGP-43 (\"Grant $400k from the treasury to the v4 hooks incubator\") is closer, at 54% For with quorum not yet reached — it needs about 1.1M more UNI in turnout to be binding by the time voting ends in 5 days.",
     sources: [
-      { label: "Uniswap governance — proposals & votes", id: "uniswap/governance-v2" },
+      {
+        label: "Uniswap governance — proposals & votes",
+        id: "uniswap/governance-v2",
+        query:
+          "{ proposals(where: { status: ACTIVE }) { id title forVotes againstVotes quorumVotes endBlock } }",
+      },
     ],
     table: {
       title: "Active proposals",
@@ -188,7 +213,12 @@ export const SCENARIOS: Scenario[] = [
     answer:
       "Yes, with room to spare. The USDC/ETH 0.05% pool has **$41.2M** in active liquidity within ±2% of the current price. A $250k swap would move the price by roughly **0.18%** — well inside normal slippage tolerance. The tighter 0.01% pool is thinner and would move price ~0.6%, so route through the 0.05% pool.",
     sources: [
-      { label: "Uniswap v3 Ethereum — USDC/ETH pool ticks", id: "uniswap/uniswap-v3-ethereum" },
+      {
+        label: "Uniswap v3 Ethereum — USDC/ETH pool ticks",
+        id: "uniswap/uniswap-v3-ethereum",
+        query:
+          "{ pool(id: \"0x88e6...0640\") { ticks(first: 1000, orderBy: tickIdx) { tickIdx liquidityNet } } } (paid via x402)",
+      },
     ],
     bar: {
       title: "Active liquidity by pool fee tier (USD, ±2% of price)",

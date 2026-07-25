@@ -44,7 +44,11 @@ ETHLisbon 2026 bounty, $3,000 total ($2,000 / $1,000 for 1st/2nd).
   fixed-prompt chatbot.
 - **Demo & clarity (10%)** — streaming per-step agent status in the UI
   (see [frontend.md](./frontend.md)) makes the multi-agent flow visible
-  during the live demo, not just a spinner.
+  during the live demo, not just a spinner. Provenance tooltips showing
+  the actual query behind each source (see
+  [frontend.md](./frontend.md#provenance-tooltips)) make the live-data
+  claim verifiable rather than asserted — booth feedback from The Graph
+  team.
 
 ## Bonus
 
