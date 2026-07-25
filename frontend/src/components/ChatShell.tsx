@@ -2,15 +2,24 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ACCOUNT, SCENARIOS, HISTORY, type Scenario } from "@/lib/scenarios";
+import { streamChat } from "@/lib/api";
 import { AssistantTurn } from "./AssistantTurn";
+import { LiveAssistantTurn, type LiveState } from "./LiveAssistantTurn";
 import { Logomark } from "./Logomark";
 import { HistorySidebar } from "./HistorySidebar";
 
 type Message =
   | { id: number; role: "user"; text: string }
-  | { id: number; role: "assistant"; scenario: Scenario | null; instant?: boolean };
+  | { id: number; role: "assistant"; kind: "history"; scenario: Scenario | null }
+  | { id: number; role: "assistant"; kind: "live"; live: LiveState };
 
 let nextId = 1;
+
+function newThreadId(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `thread-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
 
 export function ChatShell() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -24,21 +33,48 @@ export function ChatShell() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  function updateLive(id: number, updater: (live: LiveState) => LiveState) {
+    setMessages((msgs) =>
+      msgs.map((m) =>
+        m.id === id && m.role === "assistant" && m.kind === "live"
+          ? { ...m, live: updater(m.live) }
+          : m
+      )
+    );
+  }
+
   function ask(question: string) {
     if (busy || !connected || !question.trim()) return;
-    const scenario =
-      SCENARIOS.find(
-        (s) => s.question.toLowerCase() === question.trim().toLowerCase()
-      ) ?? null;
+    const q = question.trim();
+    const threadId = activeThreadId ?? newThreadId();
+    const assistantId = nextId++;
 
-    setActiveThreadId(scenario?.id ?? null);
+    setActiveThreadId(threadId);
     setBusy(true);
     setMessages((m) => [
       ...m,
-      { id: nextId++, role: "user", text: question.trim() },
-      { id: nextId++, role: "assistant", scenario },
+      { id: nextId++, role: "user", text: q },
+      {
+        id: assistantId,
+        role: "assistant",
+        kind: "live",
+        live: { steps: [], answer: null, sources: [], artifacts: [], error: null },
+      },
     ]);
     setInput("");
+
+    streamChat(threadId, q, {
+      onStep: (step) =>
+        updateLive(assistantId, (l) => ({ ...l, steps: [...l.steps, step] })),
+      onAnswer: (payload) =>
+        updateLive(assistantId, (l) => ({
+          ...l,
+          answer: payload.answer,
+          sources: payload.sources,
+          artifacts: payload.artifacts,
+        })),
+      onError: (message) => updateLive(assistantId, (l) => ({ ...l, error: message })),
+    }).finally(() => setBusy(false));
   }
 
   function openHistory(id: string) {
@@ -48,7 +84,7 @@ export function ChatShell() {
     setActiveThreadId(id);
     setMessages([
       { id: nextId++, role: "user", text: entry.scenario.question },
-      { id: nextId++, role: "assistant", scenario: entry.scenario, instant: true },
+      { id: nextId++, role: "assistant", kind: "history", scenario: entry.scenario },
     ]);
   }
 
@@ -138,14 +174,16 @@ export function ChatShell() {
                     {m.text}
                   </div>
                 </div>
+              ) : m.kind === "history" ? (
+                <div key={m.id} className="animate-fade-up flex justify-start">
+                  <div className="max-w-[85%] w-full">
+                    <AssistantTurn scenario={m.scenario} instant onDone={() => {}} />
+                  </div>
+                </div>
               ) : (
                 <div key={m.id} className="animate-fade-up flex justify-start">
                   <div className="max-w-[85%] w-full">
-                    <AssistantTurn
-                      scenario={m.scenario}
-                      instant={m.instant}
-                      onDone={() => setBusy(false)}
-                    />
+                    <LiveAssistantTurn live={m.live} />
                   </div>
                 </div>
               )
