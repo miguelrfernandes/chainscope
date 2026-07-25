@@ -4,7 +4,11 @@ from app.agents.specialists._shared import HEDERA_ACTION_TOOL_NAMES, run_special
 from app.agents.state import GraphState
 from app.tools.hedera_actions import get_hedera_return_bytes_tools
 from app.tools.hedera_evm_actions import build_hbar_transfer_evm_tx
-from app.tools.hedera_mirror import get_connected_user_wallet, get_hedera_account, get_hedera_account_transactions
+from app.tools.hedera_mirror import (
+    get_connected_user_wallet,
+    get_hedera_account,
+    get_hedera_account_transactions,
+)
 from app.tools.hedera_provisioner import make_provision_hedera_agent_tool
 from app.tools.hedera_schedule_actions import build_recurring_hbar_transfer_actions
 
@@ -16,12 +20,8 @@ CONNECTED_HEDERA_RE = re.compile(
 CONNECTED_WALLET_RE = re.compile(
     r"(?:Connected Hedera wallet|Connected wallet):\s*(0\.0\.\d+|0x[a-fA-F0-9]{40})", re.IGNORECASE
 )
-CONNECTED_EVM_RE = re.compile(
-    r"Connected wallet:\s*(0x[a-fA-F0-9]{40})", re.IGNORECASE
-)
-RECURRING_RE = re.compile(
-    r"\b(?:recurring|schedule|scheduled|every\s+\w+)\b", re.IGNORECASE
-)
+CONNECTED_EVM_RE = re.compile(r"Connected wallet:\s*(0x[a-fA-F0-9]{40})", re.IGNORECASE)
+RECURRING_RE = re.compile(r"\b(?:recurring|schedule|scheduled|every\s+\w+)\b", re.IGNORECASE)
 
 NO_WALLET_MESSAGE = (
     "I need your connected Hedera wallet's account ID to build this transaction "
@@ -82,7 +82,12 @@ async def hedera_wallet_action_node(state: GraphState) -> dict:
             return {
                 "specialist_results": {"hedera_wallet_action": NO_EVM_WALLET_MESSAGE},
                 "raw_data": {"hedera_wallet_action": []},
-                "steps": [{"agent": LABEL, "text": "No connected EVM wallet found for recurring transfer."}],
+                "steps": [
+                    {
+                        "agent": LABEL,
+                        "text": "No connected EVM wallet found for recurring transfer.",
+                    }
+                ],
                 "sources": [],
                 "artifacts": [],
             }
@@ -99,7 +104,9 @@ async def hedera_wallet_action_node(state: GraphState) -> dict:
             label=LABEL,
             system_prompt=SYSTEM_PROMPT_EVM_RECURRING.format(owner_address=evm_address),
             tools=tools,
-            action_artifact_types={"build_recurring_hbar_transfer_actions": "action/hedera-evm-tx-batch"},
+            action_artifact_types={
+                "build_recurring_hbar_transfer_actions": "action/hedera-evm-tx-batch"
+            },
         )
 
     # If EVM match only (MetaMask, no companion 0.0.x HashPack pairing) and not recurring:
@@ -122,7 +129,9 @@ async def hedera_wallet_action_node(state: GraphState) -> dict:
         )
 
     # Native Hedera / HashPack flow
-    match = CONNECTED_HEDERA_RE.search(state["question"]) or CONNECTED_WALLET_RE.search(state["question"])
+    match = CONNECTED_HEDERA_RE.search(state["question"]) or CONNECTED_WALLET_RE.search(
+        state["question"]
+    )
     if not match:
         return {
             "specialist_results": {"hedera_wallet_action": NO_WALLET_MESSAGE},

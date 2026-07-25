@@ -22,7 +22,10 @@ def test_inspect_schema_description():
         {"subgraph_id": "0x67e6bb3400da3af23f1b54623ff5972494b8e132"},
     )
     assert "The Graph" in desc
-    assert "Inspecting subgraph schema on The Graph (0x67e6bb3400da3af23f1b54623ff5972494b8e132)..." in desc
+    assert (
+        "Inspecting subgraph schema on The Graph (0x67e6bb3400da3af23f1b54623ff5972494b8e132)..."
+        in desc
+    )
 
     desc_no_target = _describe_tool_call("get_schema_by_deployment_id", {})
     assert desc_no_target == "Inspecting subgraph schema on The Graph..."

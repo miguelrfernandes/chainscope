@@ -26,8 +26,11 @@ returned by the tool."""
 
 
 async def hedera_action_node(state: GraphState) -> dict:
-    tools = get_hedera_action_tools() + [get_hedera_account, get_hedera_account_transactions, provision_hedera_agent]
+    tools = get_hedera_action_tools() + [
+        get_hedera_account,
+        get_hedera_account_transactions,
+        provision_hedera_agent,
+    ]
     return await run_specialist(
         state, key="hedera_action", label=LABEL, system_prompt=SYSTEM_PROMPT, tools=tools
     )
-

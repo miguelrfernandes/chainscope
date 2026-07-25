@@ -66,7 +66,15 @@ async def test_build_saucerswap_swap_tx_path_encoding():
 async def test_get_saucerswap_pool_aprs_computes_apr(monkeypatch):
     async def fake_get(path, params=None):
         if path == "/farms":
-            return [{"id": 1, "poolId": 10, "sauceEmissions": 1.0, "hbarEmissions": 0.0, "staked": "1000000000"}]
+            return [
+                {
+                    "id": 1,
+                    "poolId": 10,
+                    "sauceEmissions": 1.0,
+                    "hbarEmissions": 0.0,
+                    "staked": "1000000000",
+                }
+            ]
         if path == "/pools":
             return [
                 {

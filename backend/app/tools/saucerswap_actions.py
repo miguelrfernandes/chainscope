@@ -118,7 +118,9 @@ async def get_saucerswap_pool_aprs(top_n: int = 5) -> str:
                 continue
             sauce_emissions = float(farm.get("sauceEmissions", 0) or 0)
             hbar_emissions = float(farm.get("hbarEmissions", 0) or 0)
-            daily_emissions_usd = (sauce_emissions * sauce_price + hbar_emissions * hbar_price) * 86400
+            daily_emissions_usd = (
+                sauce_emissions * sauce_price + hbar_emissions * hbar_price
+            ) * 86400
             apr_pct = daily_emissions_usd * 365 / staked_usd * 100
         except (TypeError, ValueError, ZeroDivisionError):
             continue
@@ -182,7 +184,9 @@ async def build_saucerswap_swap_tx(
         + bytes.fromhex(token_out.removeprefix("0x"))
     )
 
-    approve_calldata = "0x" + APPROVE_SELECTOR + _encode_address(ROUTER_EVM_ADDRESS) + _encode_uint(amount_in_wei)
+    approve_calldata = (
+        "0x" + APPROVE_SELECTOR + _encode_address(ROUTER_EVM_ADDRESS) + _encode_uint(amount_in_wei)
+    )
 
     tuple_offset = _encode_uint(0x20)
     path_offset_in_tuple = _encode_uint(5 * 32)

@@ -15,7 +15,10 @@ def get_llm(temperature: float = 0.0, max_tokens: int | None = None):
         api_key=settings.openrouter_api_key,
         temperature=temperature,
         max_tokens=tokens,
-    ).with_config(tags=["llm_provider:openrouter"], metadata={"llm_provider": "openrouter", "provider": "openrouter"})
+    ).with_config(
+        tags=["llm_provider:openrouter"],
+        metadata={"llm_provider": "openrouter", "provider": "openrouter"},
+    )
 
     if settings.llm_provider == "0g":
         # 0G Compute Router: an OpenAI-compatible gateway in front of the 0G
@@ -31,5 +34,3 @@ def get_llm(temperature: float = 0.0, max_tokens: int | None = None):
         return zg_llm.with_fallbacks([openrouter_llm])
 
     return openrouter_llm
-
-

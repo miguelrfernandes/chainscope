@@ -31,8 +31,7 @@ def test_get_hedera_action_tools_builds_curated_tool_set(monkeypatch):
     # A syntactically valid (not real/funded) ED25519 testnet private key.
     monkeypatch.setenv(
         "HEDERA_OPERATOR_PRIVATE_KEY",
-        "302e020100300506032b657004220420"
-        + "00" * 32,
+        "302e020100300506032b657004220420" + "00" * 32,
     )
     get_settings.cache_clear()
 
@@ -66,9 +65,7 @@ def test_get_hedera_return_bytes_tools_needs_no_operator_credentials(monkeypatch
 def test_get_hedera_return_bytes_tools_builds_unsigned_bytes_for_user_account():
     tool = {t.name: t for t in get_hedera_return_bytes_tools("0.0.7890")}["transfer_hbar_tool"]
 
-    result = asyncio.run(
-        tool.ainvoke({"transfers": [{"account_id": "0.0.1001", "amount": 1.0}]})
-    )
+    result = asyncio.run(tool.ainvoke({"transfers": [{"account_id": "0.0.1001", "amount": 1.0}]}))
 
     assert '"type": "return_bytes"' in result
     assert '"bytes_data"' in result

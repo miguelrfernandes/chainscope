@@ -63,7 +63,6 @@ CRITICAL SAFETY RULE:
 - If a specialist did not return data for a chain, state that no balance was found on that chain. Do not make up round numbers ($100,000, $50,000, $20,000, etc.)."""
 
 
-
 class RouteDecision(BaseModel):
     specialists: list[SpecialistName] = Field(
         description="Specialist agents whose domain this question touches, in the order they should run."

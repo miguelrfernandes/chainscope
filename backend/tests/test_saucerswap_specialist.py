@@ -15,7 +15,9 @@ async def test_saucerswap_requires_wallet_for_swap():
 async def test_saucerswap_apr_question_needs_no_wallet(monkeypatch):
     captured = {}
 
-    async def fake_run_specialist(state, *, key, label, system_prompt, tools, action_artifact_types=None):
+    async def fake_run_specialist(
+        state, *, key, label, system_prompt, tools, action_artifact_types=None
+    ):
         captured["tool_names"] = {t.name for t in tools}
         captured["action_artifact_types"] = action_artifact_types
         return {
@@ -33,14 +35,19 @@ async def test_saucerswap_apr_question_needs_no_wallet(monkeypatch):
 
     assert result["specialist_results"]["saucerswap"] == "ok"
     assert "get_saucerswap_pool_aprs" in captured["tool_names"]
-    assert captured["action_artifact_types"]["build_saucerswap_swap_tx"] == "action/hedera-evm-tx-batch"
+    assert (
+        captured["action_artifact_types"]["build_saucerswap_swap_tx"]
+        == "action/hedera-evm-tx-batch"
+    )
 
 
 @pytest.mark.asyncio
 async def test_saucerswap_swap_with_wallet(monkeypatch):
     captured = {}
 
-    async def fake_run_specialist(state, *, key, label, system_prompt, tools, action_artifact_types=None):
+    async def fake_run_specialist(
+        state, *, key, label, system_prompt, tools, action_artifact_types=None
+    ):
         captured["system_prompt"] = system_prompt
         return {
             "specialist_results": {key: "ok"},

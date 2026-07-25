@@ -1,5 +1,7 @@
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
+
 from app.tools.hedera_mirror import (
     get_hedera_account,
     get_hedera_account_nfts,
@@ -17,7 +19,10 @@ def test_to_mirror_node_transaction_id_converts_sdk_format():
 
 
 def test_to_mirror_node_transaction_id_passes_through_dashed_format():
-    assert to_mirror_node_transaction_id("0.0.1001-1699999999-123456789") == "0.0.1001-1699999999-123456789"
+    assert (
+        to_mirror_node_transaction_id("0.0.1001-1699999999-123456789")
+        == "0.0.1001-1699999999-123456789"
+    )
 
 
 @pytest.mark.asyncio
@@ -26,6 +31,36 @@ async def test_get_transaction_by_id_calls_expected_path():
         mock_get.return_value = {"transactions": [{"result": "SUCCESS"}]}
         await get_transaction_by_id("0.0.1001@1699999999.123456789")
         mock_get.assert_called_once_with("/api/v1/transactions/0.0.1001-1699999999-123456789")
+
+
+@pytest.mark.asyncio
+async def test_get_transaction_by_id_evm_hash():
+    with patch("app.tools.hedera_mirror._get", new_callable=AsyncMock) as mock_get:
+        mock_get.side_effect = [
+            {
+                "timestamp": "1785002094.261263104",
+                "result": "SUCCESS",
+                "amount": 100_000_000,
+                "contract_id": "0.0.87713",
+            },
+            {
+                "transactions": [
+                    {
+                        "result": "SUCCESS",
+                        "transfers": [],
+                    }
+                ]
+            },
+        ]
+        tx_res = await get_transaction_by_id(
+            "0xb368a557ff71bfa5025b498b39dc9ae05774a338ff03e73f1ee3138c60de0cf1"
+        )
+        assert len(tx_res["transactions"]) == 1
+        tx = tx_res["transactions"][0]
+        assert tx["result"] == "SUCCESS"
+        assert any(
+            t["account"] == "0.0.87713" and t["amount"] == 100_000_000 for t in tx["transfers"]
+        )
 
 
 @pytest.mark.asyncio

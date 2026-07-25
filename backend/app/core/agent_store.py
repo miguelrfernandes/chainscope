@@ -29,6 +29,16 @@ CREATE TABLE IF NOT EXISTS managed_agents (
 )
 """
 
+# Agent accounts are now provisioned "on demand": a keypair is generated up
+# front and its EVM address is permanent, but the account itself doesn't
+# exist on Hedera until Auto Account Creation materializes it on first seed
+# funding — so account_id starts empty and is filled in later by
+# set_agent_account_and_status. evm_address is the durable lookup key in the
+# meantime (see app/tools/hedera_provisioner.py, app/api/agent_actions.py).
+_MIGRATIONS = [
+    "ALTER TABLE managed_agents ADD COLUMN evm_address TEXT NOT NULL DEFAULT ''",
+]
+
 
 def _connect() -> sqlite3.Connection:
     db_path = get_settings().managed_agent_db_path
@@ -36,22 +46,36 @@ def _connect() -> sqlite3.Connection:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.execute(_SCHEMA)
+    for migration in _MIGRATIONS:
+        try:
+            conn.execute(migration)
+        except sqlite3.OperationalError:
+            pass  # column already exists
     return conn
 
 
-def save_agent(owner_address: str, agent_name: str, account_id: str, encrypted_private_key: str) -> None:
+def save_agent(
+    owner_address: str,
+    agent_name: str,
+    evm_address: str,
+    encrypted_private_key: str,
+    account_id: str = "",
+) -> None:
     """Create or update the managed agent identified by
-    (owner_address, agent_name), replacing its account ID and encrypted key."""
+    (owner_address, agent_name). `account_id` is normally empty at creation
+    time — the account doesn't exist on-chain yet — and gets filled in by
+    set_agent_account_and_status once seed funding auto-creates it."""
     with closing(_connect()) as conn:
         conn.execute(
             """
-            INSERT INTO managed_agents (owner_address, agent_name, account_id, encrypted_private_key)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO managed_agents (owner_address, agent_name, account_id, evm_address, encrypted_private_key)
+            VALUES (?, ?, ?, ?, ?)
             ON CONFLICT (owner_address, agent_name)
             DO UPDATE SET account_id = excluded.account_id,
+                          evm_address = excluded.evm_address,
                           encrypted_private_key = excluded.encrypted_private_key
             """,
-            (owner_address, agent_name, account_id, encrypted_private_key),
+            (owner_address, agent_name, account_id, evm_address, encrypted_private_key),
         )
         conn.commit()
 
@@ -61,7 +85,7 @@ def get_user_agents(owner_address: str) -> list[dict]:
     with closing(_connect()) as conn:
         rows = conn.execute(
             """
-            SELECT agent_name, account_id, encrypted_private_key, status, created_at
+            SELECT agent_name, account_id, evm_address, encrypted_private_key, status, created_at
             FROM managed_agents
             WHERE owner_address = ?
             ORDER BY created_at ASC
@@ -76,7 +100,7 @@ def get_agent_by_name(owner_address: str, agent_name: str) -> dict | None:
     with closing(_connect()) as conn:
         row = conn.execute(
             """
-            SELECT agent_name, account_id, encrypted_private_key, status, created_at
+            SELECT agent_name, account_id, evm_address, encrypted_private_key, status, created_at
             FROM managed_agents
             WHERE owner_address = ? AND agent_name = ?
             """,
@@ -97,6 +121,25 @@ def set_agent_status(owner_address: str, agent_name: str, status: str) -> bool:
             WHERE owner_address = ? AND agent_name = ?
             """,
             (status, owner_address, agent_name),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
+def set_agent_account_and_status(
+    owner_address: str, agent_name: str, account_id: str, status: str
+) -> bool:
+    """Record the real Hedera account_id resolved from Mirror Node after
+    Auto Account Creation and update lifecycle status in one step. Returns
+    whether a row was found and updated."""
+    with closing(_connect()) as conn:
+        cursor = conn.execute(
+            """
+            UPDATE managed_agents
+            SET account_id = ?, status = ?
+            WHERE owner_address = ? AND agent_name = ?
+            """,
+            (account_id, status, owner_address, agent_name),
         )
         conn.commit()
         return cursor.rowcount > 0

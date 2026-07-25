@@ -47,13 +47,17 @@ async def saucerswap_node(state: GraphState) -> dict:
     evm_match = CONNECTED_EVM_RE.search(state["question"])
     evm_address = evm_match.group(1) if evm_match else None
 
-    is_swap_request = bool(re.search(r"\bswap\b|\btrade\b|\bexchange\b", state["question"], re.IGNORECASE))
+    is_swap_request = bool(
+        re.search(r"\bswap\b|\btrade\b|\bexchange\b", state["question"], re.IGNORECASE)
+    )
 
     if is_swap_request and not evm_address:
         return {
             "specialist_results": {"saucerswap": NO_EVM_WALLET_MESSAGE},
             "raw_data": {"saucerswap": []},
-            "steps": [{"agent": LABEL, "text": "No connected EVM wallet found for SaucerSwap swap."}],
+            "steps": [
+                {"agent": LABEL, "text": "No connected EVM wallet found for SaucerSwap swap."}
+            ],
             "sources": [],
             "artifacts": [],
         }

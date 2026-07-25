@@ -1,19 +1,22 @@
-"""Hedera Account Provisioner Tool — provisions new Hedera agent accounts,
-generates ED25519 keypairs, constructs and executes AccountCreateTransaction
-on Hedera testnet (funded by the operator account), encrypts private keys via
-AES-256-GCM and registers records to the Vault, and returns initial seed funding
-action payloads (1 HBAR).
+"""Hedera Account Provisioner Tool — provisions new Hedera agent keys
+on demand. Generates an ECDSA keypair and derives its real EVM address
+(PublicKey.to_evm_address()); the Hedera account itself doesn't exist yet at
+this point — no operator account or AccountCreateTransaction is involved.
+It springs into existence via Hedera's Auto Account Creation the moment the
+user funds that EVM address with the 1 HBAR seed transfer, and
+app/api/agent_actions.py resolves the resulting native account_id from
+Mirror Node once that happens. Private keys are encrypted via AES-256-GCM
+and registered to the Vault immediately, since the key is what identifies
+the agent from the start.
 """
 
-from datetime import datetime, timezone
 import hashlib
 import json
 import os
 from typing import Any, Dict, List, Optional
-import uuid
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from hiero_sdk_python import AccountCreateTransaction, AccountId, Client, Hbar, Network, PrivateKey
+from hiero_sdk_python import PrivateKey
 from langchain_core.tools import tool
 
 from app.core.agent_store import get_agent_by_name, get_user_agents, save_agent
@@ -47,46 +50,13 @@ def decrypt_private_key(encrypted_str: str, secret_key: Optional[str] = None) ->
     return aesgcm.decrypt(nonce, ciphertext, None).decode("utf-8")
 
 
-def _account_id_to_evm_alias(account_id: str) -> str:
-    """Format account ID (0.0.X) as a 20-byte hex EVM address alias."""
-    try:
-        num = int(account_id.split(".")[-1])
-        return f"0x{num:040x}"
-    except Exception:
-        return "0x0000000000000000000000000000000000078492"
-
-
-def create_account_on_hedera(public_key: Any, name: str) -> tuple[str, str]:
-    """Builds and executes an AccountCreateTransaction funded by the operator account.
-    Returns (account_id, evm_address). Falls back to deterministic testnet account if
-    operator credentials are not configured or execution fails in test environment.
-    """
-    settings = get_settings()
-    if settings.hedera_operator_account_id and settings.hedera_operator_private_key:
-        try:
-            operator_id = AccountId.from_string(settings.hedera_operator_account_id)
-            operator_key = PrivateKey.from_string(settings.hedera_operator_private_key)
-            client = Client(Network(network=settings.hedera_network))
-            client.set_operator(operator_id, operator_key)
-
-            tx = AccountCreateTransaction()
-            tx.set_key(public_key)
-            tx.set_initial_balance(Hbar(0))
-            tx.set_account_memo(f"ChainScope Agent: {name}")
-
-            resp = tx.execute(client)
-            receipt = resp.get_receipt(client)
-            if receipt and receipt.account_id:
-                acc_id = str(receipt.account_id)
-                return acc_id, _account_id_to_evm_alias(acc_id)
-        except Exception:
-            pass
-
-    # Fallback account ID generation for dev/test mode
-    hash_offset = abs(hash(name)) % 10000
-    acc_id = f"0.0.{78492 + hash_offset}"
-    evm_alias = _account_id_to_evm_alias(acc_id)
-    return acc_id, evm_alias
+def derive_evm_address(public_key: Any) -> str:
+    """The real 20-byte EVM address derived from an ECDSA public key
+    (keccak(pubkey)[-20:], same derivation Ethereum/MetaMask use) — this is
+    what Hedera's Auto Account Creation keys off of, unlike the long-zero
+    `0x{account_num:040x}` alias which only exists once an account already
+    has a number."""
+    return f"0x{public_key.to_evm_address().to_string()}"
 
 
 class Vault:
@@ -95,16 +65,15 @@ class Vault:
     @staticmethod
     def register_agent(
         name: str,
-        account_id: str,
+        evm_address: str,
         encrypted_private_key: str,
         owner_address: str = "0xdefault_owner",
-        evm_address: str = "",
     ) -> Dict[str, Any]:
-        save_agent(owner_address, name, account_id, encrypted_private_key)
+        save_agent(owner_address, name, evm_address, encrypted_private_key)
         return {
             "owner_address": owner_address,
             "name": name,
-            "account_id": account_id,
+            "account_id": "",
             "evm_address": evm_address,
             "encrypted_private_key": encrypted_private_key,
         }
@@ -119,54 +88,56 @@ class Vault:
 
 
 def _provision_hedera_agent(name: str, owner_wallet_address: str = "0xdefault_owner") -> str:
-    """Provisions a new Hedera sub-agent account.
-    Generates an ED25519 keypair, constructs and submits an AccountCreateTransaction
-    funded by the backend operator account, encrypts the private key via AES-256-GCM
-    and registers the record to the Vault, and returns an initial seed funding action payload for 1 HBAR.
+    """Provisions a new Hedera sub-agent key on demand.
+    Generates an ECDSA keypair and derives its real EVM address, encrypts the
+    private key via AES-256-GCM and registers the record to the Vault, and
+    returns an initial seed funding action payload for 1 HBAR. The account
+    itself is created on-chain (Auto Account Creation) the moment that
+    seed funding lands — see app/api/agent_actions.py.
     """
-    # 1. Generate ED25519 keypair
-    private_key = PrivateKey.generate_ed25519()
+    # 1. Generate ECDSA keypair — required for Auto Account Creation, which
+    # keys off a real public-key-derived EVM address (not the long-zero
+    # `0x{account_num:040x}` alias, which doesn't exist until an account does).
+    private_key = PrivateKey.generate_ecdsa()
     public_key = private_key.public_key()
     private_key_der = private_key.to_string_der()
     public_key_der = public_key.to_string_der()
+    evm_address = derive_evm_address(public_key)
 
-    # 2. Construct & execute AccountCreateTransaction (funded by operator account)
-    account_id, evm_address = create_account_on_hedera(public_key, name)
-
-    # 3. Encrypt private key via AES-256-GCM
+    # 2. Encrypt private key via AES-256-GCM
     encrypted_key = encrypt_private_key(private_key_der)
 
-    # 4. Register record to Vault
+    # 3. Register record to Vault (no account_id yet — resolved on seed funding)
     owner_addr = owner_wallet_address or "0xdefault_owner"
     Vault.register_agent(
         name=name,
-        account_id=account_id,
+        evm_address=evm_address,
         encrypted_private_key=encrypted_key,
         owner_address=owner_addr,
-        evm_address=evm_address,
     )
 
-    # 5. Return initial seed funding action payload (1 HBAR)
+    # 4. Return initial seed funding action payload (1 HBAR)
     payload = {
         "status": "success",
         "name": name,
-        "account_id": account_id,
+        "account_id": None,
         "evm_address": evm_address,
         "public_key": public_key_der,
         "vault_registered": True,
         "message": (
-            f"Successfully created new Hedera sub-agent **{name}** (`{account_id}`, "
-            f"EVM Alias: `{evm_address[:8]}...{evm_address[-4:]}`) tied to your wallet. "
+            f"Successfully generated a new Hedera sub-agent key for **{name}** "
+            f"(EVM address `{evm_address[:8]}...{evm_address[-4:]}`) tied to your wallet. "
             "Private key has been encrypted with AES-256-GCM and registered to Vault. "
-            "To activate autonomous execution, confirm the 1 HBAR initial seed funding below."
+            "The agent's Hedera account doesn't exist on-chain yet — send the 1 HBAR "
+            "initial seed funding below to auto-create and activate it."
         ),
         "action": {
             "type": "action/seed-agent-hbar",
             "id": "seed-agent-hbar",
-            "label": f"Seed {name} ({account_id}) with 1 HBAR",
-            "description": f"Fund your newly created agent account {name} ({account_id}) with 1 HBAR from your connected wallet.",
+            "label": f"Seed {name} with 1 HBAR",
+            "description": f"Fund your newly created agent key for {name} ({evm_address}) with 1 HBAR from your connected wallet to create its Hedera account.",
             "protocol": "Hedera Testnet",
-            "recipient_account_id": account_id,
+            "recipient_account_id": evm_address,
             "value": "1 HBAR",
             "amount_hbar": 1.0,
             "cta": "Seed 1 HBAR",
@@ -180,10 +151,11 @@ def make_provision_hedera_agent_tool(owner_wallet_address: str):
 
     @tool
     def provision_hedera_agent(name: str) -> str:
-        """Provisions a new Hedera sub-agent account.
-        Generates an ED25519 keypair, constructs and submits an AccountCreateTransaction
-        funded by the backend operator account, encrypts the private key via AES-256-GCM
-        and registers the record to the Vault, and returns an initial seed funding action payload for 1 HBAR.
+        """Provisions a new Hedera sub-agent key on demand.
+        Generates an ECDSA keypair and derives its real EVM address, encrypts
+        the private key via AES-256-GCM and registers the record to the
+        Vault, and returns an initial seed funding action payload for 1 HBAR
+        — the account itself is auto-created on-chain once that lands.
         """
         return _provision_hedera_agent(name, owner_wallet_address=owner_wallet_address)
 
@@ -192,10 +164,11 @@ def make_provision_hedera_agent_tool(owner_wallet_address: str):
 
 @tool
 def provision_hedera_agent(name: str, owner_wallet_address: str = "0xdefault_owner") -> str:
-    """Provisions a new Hedera sub-agent account.
-    Generates an ED25519 keypair, constructs and submits an AccountCreateTransaction
-    funded by the backend operator account, encrypts the private key via AES-256-GCM
-    and registers the record to the Vault, and returns an initial seed funding action payload for 1 HBAR.
+    """Provisions a new Hedera sub-agent key on demand.
+    Generates an ECDSA keypair and derives its real EVM address, encrypts
+    the private key via AES-256-GCM and registers the record to the Vault,
+    and returns an initial seed funding action payload for 1 HBAR — the
+    account itself is auto-created on-chain once that lands.
     """
     return _provision_hedera_agent(name, owner_wallet_address=owner_wallet_address)
 
@@ -212,21 +185,23 @@ def get_hedera_agent(name: str, owner_wallet_address: str = "0xdefault_owner") -
     """Gets details and address information for a specific managed Hedera sub-agent by name from the Vault."""
     agent = Vault.get_agent(owner_wallet_address, name)
     if not agent:
-        return json.dumps({"status": "error", "message": f"Agent '{name}' not found for owner '{owner_wallet_address}'."}, indent=2)
+        return json.dumps(
+            {
+                "status": "error",
+                "message": f"Agent '{name}' not found for owner '{owner_wallet_address}'.",
+            },
+            indent=2,
+        )
 
-    account_id = agent.get("account_id", "")
-    evm_address = agent.get("evm_address") or _account_id_to_evm_alias(account_id)
+    account_id = agent.get("account_id") or None
     return json.dumps(
         {
             "status": "success",
             "name": agent["agent_name"],
             "account_id": account_id,
-            "evm_address": evm_address,
+            "evm_address": agent.get("evm_address", ""),
             "lifecycle_status": agent.get("status", "UNKNOWN"),
             "created_at": agent.get("created_at", ""),
         },
         indent=2,
     )
-
-
-

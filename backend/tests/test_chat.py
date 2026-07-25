@@ -12,9 +12,9 @@ def _parse_sse(text: str) -> list[tuple[str, str]]:
         event, data = "message", ""
         for line in block.splitlines():
             if line.startswith("event:"):
-                event = line[len("event:"):].strip()
+                event = line[len("event:") :].strip()
             elif line.startswith("data:"):
-                data = line[len("data:"):].strip()
+                data = line[len("data:") :].strip()
         events.append((event, data))
     return events
 
@@ -70,7 +70,9 @@ def test_chat_streams_steps_then_answer(monkeypatch):
 def test_chat_surfaces_graph_errors(monkeypatch):
     client = _make_client(
         monkeypatch,
-        updates=[{"orchestrator_route": {"steps": [{"agent": "Orchestrator", "text": "Routing..."}]}}],
+        updates=[
+            {"orchestrator_route": {"steps": [{"agent": "Orchestrator", "text": "Routing..."}]}}
+        ],
         raise_after=RuntimeError("subgraph timed out"),
     )
 

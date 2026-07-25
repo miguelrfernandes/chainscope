@@ -1,6 +1,8 @@
-import pytest
 from unittest.mock import AsyncMock, patch
-from app.tools.token_api import get_wallet_balances, get_wallet_transfers
+
+import pytest
+
+from app.tools.token_api import get_wallet_balances
 
 
 @pytest.mark.asyncio
@@ -8,7 +10,9 @@ async def test_get_wallet_balances_polygon_slug():
     with patch("app.tools.token_api._get", new_callable=AsyncMock) as mock_get:
         mock_get.return_value = {"status": "ok"}
         await get_wallet_balances.ainvoke({"address": "0x123", "network": "polygon"})
-        mock_get.assert_called_once_with("/v1/evm/balances", {"address": "0x123", "network": "polygon"})
+        mock_get.assert_called_once_with(
+            "/v1/evm/balances", {"address": "0x123", "network": "polygon"}
+        )
 
 
 @pytest.mark.asyncio

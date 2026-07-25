@@ -15,7 +15,9 @@ async def test_uniswap_requires_wallet_for_swap():
 async def test_uniswap_quote_question_needs_no_wallet(monkeypatch):
     captured = {}
 
-    async def fake_run_specialist(state, *, key, label, system_prompt, tools, action_artifact_types=None):
+    async def fake_run_specialist(
+        state, *, key, label, system_prompt, tools, action_artifact_types=None
+    ):
         captured["tool_names"] = {t.name for t in tools}
         captured["action_artifact_types"] = action_artifact_types
         return {
@@ -40,7 +42,9 @@ async def test_uniswap_quote_question_needs_no_wallet(monkeypatch):
 async def test_uniswap_swap_with_wallet(monkeypatch):
     captured = {}
 
-    async def fake_run_specialist(state, *, key, label, system_prompt, tools, action_artifact_types=None):
+    async def fake_run_specialist(
+        state, *, key, label, system_prompt, tools, action_artifact_types=None
+    ):
         captured["system_prompt"] = system_prompt
         captured["action_artifact_types"] = action_artifact_types
         return {

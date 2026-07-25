@@ -16,7 +16,9 @@ TINYBARS_PER_HBAR = 100_000_000
 
 async def _get(path: str, params: dict[str, Any] | None = None) -> dict:
     settings = get_settings()
-    async with httpx.AsyncClient(base_url=settings.hedera_mirror_node_base_url, timeout=15) as client:
+    async with httpx.AsyncClient(
+        base_url=settings.hedera_mirror_node_base_url, timeout=15
+    ) as client:
         resp = await client.get(path, params=params or {})
         resp.raise_for_status()
         return resp.json()
@@ -41,7 +43,6 @@ async def get_connected_user_wallet(address_or_id: str) -> dict:
     return await _get(f"/api/v1/accounts/{address_or_id}")
 
 
-
 @tool
 async def get_hedera_account_tokens(account_id: str, limit: int = 25) -> dict:
     """Get the HTS tokens (fungible + NFT collections) held by a Hedera account,
@@ -52,7 +53,9 @@ async def get_hedera_account_tokens(account_id: str, limit: int = 25) -> dict:
 
 
 @tool
-async def get_hedera_account_nfts(account_id: str, token_id: str | None = None, limit: int = 25) -> dict:
+async def get_hedera_account_nfts(
+    account_id: str, token_id: str | None = None, limit: int = 25
+) -> dict:
     """Get NFTs owned by a Hedera account, optionally filtered to one token
     (collection) ID.
 
@@ -70,7 +73,9 @@ async def get_hedera_account_transactions(account_id: str, limit: int = 10) -> d
     for a Hedera account, most recent first.
 
     `account_id` is a Hedera account ID like "0.0.1234"."""
-    return await _get("/api/v1/transactions", {"account.id": account_id, "limit": limit, "order": "desc"})
+    return await _get(
+        "/api/v1/transactions", {"account.id": account_id, "limit": limit, "order": "desc"}
+    )
 
 
 @tool
@@ -106,10 +111,55 @@ def to_mirror_node_transaction_id(transaction_id: str) -> str:
 
 async def get_transaction_by_id(transaction_id: str) -> dict:
     """Look up a transaction's broadcast status on Hedera Mirror Node by its
-    transaction ID. Not exposed as an agent tool — used by the
-    confirm-agent webhook (app/api/agent_actions.py) to verify a signed seed
-    funding transfer actually landed on-chain before activating an agent."""
+    transaction ID (SDK format 0.0.x@sec.nano or dashed 0.0.x-sec-nano) or EVM
+    hash (0x...). Not exposed as an agent tool — used by the confirm-agent
+    webhook (app/api/agent_actions.py) to verify a signed seed funding transfer
+    actually landed on-chain before activating an agent."""
+    if transaction_id.startswith("0x"):
+        try:
+            contract_res = await _get(f"/api/v1/contracts/results/{transaction_id}")
+        except httpx.HTTPError:
+            return await _get(f"/api/v1/transactions/{transaction_id}")
+
+        ts = contract_res.get("timestamp")
+        if not ts:
+            return {"transactions": []}
+
+        txs_res = await _get("/api/v1/transactions", {"timestamp": ts})
+        transactions = txs_res.get("transactions", [])
+
+        contract_result_str = contract_res.get("result", "")
+        contract_amount = contract_res.get("amount") or 0
+        contract_id = contract_res.get("contract_id") or ""
+
+        for tx in transactions:
+            if contract_result_str and contract_result_str != "SUCCESS":
+                tx["result"] = contract_result_str
+
+            if contract_amount > 0 and contract_id:
+                transfers = tx.setdefault("transfers", [])
+                if not any(t.get("account") == contract_id for t in transfers):
+                    transfers.append(
+                        {
+                            "account": contract_id,
+                            "amount": contract_amount,
+                            "is_approval": False,
+                        }
+                    )
+
+        return {"transactions": transactions}
+
     return await _get(f"/api/v1/transactions/{to_mirror_node_transaction_id(transaction_id)}")
+
+
+async def get_account_by_address_or_id(address_or_id: str) -> dict:
+    """Look up a Hedera account's Mirror Node record by native account ID
+    (0.0.x) or EVM address (0x...). Not exposed as an agent tool — used by
+    the confirm-agent webhook (app/api/agent_actions.py) to resolve the real
+    account number that Hedera auto-creation assigns the first time a
+    managed agent's EVM address is funded, since that account_id isn't known
+    until the seed funding transaction actually lands."""
+    return await _get(f"/api/v1/accounts/{address_or_id}")
 
 
 HEDERA_MIRROR_TOOLS = [

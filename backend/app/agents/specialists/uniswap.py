@@ -34,7 +34,11 @@ async def uniswap_node(state: GraphState) -> dict:
     evm_match = CONNECTED_EVM_RE.search(state["question"])
     evm_address = evm_match.group(1) if evm_match else None
 
-    is_swap_request = bool(re.search(r"\bswap\b|\btrade\b|\bexchange\b|\bbuy\b|\bsell\b", state["question"], re.IGNORECASE))
+    is_swap_request = bool(
+        re.search(
+            r"\bswap\b|\btrade\b|\bexchange\b|\bbuy\b|\bsell\b", state["question"], re.IGNORECASE
+        )
+    )
 
     if is_swap_request and not evm_address:
         return {

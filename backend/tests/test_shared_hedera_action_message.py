@@ -3,7 +3,10 @@ from app.agents.specialists._shared import _friendly_hedera_action_message
 
 def test_transfer_hbar_message():
     args = {"transfers": [{"account_id": "0.0.1234", "amount": 1.0}]}
-    assert _friendly_hedera_action_message("transfer_hbar_tool", args) == "Transfer 1.0 HBAR to 0.0.1234"
+    assert (
+        _friendly_hedera_action_message("transfer_hbar_tool", args)
+        == "Transfer 1.0 HBAR to 0.0.1234"
+    )
 
 
 def test_transfer_hbar_message_multiple_recipients():
@@ -41,7 +44,9 @@ def test_submit_topic_message_truncates_long_message():
 
 def test_mint_fungible_token_message():
     assert (
-        _friendly_hedera_action_message("mint_fungible_token_tool", {"token_id": "0.0.9", "amount": 5})
+        _friendly_hedera_action_message(
+            "mint_fungible_token_tool", {"token_id": "0.0.9", "amount": 5}
+        )
         == "Mint 5 of token 0.0.9"
     )
 

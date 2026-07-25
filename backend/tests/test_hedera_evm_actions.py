@@ -1,6 +1,11 @@
 import json
+
 import pytest
 
+from app.agents.specialists.hedera_wallet_action import (
+    NO_EVM_WALLET_MESSAGE,
+    hedera_wallet_action_node,
+)
 from app.tools.hedera_evm_actions import build_hbar_transfer_evm_tx, resolve_evm_address
 from app.tools.hedera_schedule_actions import (
     CONFIGURE_SELECTOR,
@@ -12,7 +17,6 @@ from app.tools.hedera_schedule_actions import (
     encode_configure,
     predict_contract_address,
 )
-from app.agents.specialists.hedera_wallet_action import hedera_wallet_action_node, NO_EVM_WALLET_MESSAGE
 
 
 @pytest.mark.asyncio

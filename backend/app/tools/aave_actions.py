@@ -130,7 +130,9 @@ def propose_yield_action(
     reserve = RESERVES[symbol]
     amount_wei = int(round(amount * 10 ** reserve["decimals"]))
 
-    approve_calldata = "0x" + APPROVE_SELECTOR + _encode_address(POOL_ADDRESS) + _encode_uint(amount_wei)
+    approve_calldata = (
+        "0x" + APPROVE_SELECTOR + _encode_address(POOL_ADDRESS) + _encode_uint(amount_wei)
+    )
     supply_calldata = (
         "0x"
         + SUPPLY_SELECTOR

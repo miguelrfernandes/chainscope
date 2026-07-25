@@ -1,8 +1,10 @@
 from unittest.mock import AsyncMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
 from hiero_sdk_python import PrivateKey
 
+from app.core.agent_store import set_agent_account_and_status
 from app.core.config import get_settings
 from app.core.scheduler import (
     execute_autonomous_hedera_action,
@@ -45,14 +47,18 @@ def test_execute_autonomous_hedera_action_from_vault(tmp_path):
     agent_name = "YieldSentinel"
     account_id = "0.0.78492"
 
-    raw_key = PrivateKey.generate_ed25519().to_string_der()
+    raw_key = PrivateKey.generate_ecdsa().to_string_der()
     encrypted_key = encrypt_private_key(raw_key)
     Vault.register_agent(
         name=agent_name,
-        account_id=account_id,
+        evm_address="0xb081bd3b7845046d3019128968144ca13a13bcd2",
         encrypted_private_key=encrypted_key,
         owner_address=owner,
     )
+    # Simulate a completed seed-funding flow — the account only exists
+    # (and autonomous execution is only meaningful) once confirm-agent has
+    # resolved a real account_id and flipped the agent ACTIVE.
+    set_agent_account_and_status(owner, agent_name, account_id, "ACTIVE")
 
     res = execute_autonomous_hedera_action(owner, agent_name, action_type="rebalance")
     assert res["owner_address"] == owner
@@ -78,14 +84,15 @@ async def test_schedule_and_list_remove_jobs(tmp_path):
     agent_name = "YieldSentinel"
     account_id = "0.0.78492"
 
-    raw_key = PrivateKey.generate_ed25519().to_string_der()
+    raw_key = PrivateKey.generate_ecdsa().to_string_der()
     encrypted_key = encrypt_private_key(raw_key)
     Vault.register_agent(
         name=agent_name,
-        account_id=account_id,
+        evm_address="0xb081bd3b7845046d3019128968144ca13a13bcd2",
         encrypted_private_key=encrypted_key,
         owner_address=owner,
     )
+    set_agent_account_and_status(owner, agent_name, account_id, "ACTIVE")
 
     job_id = schedule_rebalance_job(owner, agent_name, cron_expression="0 0 * * *")
     assert job_id == f"cron-{agent_name}-{account_id}-rebalance"

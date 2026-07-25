@@ -28,13 +28,17 @@ HEDERA_TOOL_NAMES = {
     "get_hedera_token_info",
     "get_hedera_topic_messages",
 }
-DATA_TOOL_NAMES = QUERY_TOOL_NAMES | HEDERA_TOOL_NAMES | {
-    "get_wallet_balances",
-    "get_wallet_transfers",
-    "check_idle_aave_reserves",
-    "get_saucerswap_pool_aprs",
-    "get_uniswap_quote",
-}
+DATA_TOOL_NAMES = (
+    QUERY_TOOL_NAMES
+    | HEDERA_TOOL_NAMES
+    | {
+        "get_wallet_balances",
+        "get_wallet_transfers",
+        "check_idle_aave_reserves",
+        "get_saucerswap_pool_aprs",
+        "get_uniswap_quote",
+    }
+)
 HEDERA_ACTION_TOOL_NAMES = {
     "transfer_hbar_tool",
     "create_topic_tool",
@@ -57,10 +61,18 @@ ACTION_ARTIFACT_TYPES = {
 def _describe_tool_call(name: str, args: dict) -> str:
     if name in QUERY_TOOL_NAMES:
         target = args.get("subgraph_id") or args.get("deployment_id") or args.get("ipfs_hash") or ""
-        return f"Querying {target} on The Graph via Subgraph MCP..." if target else "Querying subgraph on The Graph via Subgraph MCP..."
+        return (
+            f"Querying {target} on The Graph via Subgraph MCP..."
+            if target
+            else "Querying subgraph on The Graph via Subgraph MCP..."
+        )
     if name == "search_subgraphs_by_keyword":
         return f"Searching subgraphs on The Graph for '{args.get('keyword', '')}'..."
-    if name in {"get_schema_by_subgraph_id", "get_schema_by_deployment_id", "get_schema_by_ipfs_hash"}:
+    if name in {
+        "get_schema_by_subgraph_id",
+        "get_schema_by_deployment_id",
+        "get_schema_by_ipfs_hash",
+    }:
         target = args.get("subgraph_id") or args.get("deployment_id") or args.get("ipfs_hash") or ""
         return f"Inspecting subgraph schema on The Graph{f' ({target})' if target else ''}..."
     if name == "get_top_subgraph_deployments":
@@ -84,7 +96,7 @@ def _describe_tool_call(name: str, args: dict) -> str:
     if name == "propose_yield_action":
         return f"Building Aave v3 Sepolia supply transaction for {args.get('amount', '')} {args.get('asset_symbol', '')}..."
     if name == "provision_hedera_agent":
-        return f"Generating ED25519 keypair and provisioning Hedera account for agent '{args.get('name', '')}'..."
+        return f"Generating ECDSA keypair for agent '{args.get('name', '')}' (account auto-created on seed funding)..."
     if name in HEDERA_TOOL_NAMES:
         target = args.get("account_id") or args.get("token_id") or args.get("topic_id") or ""
         return f"Querying Hedera Mirror Node ({name}) for {target}..."
@@ -113,7 +125,9 @@ def _friendly_hedera_action_message(name: str, args: dict) -> str:
         preview = message if len(message) <= 60 else f"{message[:57]}..."
         return f'Submit message to topic {topic_id}: "{preview}"'
     if name == "create_fungible_token_tool":
-        return f"Create fungible token {args.get('token_name', '')} ({args.get('token_symbol', '')})"
+        return (
+            f"Create fungible token {args.get('token_name', '')} ({args.get('token_symbol', '')})"
+        )
     if name == "mint_fungible_token_tool":
         return f"Mint {args.get('amount', '')} of token {args.get('token_id', '')}"
     if name == "associate_token_tool":
@@ -177,7 +191,9 @@ async def run_specialist(
     for msg in messages:
         if isinstance(msg, AIMessage) and msg.tool_calls:
             for call in msg.tool_calls:
-                steps.append({"agent": label, "text": _describe_tool_call(call["name"], call["args"])})
+                steps.append(
+                    {"agent": label, "text": _describe_tool_call(call["name"], call["args"])}
+                )
                 if call["name"] in DATA_TOOL_NAMES:
                     sid = _source_id(call["name"], call["args"])
                     sources.append(

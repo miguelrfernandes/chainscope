@@ -40,7 +40,11 @@ async def _uniswap_post(path: str, payload: dict[str, Any]) -> Any:
     if settings.uniswap_api_key:
         headers["x-api-key"] = settings.uniswap_api_key
 
-    url = path if path.startswith("http") else f"{settings.uniswap_api_base_url.rstrip('/')}/{path.lstrip('/')}"
+    url = (
+        path
+        if path.startswith("http")
+        else f"{settings.uniswap_api_base_url.rstrip('/')}/{path.lstrip('/')}"
+    )
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.post(url, json=payload, headers=headers)
         resp.raise_for_status()
@@ -118,7 +122,9 @@ async def build_uniswap_swap_tx(
     try:
         swap_data = await _uniswap_post("/swap", swap_payload)
     except Exception as exc:  # noqa: BLE001
-        return json.dumps({"error": f"Failed to generate swap calldata from Uniswap Trading API: {exc}"})
+        return json.dumps(
+            {"error": f"Failed to generate swap calldata from Uniswap Trading API: {exc}"}
+        )
 
     # Extract transaction fields from Uniswap Trading API response
     swap_obj = swap_data.get("swap") or swap_data.get("methodParameters") or swap_data
@@ -133,7 +139,9 @@ async def build_uniswap_swap_tx(
         except (ValueError, TypeError):
             value = "0x0"
 
-    network_name = "Ethereum Mainnet" if chain_id == 1 else "Base" if chain_id == 8453 else f"Chain {chain_id}"
+    network_name = (
+        "Ethereum Mainnet" if chain_id == 1 else "Base" if chain_id == 8453 else f"Chain {chain_id}"
+    )
     steps = []
 
     # Prepend ERC20 approve step if token_in is not native ETH
@@ -143,7 +151,9 @@ async def build_uniswap_swap_tx(
             amount_wei = int(float(amount_in))
         except (ValueError, TypeError):
             amount_wei = 2**256 - 1
-        approve_calldata = "0x" + APPROVE_SELECTOR + _encode_address(to_address) + _encode_uint(amount_wei)
+        approve_calldata = (
+            "0x" + APPROVE_SELECTOR + _encode_address(to_address) + _encode_uint(amount_wei)
+        )
         steps.append(
             {
                 "label": f"Approve {token_in_address} for Uniswap Router",

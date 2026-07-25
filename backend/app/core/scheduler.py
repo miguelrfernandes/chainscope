@@ -6,8 +6,8 @@ credentials from Vault, decrypts the agent's ED25519 private key, and
 executes autonomous Hedera actions (e.g. transfers/rebalances).
 """
 
-from datetime import datetime, timezone
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -47,9 +47,7 @@ def init_scheduler(db_path: Optional[str] = None) -> AsyncIOScheduler:
     else:
         db_url = "sqlite://"
 
-    jobstores = {
-        "default": SQLAlchemyJobStore(url=db_url)
-    }
+    jobstores = {"default": SQLAlchemyJobStore(url=db_url)}
 
     _scheduler = AsyncIOScheduler(jobstores=jobstores)
     try:
@@ -113,7 +111,9 @@ def execute_autonomous_hedera_action(
                 if receipt and receipt.status:
                     tx_status = str(receipt.status)
         except Exception as exc:
-            logger.warning("Hedera live execution failed, falling back to simulated execution: %s", exc)
+            logger.warning(
+                "Hedera live execution failed, falling back to simulated execution: %s", exc
+            )
             tx_status = "simulated"
             message += f" (Simulated execution: {exc})"
 
@@ -183,13 +183,15 @@ def list_scheduled_jobs() -> List[Dict[str, Any]]:
 
     jobs_info = []
     for job in scheduler.get_jobs():
-        jobs_info.append({
-            "id": job.id,
-            "name": job.name,
-            "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
-            "trigger": str(job.trigger),
-            "args": job.args,
-        })
+        jobs_info.append(
+            {
+                "id": job.id,
+                "name": job.name,
+                "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
+                "trigger": str(job.trigger),
+                "args": job.args,
+            }
+        )
     return jobs_info
 
 

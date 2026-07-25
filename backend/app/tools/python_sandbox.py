@@ -31,15 +31,30 @@ def run_python_sync(code: str, dataframes: dict[str, list[dict]] | None = None) 
             timeout=settings.sandbox_timeout_seconds,
         )
     except subprocess.TimeoutExpired:
-        return {"stdout": "", "result": None, "artifacts": [], "error": "sandbox execution timed out"}
+        return {
+            "stdout": "",
+            "result": None,
+            "artifacts": [],
+            "error": "sandbox execution timed out",
+        }
 
     if proc.returncode != 0 and not proc.stdout.strip():
-        return {"stdout": "", "result": None, "artifacts": [], "error": proc.stderr.strip() or "sandbox process failed"}
+        return {
+            "stdout": "",
+            "result": None,
+            "artifacts": [],
+            "error": proc.stderr.strip() or "sandbox process failed",
+        }
 
     try:
         return json.loads(proc.stdout)
     except json.JSONDecodeError:
-        return {"stdout": proc.stdout, "result": None, "artifacts": [], "error": proc.stderr.strip() or "invalid sandbox output"}
+        return {
+            "stdout": proc.stdout,
+            "result": None,
+            "artifacts": [],
+            "error": proc.stderr.strip() or "invalid sandbox output",
+        }
 
 
 @tool

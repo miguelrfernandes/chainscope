@@ -45,13 +45,25 @@ test-backend:
 # --- Linting & Formatting ---
 
 # Run all linters
-lint: lint-frontend
+lint: lint-frontend lint-backend
 
 # Run frontend linter
 lint-frontend:
     cd frontend && npm run lint
 
+# Run backend linter
+lint-backend:
+    cd backend && uv run ruff check .
+
+# Format code automatically
+format: format-backend
+
+# Format backend code
+format-backend:
+    cd backend && uv run ruff format . && uv run ruff check --fix .
+
 # Install all dependencies (frontend + backend)
 install:
     cd frontend && npm install
     cd backend && uv sync
+

@@ -32,18 +32,50 @@ ALLOWED_TOP_LEVEL_MODULES = {
 }
 
 SAFE_BUILTIN_NAMES = [
-    "abs", "all", "any", "bool", "dict", "enumerate", "filter", "float",
-    "int", "isinstance", "len", "list", "map", "max", "min", "print",
-    "range", "repr", "reversed", "round", "set", "sorted", "str", "sum",
-    "tuple", "type", "zip", "True", "False", "None",
-    "Exception", "ValueError", "TypeError", "KeyError", "IndexError",
-    "StopIteration", "ZeroDivisionError", "ArithmeticError", "RuntimeError",
+    "abs",
+    "all",
+    "any",
+    "bool",
+    "dict",
+    "enumerate",
+    "filter",
+    "float",
+    "int",
+    "isinstance",
+    "len",
+    "list",
+    "map",
+    "max",
+    "min",
+    "print",
+    "range",
+    "repr",
+    "reversed",
+    "round",
+    "set",
+    "sorted",
+    "str",
+    "sum",
+    "tuple",
+    "type",
+    "zip",
+    "True",
+    "False",
+    "None",
+    "Exception",
+    "ValueError",
+    "TypeError",
+    "KeyError",
+    "IndexError",
+    "StopIteration",
+    "ZeroDivisionError",
+    "ArithmeticError",
+    "RuntimeError",
 ]
 
 
 def _restricted_import(name, globals=None, locals=None, fromlist=(), level=0):
     top_level = name.split(".")[0]
-    full = name if name in ALLOWED_TOP_LEVEL_MODULES else top_level
     if top_level not in {m.split(".")[0] for m in ALLOWED_TOP_LEVEL_MODULES}:
         raise ImportError(f"import of '{name}' is not allowed in the sandbox")
     return __import__(name, globals, locals, fromlist, level)
@@ -52,8 +84,10 @@ def _restricted_import(name, globals=None, locals=None, fromlist=(), level=0):
 def _build_globals(dataframes: dict[str, list[dict]] | None) -> dict:
     import pandas as pd
 
-    safe_builtins = {n: __builtins__[n] if isinstance(__builtins__, dict) else getattr(__builtins__, n)
-                     for n in SAFE_BUILTIN_NAMES}
+    safe_builtins = {
+        n: __builtins__[n] if isinstance(__builtins__, dict) else getattr(__builtins__, n)
+        for n in SAFE_BUILTIN_NAMES
+    }
     safe_builtins["__import__"] = _restricted_import
 
     namespace: dict = {"__builtins__": safe_builtins, "pd": pd}
@@ -67,6 +101,7 @@ def _collect_artifacts(namespace: dict) -> list[dict]:
 
     try:
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 
@@ -86,7 +121,9 @@ def _collect_artifacts(namespace: dict) -> list[dict]:
 
         for value in namespace.values():
             if isinstance(value, Figure):
-                artifacts.append({"type": "application/vnd.plotly.v1+json", "data": value.to_json()})
+                artifacts.append(
+                    {"type": "application/vnd.plotly.v1+json", "data": value.to_json()}
+                )
     except ImportError:
         pass
 
@@ -115,7 +152,12 @@ def _run(code: str, dataframes: dict[str, list[dict]] | None) -> dict:
             result = eval(compile(last_expr, "<sandbox>", "eval"), namespace)
     except Exception as exc:  # noqa: BLE001 - report any sandboxed error back to caller
         sys.stdout = old_stdout
-        return {"stdout": stdout_buf.getvalue(), "result": None, "artifacts": [], "error": f"{type(exc).__name__}: {exc}"}
+        return {
+            "stdout": stdout_buf.getvalue(),
+            "result": None,
+            "artifacts": [],
+            "error": f"{type(exc).__name__}: {exc}",
+        }
     finally:
         sys.stdout = old_stdout
 
@@ -125,7 +167,12 @@ def _run(code: str, dataframes: dict[str, list[dict]] | None) -> dict:
         result = repr(result)
 
     artifacts = _collect_artifacts(namespace)
-    return {"stdout": stdout_buf.getvalue(), "result": result, "artifacts": artifacts, "error": None}
+    return {
+        "stdout": stdout_buf.getvalue(),
+        "result": result,
+        "artifacts": artifacts,
+        "error": None,
+    }
 
 
 def main() -> None:

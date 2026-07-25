@@ -1,4 +1,5 @@
 import pytest
+
 from app.core.config import get_settings
 from app.core.llm import get_llm
 
@@ -42,5 +43,3 @@ def test_get_llm_metadata_and_tags(monkeypatch):
     assert "llm_provider:0g" in llm.runnable.config.get("tags", [])
     assert llm.runnable.config.get("metadata", {}).get("provider") == "0g"
     get_settings.cache_clear()
-
-

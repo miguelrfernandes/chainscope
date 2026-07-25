@@ -23,7 +23,10 @@ from functools import lru_cache
 from hedera_agent_kit.langchain.toolkit import HederaLangchainToolkit
 from hedera_agent_kit.plugins import core_account_plugin, core_consensus_plugin, core_token_plugin
 from hedera_agent_kit.plugins.core_account_plugin import TRANSFER_HBAR_TOOL
-from hedera_agent_kit.plugins.core_consensus_plugin import CREATE_TOPIC_TOOL, SUBMIT_TOPIC_MESSAGE_TOOL
+from hedera_agent_kit.plugins.core_consensus_plugin import (
+    CREATE_TOPIC_TOOL,
+    SUBMIT_TOPIC_MESSAGE_TOOL,
+)
 from hedera_agent_kit.plugins.core_token_plugin import (
     ASSOCIATE_TOKEN_TOOL,
     CREATE_FUNGIBLE_TOKEN_TOOL,
@@ -79,7 +82,9 @@ def get_hedera_action_tools() -> list[BaseTool]:
         configuration=Configuration(
             tools=HEDERA_ACTION_TOOL_NAMES,
             plugins=[core_account_plugin, core_consensus_plugin, core_token_plugin],
-            context=Context(mode=AgentMode.AUTONOMOUS, account_id=settings.hedera_operator_account_id),
+            context=Context(
+                mode=AgentMode.AUTONOMOUS, account_id=settings.hedera_operator_account_id
+            ),
         ),
     )
     return toolkit.get_tools()
