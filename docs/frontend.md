@@ -50,6 +50,29 @@ Graph data" verifiable at a glance during judging.
   cheap per-answer and directly supports the "Effective use of The
   Graph" and "Demo & clarity" judging criteria.
 
+## Booth feedback: DeFi sprawl & actionable answers
+
+Two more pieces of feedback gathered at the booth, both now reflected in
+the `lib/scenarios.ts` mockup:
+
+- **"DeFi is a sprawl"** — users have positions scattered across
+  protocols/chains they forget about (old deposits never withdrawn,
+  unclaimed rewards, dust LPs). A real Discovery agent should proactively
+  cross-reference full wallet history against known protocol subgraphs to
+  surface these, not just answer the literal question asked. Mocked as
+  the `sprawl` scenario ("Do I have any idle or forgotten positions
+  across DeFi?").
+- **Answers should be actionable, not just informational** — some
+  answers should offer a concrete next step (claim rewards, add
+  collateral, withdraw idle funds) with a button that actually executes
+  a transaction, not just prose telling the user what to do. Mocked via
+  `ScenarioAction`/`SuggestedActions`: a per-scenario `actions` list
+  rendered as cards with a CTA button. In the mockup the button drives a
+  simulated wallet-confirm → broadcast → confirmed flow (fake tx hash)
+  and is labeled "simulated — no funds move"; a real build would wire
+  this to an actual wallet (wagmi/viem `sendTransaction`, or a
+  session/smart-account signer) rather than fabricate a hash.
+
 ## Deployment
 
 Deployed on Vercel (see [setup.md](./setup.md#deployment)). Standard
