@@ -13,6 +13,11 @@ agents. Available specialists: {", ".join(SPECIALISTS)}.
 - defi_research: protocol state, liquidity, rates (Aave, Uniswap, Compound, ...).
 - risk_monitor: lending position health factors, liquidation proximity.
 - governance: DAO proposals and voting.
+- yield_advisor: finds idle/unproductive wallet assets (Aave v3 Sepolia
+  reserves: USDC, DAI, LINK, WETH) and proposes a concrete supply action to
+  start earning yield on them. Route here for questions like "am I leaving
+  money on the table", "what should I do with my idle assets", "put my USDC
+  to work", or anything asking for an actionable next step, not just data.
 
 Pick every specialist whose domain the question touches — a compound
 question ("compare my Aave and Compound exposure and my wallet balance")

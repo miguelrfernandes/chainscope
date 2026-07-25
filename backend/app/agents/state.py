@@ -7,13 +7,16 @@ from langgraph.graph.message import add_messages
 def merge_dicts(left: dict, right: dict) -> dict:
     return {**left, **right}
 
-SpecialistName = Literal["portfolio", "defi_research", "risk_monitor", "governance"]
+SpecialistName = Literal[
+    "portfolio", "defi_research", "risk_monitor", "governance", "yield_advisor"
+]
 
 SPECIALISTS: tuple[SpecialistName, ...] = (
     "portfolio",
     "defi_research",
     "risk_monitor",
     "governance",
+    "yield_advisor",
 )
 
 

@@ -7,6 +7,7 @@ from app.agents.specialists.defi_research import defi_research_node
 from app.agents.specialists.governance import governance_node
 from app.agents.specialists.portfolio import portfolio_node
 from app.agents.specialists.risk_monitor import risk_monitor_node
+from app.agents.specialists.yield_advisor import yield_advisor_node
 from app.agents.state import GraphState
 
 SPECIALIST_NODES = {
@@ -14,6 +15,7 @@ SPECIALIST_NODES = {
     "defi_research": defi_research_node,
     "risk_monitor": risk_monitor_node,
     "governance": governance_node,
+    "yield_advisor": yield_advisor_node,
 }
 
 

@@ -29,7 +29,29 @@ MCP tools (so it queries the right subgraphs instead of guessing across
 | DeFi research agent | protocol state, liquidity, rates | "What's the current utilization on Aave USDC?" | Aave, Uniswap, Compound subgraphs |
 | Risk monitor agent | lending health factors, liquidation proximity | "Am I close to liquidation on my Aave position?" | Aave/Compound position subgraphs |
 | Governance agent | DAO proposals, votes | "Summarize active Uniswap governance proposals" | governance subgraphs (Snapshot-style) |
+| Yield advisor agent | finds idle wallet assets and proposes a real deposit action | "What should I do with my idle assets?" | Aave v3 Sepolia subgraph (APY) + live RPC balance reads |
 | Analyst/visualization agent | takes another agent's data and produces charts/tables via the Python sandbox | "Chart my token balances over the last 90 days" | (consumes prior agents' output) |
+
+### Yield advisor — acting, not just reporting
+
+Unlike the other specialists, the yield advisor doesn't stop at an answer.
+Its tools (`app/tools/aave_actions.py`) are split so the LLM only ever
+*picks* an asset/amount — it never generates a contract address or
+calldata itself:
+
+1. `check_idle_aave_reserves` — a deterministic tool, not an LLM guess: for
+   each of Aave v3 Sepolia's USDC/DAI/LINK/WETH reserves, it reads the
+   wallet's underlying-token and aToken balances via a live `eth_call` to a
+   public Sepolia RPC. An asset held but with no aToken balance is idle.
+2. The agent queries Aave's Sepolia subgraph (via Subgraph MCP) for that
+   reserve's current supply APY, so the number in its answer is live.
+3. `propose_yield_action` — also deterministic — builds the exact
+   `approve()` + `supply()` calldata for the chosen asset/amount against
+   Aave v3's official Sepolia Pool contract. This is returned to the
+   frontend as an `action/yield-supply` artifact; the user's own wallet
+   signs and broadcasts both transactions (see
+   [frontend.md](./frontend.md)) — nothing is simulated, but it's testnet
+   funds, safe to demo live.
 
 Specialists are intentionally narrow — this keeps prompts small, tool
 choice accurate, and traces in LangSmith easy to debug per-domain.
