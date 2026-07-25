@@ -27,8 +27,14 @@ function parseSseEvent(raw: string): { event: string; data: string } | null {
   let event = "message";
   const dataLines: string[] = [];
   for (const line of raw.split("\n")) {
-    if (line.startsWith("event:")) event = line.slice(6).trim();
-    else if (line.startsWith("data:")) dataLines.push(line.slice(5).trim());
+    const trimmed = line.trimEnd();
+    if (trimmed.startsWith("event:")) {
+      event = trimmed.slice(6).trim();
+    } else if (trimmed.startsWith("data:")) {
+      let dataVal = trimmed.slice(5);
+      if (dataVal.startsWith(" ")) dataVal = dataVal.slice(1);
+      dataLines.push(dataVal);
+    }
   }
   if (dataLines.length === 0) return null;
   return { event, data: dataLines.join("\n") };
