@@ -1,26 +1,26 @@
 import { useEffect, useRef, useState } from "react";
-import { fetchSuggestions, type ConversationTurn } from "@/lib/api";
+import { fetchSuggestions, type ConversationTurn, type SuggestionItem } from "@/lib/api";
 
 /**
- * Fetches 3 AI-generated follow-up questions after the conversation updates.
- * Results are cached keyed by the number of messages so we don't make redundant
- * inference calls when switching between already-loaded conversations.
+ * Fetches 3 AI-generated follow-up suggestions (questions or actions) after
+ * the conversation updates. Results are cached keyed by the number of turns
+ * so we don't make redundant inference calls when switching conversations.
  *
- * - Returns `null` while a fetch is in-flight (caller can show skeleton / spinner)
+ * - Returns `null` while a fetch is in-flight (caller shows a skeleton)
  * - Returns `[]` on error so callers degrade gracefully
- * - Skips the fetch entirely when `turns` is empty (empty state / new convo)
+ * - Skips the fetch when there are no turns or the last turn isn't a completed assistant reply
  */
-export function useSuggestions(turns: ConversationTurn[]): string[] | null {
-  const [suggestions, setSuggestions] = useState<string[] | null>(null);
+export function useSuggestions(turns: ConversationTurn[]): SuggestionItem[] | null {
+  const [suggestions, setSuggestions] = useState<SuggestionItem[] | null>(null);
 
   // Cache: key = turns.length → suggestions
-  const cache = useRef<Map<number, string[]>>(new Map());
+  const cache = useRef<Map<number, SuggestionItem[]>>(new Map());
   // Track the key we last requested so we don't stack concurrent fetches
   const inflightKey = useRef<number | null>(null);
 
   const turnsLength = turns.length;
   const lastRole = turns[turnsLength - 1]?.role ?? null;
-  const hasAnswer = turns[turnsLength - 1]?.text ? true : false;
+  const hasAnswer = Boolean(turns[turnsLength - 1]?.text);
 
   useEffect(() => {
     // No turns: nothing to suggest
@@ -46,11 +46,11 @@ export function useSuggestions(turns: ConversationTurn[]): string[] | null {
       if (!controller.signal.aborted) setSuggestions(null);
     });
 
-    fetchSuggestions(turns, controller.signal).then((qs) => {
+    fetchSuggestions(turns, controller.signal).then((items) => {
       if (controller.signal.aborted) return;
-      cache.current.set(key, qs);
+      cache.current.set(key, items);
       inflightKey.current = null;
-      setSuggestions(qs);
+      setSuggestions(items);
     });
 
     return () => {
@@ -62,4 +62,3 @@ export function useSuggestions(turns: ConversationTurn[]): string[] | null {
 
   return suggestions;
 }
-

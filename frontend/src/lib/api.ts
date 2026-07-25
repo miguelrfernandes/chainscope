@@ -207,10 +207,16 @@ export async function unarchiveUserAgent(ownerAddress: string, agentName: string
 }
 export type ConversationTurn = { role: "user" | "assistant"; text: string };
 
+export type SuggestionItem = {
+  type: "question" | "action";
+  label: string;
+  prompt: string;
+};
+
 export async function fetchSuggestions(
   turns: ConversationTurn[],
   signal?: AbortSignal
-): Promise<string[]> {
+): Promise<SuggestionItem[]> {
   try {
     const res = await fetch(`${API_BASE}/suggest`, {
       method: "POST",
@@ -220,7 +226,7 @@ export async function fetchSuggestions(
     });
     if (!res.ok) return [];
     const data = await res.json();
-    return Array.isArray(data.questions) ? (data.questions as string[]) : [];
+    return Array.isArray(data.items) ? (data.items as SuggestionItem[]) : [];
   } catch {
     return [];
   }

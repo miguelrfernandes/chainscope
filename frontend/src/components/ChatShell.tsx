@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 
 import { SCENARIOS, HISTORY, type Scenario } from "@/lib/scenarios";
 import { fetchUserAgents, streamChat } from "@/lib/api";
-import type { ConversationTurn } from "@/lib/api";
+import type { ConversationTurn, SuggestionItem } from "@/lib/api";
 import {
   deleteThread,
   loadThreads,
@@ -511,7 +511,7 @@ export function ChatShell() {
           {messages.length > 0 && (
             <div className="mb-3 flex flex-wrap items-center gap-2">
               {suggestionTurns.length > 0 ? (
-                // Dynamic AI-generated follow-up questions
+                // Dynamic AI-generated follow-up suggestions (questions or actions)
                 dynamicSuggestions === null ? (
                   // Loading skeleton
                   [0, 1, 2].map((i) => (
@@ -521,19 +521,35 @@ export function ChatShell() {
                     />
                   ))
                 ) : dynamicSuggestions.length > 0 ? (
-                  dynamicSuggestions.map((q, i) => (
-                    <motion.button
-                      key={i}
-                      onClick={() => ask(q)}
-                      disabled={locked}
-                      whileHover={{ scale: locked ? 1 : 1.03, y: -2 }}
-                      whileTap={{ scale: locked ? 1 : 0.97 }}
-                      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                      className="rounded-xl border border-[var(--border)] bg-[var(--bg-raised)]/60 px-3.5 py-1.5 text-xs text-[var(--ink-dim)] transition-all hover:border-[var(--accent)]/50 hover:bg-[var(--accent-soft)] hover:text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      {q}
-                    </motion.button>
-                  ))
+                  dynamicSuggestions.map((item: SuggestionItem, i: number) =>
+                    item.type === "action" ? (
+                      <motion.button
+                        key={i}
+                        onClick={() => ask(item.prompt)}
+                        disabled={locked}
+                        whileHover={{ scale: locked ? 1 : 1.04, y: -2 }}
+                        whileTap={{ scale: locked ? 1 : 0.96 }}
+                        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                        className="flex items-center gap-1.5 rounded-xl border border-[var(--accent)]/50 bg-[var(--accent-soft)] px-3.5 py-1.5 text-xs font-semibold text-[var(--accent)] shadow-[0_0_12px_rgba(255,180,84,0.12)] transition-all hover:border-[var(--accent)] hover:bg-[var(--accent)]/20 hover:shadow-[0_0_20px_rgba(255,180,84,0.25)] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <span className="text-[10px]">⚡</span>
+                        {item.label}
+                        <span className="text-[var(--accent)]/70">→</span>
+                      </motion.button>
+                    ) : (
+                      <motion.button
+                        key={i}
+                        onClick={() => ask(item.prompt)}
+                        disabled={locked}
+                        whileHover={{ scale: locked ? 1 : 1.03, y: -2 }}
+                        whileTap={{ scale: locked ? 1 : 0.97 }}
+                        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                        className="rounded-xl border border-[var(--border)] bg-[var(--bg-raised)]/60 px-3.5 py-1.5 text-xs text-[var(--ink-dim)] transition-all hover:border-[var(--accent)]/50 hover:bg-[var(--accent-soft)] hover:text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {item.label}
+                      </motion.button>
+                    )
+                  )
                 ) : null
               ) : (
                 // Static template prompts when viewing a demo / no live answer yet
