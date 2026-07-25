@@ -61,15 +61,15 @@ export function HederaActionCard({ payload }: { payload: HederaTxBytesPayload })
         </p>
       </div>
 
-      <div className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="max-w-md text-sm text-[var(--ink)]">{payload.human_message}</p>
+      <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
+        <p className="min-w-0 flex-1 max-w-md text-sm text-[var(--ink)]">{payload.human_message}</p>
 
         {state === "done" && hashscanHref ? (
           <a
             href={hashscanHref}
             target="_blank"
             rel="noreferrer"
-            className="shrink-0 border border-[var(--success)]/40 px-3 py-1.5 text-xs text-[var(--success)] transition hover:border-[var(--success)]"
+            className="shrink-0 max-w-full text-center border border-[var(--success)]/40 px-3 py-1.5 text-xs text-[var(--success)] transition hover:border-[var(--success)]"
           >
             ✓ view on HashScan
           </a>
@@ -77,7 +77,7 @@ export function HederaActionCard({ payload }: { payload: HederaTxBytesPayload })
           <button
             onClick={wallet.connect}
             disabled={wallet.status === "connecting"}
-            className="shrink-0 border border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/85 disabled:cursor-wait disabled:opacity-70"
+            className="shrink-0 max-w-full text-center border border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/85 disabled:cursor-wait disabled:opacity-70"
           >
             {wallet.status === "connecting" ? "connecting…" : "connect Hedera (WalletConnect)"}
           </button>
@@ -85,7 +85,7 @@ export function HederaActionCard({ payload }: { payload: HederaTxBytesPayload })
           <button
             onClick={run}
             disabled={state === "confirming"}
-            className="shrink-0 border border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/85 disabled:cursor-wait disabled:opacity-70"
+            className="shrink-0 max-w-full text-center border border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/85 disabled:cursor-wait disabled:opacity-70"
           >
             {state === "idle" && "sign & execute"}
             {state === "confirming" && "confirm in wallet…"}

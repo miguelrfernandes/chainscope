@@ -174,8 +174,8 @@ export function SeedAgentCard({
         </p>
       </div>
 
-      <div className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="max-w-md">
+      <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
+        <div className="min-w-0 flex-1 max-w-md">
           <p className="text-sm text-[var(--ink)]">
             {payload.action?.description || payload.message}
           </p>
@@ -189,17 +189,17 @@ export function SeedAgentCard({
             href={hashscanHref}
             target="_blank"
             rel="noreferrer"
-            className="shrink-0 border border-[var(--success)]/40 px-3 py-1.5 text-xs text-[var(--success)] transition hover:border-[var(--success)]"
+            className="shrink-0 max-w-full text-center border border-[var(--success)]/40 px-3 py-1.5 text-xs text-[var(--success)] transition hover:border-[var(--success)]"
           >
             ✓ view on HashScan
           </a>
         ) : (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 max-w-full shrink-0">
             {evmWallet.connected ? (
               <button
                 onClick={runEvmTransfer}
                 disabled={state === "confirming"}
-                className="shrink-0 border border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/85 disabled:cursor-wait disabled:opacity-70"
+                className="shrink-0 max-w-full text-center border border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/85 disabled:cursor-wait disabled:opacity-70"
               >
                 {state === "confirming"
                   ? "confirm in EVM wallet…"
@@ -213,7 +213,7 @@ export function SeedAgentCard({
               <button
                 onClick={runHederaTransfer}
                 disabled={state === "confirming"}
-                className="shrink-0 border border-[var(--border)] bg-[var(--bg-raised)] px-3 py-1.5 text-xs font-medium text-[var(--ink)] transition hover:bg-[var(--border)] disabled:cursor-wait disabled:opacity-70"
+                className="shrink-0 max-w-full text-center border border-[var(--border)] bg-[var(--bg-raised)] px-3 py-1.5 text-xs font-medium text-[var(--ink)] transition hover:bg-[var(--border)] disabled:cursor-wait disabled:opacity-70"
               >
                 {state === "confirming"
                   ? "confirm in Hedera wallet…"
@@ -228,7 +228,7 @@ export function SeedAgentCard({
                 <button
                   onClick={runEvmTransfer}
                   disabled={evmWallet.status === "connecting" || state === "confirming"}
-                  className="shrink-0 border border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/85 disabled:cursor-wait disabled:opacity-70"
+                  className="shrink-0 max-w-full text-center border border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/85 disabled:cursor-wait disabled:opacity-70"
                 >
                   {evmWallet.status === "connecting"
                     ? "connecting EVM…"
@@ -237,7 +237,7 @@ export function SeedAgentCard({
                 <button
                   onClick={hederaWallet.connect}
                   disabled={hederaWallet.status === "connecting" || state === "confirming"}
-                  className="shrink-0 border border-[var(--border)] bg-[var(--bg-raised)] px-3 py-1.5 text-xs font-medium text-[var(--ink)] transition hover:bg-[var(--border)] disabled:cursor-wait disabled:opacity-70"
+                  className="shrink-0 max-w-full text-center border border-[var(--border)] bg-[var(--bg-raised)] px-3 py-1.5 text-xs font-medium text-[var(--ink)] transition hover:bg-[var(--border)] disabled:cursor-wait disabled:opacity-70"
                 >
                   {hederaWallet.status === "connecting"
                     ? "connecting Hedera…"

@@ -50,9 +50,9 @@ function ActionRow({ action }: { action: ScenarioAction }) {
   }
 
   return (
-    <div className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex flex-col gap-0.5">
-        <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
+      <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm text-[var(--ink)]">{action.label}</span>
           {action.value && (
             <span className="text-xs tabular-nums text-[var(--success)]">
@@ -71,7 +71,7 @@ function ActionRow({ action }: { action: ScenarioAction }) {
           href={`https://etherscan.io/tx/${hash}`}
           target="_blank"
           rel="noreferrer"
-          className="shrink-0 border border-[var(--success)]/40 px-3 py-1.5 text-xs text-[var(--success)] transition hover:border-[var(--success)]"
+          className="shrink-0 max-w-full text-center border border-[var(--success)]/40 px-3 py-1.5 text-xs text-[var(--success)] transition hover:border-[var(--success)]"
         >
           ✓ confirmed · {hash.slice(0, 10)}…
         </a>
@@ -79,7 +79,7 @@ function ActionRow({ action }: { action: ScenarioAction }) {
         <button
           onClick={run}
           disabled={state !== "idle"}
-          className="shrink-0 border border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/85 disabled:cursor-wait disabled:opacity-70"
+          className="shrink-0 max-w-full text-center border border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/85 disabled:cursor-wait disabled:opacity-70"
         >
           {state === "idle" && action.cta}
           {state === "confirming" && "confirm in wallet…"}
