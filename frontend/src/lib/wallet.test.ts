@@ -20,8 +20,12 @@ describe("wallet address utilities", () => {
     expect(shortenAddressInText("Transfer 1.0 HBAR to 0.0.1234")).toBe("Transfer 1.0 HBAR to 0.0.1234");
   });
 
-  it("sends EVM transactions with safe 500,000 (0x7a120) gas limit", async () => {
-    const mockRequest = vi.fn().mockResolvedValue("0xhash123");
+  it("sends EVM transactions with safe minimum gas floor of 2,000,000 (0x1e8480)", async () => {
+    const mockRequest = vi.fn().mockImplementation((args: { method: string }) => {
+      if (args.method === "eth_estimateGas") return Promise.resolve("0x30000"); // 196,608 gas
+      if (args.method === "eth_sendTransaction") return Promise.resolve("0xhash123");
+      return Promise.reject(new Error("Unknown method"));
+    });
     const mockProvider = { request: mockRequest, on: vi.fn(), removeListener: vi.fn() };
 
     const hash = await sendTransaction(mockProvider, "0xsender", {
@@ -32,7 +36,27 @@ describe("wallet address utilities", () => {
     expect(hash).toBe("0xhash123");
     expect(mockRequest).toHaveBeenCalledWith({
       method: "eth_sendTransaction",
-      params: [{ from: "0xsender", to: "0xtarget", data: "0x", value: "0x0", gas: "0x7a120" }],
+      params: [{ from: "0xsender", to: "0xtarget", data: "0x", value: "0x0", gas: "0x1e8480" }],
+    });
+  });
+
+  it("falls back to 2,000,000 gas (0x1e8480) if eth_estimateGas fails", async () => {
+    const mockRequest = vi.fn().mockImplementation((args: { method: string }) => {
+      if (args.method === "eth_estimateGas") return Promise.reject(new Error("RPC Error"));
+      if (args.method === "eth_sendTransaction") return Promise.resolve("0xhash123");
+      return Promise.reject(new Error("Unknown method"));
+    });
+    const mockProvider = { request: mockRequest, on: vi.fn(), removeListener: vi.fn() };
+
+    const hash = await sendTransaction(mockProvider, "0xsender", {
+      to: "0xtarget",
+      value: "0x0",
+    });
+
+    expect(hash).toBe("0xhash123");
+    expect(mockRequest).toHaveBeenCalledWith({
+      method: "eth_sendTransaction",
+      params: [{ from: "0xsender", to: "0xtarget", data: "0x", value: "0x0", gas: "0x1e8480" }],
     });
   });
 });

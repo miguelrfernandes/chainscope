@@ -182,10 +182,25 @@ export async function sendTransaction(
   tx: { to: string; data?: string; value: string; gas?: string }
 ): Promise<string> {
   // Hedera testnet JSON-RPC relay caps max gas limit per tx at 15,000,000 (0xe4e1c0).
-  // Default to 500,000 (0x7a120) for transfers and contract calls, as Hedera EVM auto-account creation
-  // and transfers require ~150k-250k gas, preventing INSUFFICIENT_GAS errors.
-  const defaultGas = "0x7a120";
-  const gas = tx.gas || defaultGas;
+  // Hedera Auto-Account Creation on EVM transfers consumes ~505,000+ gas.
+  // Use a minimum floor of 2,000,000 gas (0x1e8480) with a 1.5x buffer over eth_estimateGas,
+  // preventing INSUFFICIENT_GAS errors while remaining safely under the 15M relay cap.
+  let gas = tx.gas;
+  if (!gas) {
+    try {
+      const estimated = (await provider.request({
+        method: "eth_estimateGas",
+        params: [{ from, to: tx.to, data: tx.data || "0x", value: tx.value }],
+      })) as string;
+      const estimatedBig = BigInt(estimated);
+      const minGas = BigInt(2_000_000);
+      const bufferedGas = (estimatedBig * BigInt(15)) / BigInt(10);
+      const finalGas = bufferedGas > minGas ? bufferedGas : minGas;
+      gas = "0x" + finalGas.toString(16);
+    } catch {
+      gas = "0x1e8480"; // 2,000,000 gas
+    }
+  }
 
   const hash = (await provider.request({
     method: "eth_sendTransaction",
