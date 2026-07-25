@@ -449,45 +449,36 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: "hedera-scheduled-transfer",
-    question: "Schedule a recurring transfer of 1 HBAR every 1 hour to YieldSentinel agent using Hedera Schedule Service",
+    question: "Schedule a transfer of 1 HBAR to 0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB using Hedera Schedule Service",
     agent: "Hedera agent",
     steps: [
       { agent: "Orchestrator", text: "Routing to Hedera wallet action agent..." },
       {
         agent: "Hedera wallet action agent",
-        text: "Resolving YieldSentinel agent account 0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB and checking connected EVM wallet on Hedera testnet...",
+        text: "Resolving recipient 0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB and checking connected EVM wallet on Hedera testnet...",
       },
       {
         agent: "Hedera wallet action agent",
-        text: "Checking ScheduledVaultFactory contract deployment on Hedera testnet...",
-      },
-      {
-        agent: "Hedera wallet action agent",
-        text: "Constructing multi-step HSS precompile transaction sequence (createVault, configure, deposit, scheduleNextRun)...",
+        text: "Constructing HSS precompile transaction (scheduleCall on 0x16b)...",
       },
     ],
     answer:
-      "Successfully prepared a recurring transfer sequence of **1 HBAR every 3600 seconds** (1 hour) to YieldSentinel agent (`0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB`) using Hedera's Schedule Service (HSS) precompile (`0x16b`). The 4-step execution plan (create ScheduledVault, configure interval, deposit initial 1 HBAR, and call `scheduleNextRun`) is ready for your connected EVM wallet to sign.",
+      "Successfully prepared a scheduled transfer of **1 HBAR** to `0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB` using Hedera's Schedule Service (HSS) precompile (`0x16b`). The transaction is ready for your connected EVM wallet to sign.",
     sources: [
       {
         label: "Hedera Schedule Service (HSS) Precompile",
         id: "hedera/schedule-service-0x16b",
         query: "IHederaScheduleService.scheduleCall(address target, bytes calldata, uint64 expirySec)",
       },
-      {
-        label: "ScheduledVaultFactory Contract",
-        id: "hedera/scheduled-vault-factory",
-        query: "createVault(address strategy), configure(bytes config, uint256 interval), deposit(), scheduleNextRun()",
-      },
     ],
     actions: [
       {
-        id: "schedule-recurring-hbar",
-        label: "Schedule 1 HBAR transfer every hour to YieldSentinel (HSS)",
-        description: "Set up a recurring 1 HBAR transfer to YieldSentinel agent using Hedera Schedule Service precompiles for your EVM wallet.",
+        id: "schedule-hbar-transfer",
+        label: "Schedule 1 HBAR transfer via HSS (0x16b)",
+        description: "Schedule a 1 HBAR transfer to account 0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB using Hedera Schedule Service precompile.",
         protocol: "Hedera Schedule Service · Testnet",
-        value: "1 HBAR / 1h",
-        cta: "Sign Scheduled Sequence",
+        value: "1 HBAR",
+        cta: "Sign Scheduled Transfer",
       },
     ],
   },
@@ -523,7 +514,7 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: "saucerswap-swap",
-    question: "Connected wallet: 0x8f2a19b4d3f0c9a17e6b2d4c8a5f31e0b6c7c91b — Swap 10 SAUCE for WHBAR on SaucerSwap",
+    question: "Swap 10 SAUCE for WHBAR on SaucerSwap",
     agent: "SaucerSwap agent",
     steps: [
       { agent: "Orchestrator", text: "Routing to SaucerSwap agent..." },
