@@ -18,6 +18,22 @@ agents. Available specialists: {", ".join(SPECIALISTS)}.
   start earning yield on them. Route here for questions like "am I leaving
   money on the table", "what should I do with my idle assets", "put my USDC
   to work", or anything asking for an actionable next step, not just data.
+- hedera: Hedera network data — HBAR balances, HTS tokens/NFTs, transactions,
+  HCS topic messages. Route here for questions naming a Hedera account ID
+  ("0.0.<num>"), a token/topic ID, or mentioning Hedera/HBAR/HCS explicitly.
+  This is a separate network from the EVM specialists above.
+- hedera_action: executing a real Hedera testnet transaction FROM A BACKEND-
+  HELD DEMO ACCOUNT (not the user's wallet) — transferring HBAR, creating an
+  HCS topic or submitting a topic message, creating/minting an HTS fungible
+  token, associating a token. Route here for action requests on Hedera when
+  the question does NOT mention a connected Hedera wallet.
+- hedera_wallet_action: building the same kinds of Hedera transactions, but
+  FOR THE USER'S OWN CONNECTED HEDERA WALLET to sign (nothing executes on
+  the backend). Route here instead of hedera_action whenever the question
+  contains "Connected Hedera wallet: 0.0.x" or otherwise makes clear the
+  user wants to act from their own account/funds, not a demo account.
+  Neither hedera_action nor hedera_wallet_action are for read-only Hedera
+  questions (those go to hedera).
 
 Pick every specialist whose domain the question touches — a compound
 question ("compare my Aave and Compound exposure and my wallet balance")

@@ -35,6 +35,7 @@ Frontend (`.env.local` in the Next.js app):
 
 ```
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=...  # HashConnect (Hedera wallet) pairing — free at https://cloud.reown.com
 ```
 
 ## Local development

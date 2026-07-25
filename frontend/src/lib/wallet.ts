@@ -68,6 +68,34 @@ export async function ensureSepolia(provider: EthereumProvider): Promise<void> {
   }
 }
 
+export const HEDERA_TESTNET_CHAIN_ID = 296;
+export const HEDERA_TESTNET_CHAIN_ID_HEX = "0x128";
+
+/** Switches the connected wallet to Hedera Testnet, adding it first if the wallet doesn't know it yet. */
+export async function ensureHederaTestnet(provider: EthereumProvider): Promise<void> {
+  try {
+    await provider.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: HEDERA_TESTNET_CHAIN_ID_HEX }],
+    });
+  } catch (err) {
+    const code = (err as { code?: number } | null)?.code;
+    if (code !== 4902) throw err;
+    await provider.request({
+      method: "wallet_addEthereumChain",
+      params: [
+        {
+          chainId: HEDERA_TESTNET_CHAIN_ID_HEX,
+          chainName: "Hedera Testnet",
+          nativeCurrency: { name: "HBAR", symbol: "HBAR", decimals: 18 },
+          rpcUrls: ["https://testnet.hashio.io/api"],
+          blockExplorerUrls: ["https://hashscan.io/testnet"],
+        },
+      ],
+    });
+  }
+}
+
 export async function sendTransaction(
   provider: EthereumProvider,
   from: string,

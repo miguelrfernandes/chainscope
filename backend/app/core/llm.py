@@ -9,13 +9,15 @@ def get_llm(temperature: float = 0.0, max_tokens: int | None = None):
     settings = get_settings()
     tokens = max_tokens or settings.openrouter_max_tokens
 
+    extra_body = {"provider": "openrouter"} if "openrouter.ai" in settings.openrouter_base_url else None
+
     openrouter_llm = ChatOpenAI(
         model=settings.openrouter_model,
         base_url=settings.openrouter_base_url,
         api_key=settings.openrouter_api_key,
         temperature=temperature,
         max_tokens=tokens,
-        extra_body={"provider": "openrouter"},
+        extra_body=extra_body,
     ).with_config(tags=["llm_provider:openrouter"], metadata={"llm_provider": "openrouter", "provider": "openrouter"})
 
     if settings.llm_provider == "0g":

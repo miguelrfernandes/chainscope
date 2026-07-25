@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     hedera_operator_private_key: str | None = None
     hedera_network: str = "testnet"
 
+    hedera_schedule_factory_address: str = "0x0000000000000000000000000000000000000000"
+    hedera_native_transfer_strategy_address: str = "0x0000000000000000000000000000000000000000"
+
     cors_origins: str = "http://localhost:3000"
     sandbox_timeout_seconds: int = 10
 
