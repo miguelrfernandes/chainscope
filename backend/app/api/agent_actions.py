@@ -121,6 +121,20 @@ async def list_agents(owner_address: str):
     return agents_out
 
 
+@router.delete("/api/agents/{agent_name}")
+async def delete_agent_endpoint(agent_name: str, owner_address: str):
+    from app.core.agent_store import delete_agent
+
+    deleted = delete_agent(owner_address, agent_name)
+    if not deleted:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Agent '{agent_name}' not found for owner '{owner_address}'.",
+        )
+    return {"status": "success", "agent_name": agent_name}
+
+
+
 @router.get("/api/scheduler/jobs")
 async def get_scheduled_jobs():
     from app.core.scheduler import list_scheduled_jobs

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   confirmAgent,
   deleteScheduledJob,
+  deleteUserAgent,
   fetchScheduledJobs,
   fetchUserAgents,
   streamChat,
@@ -219,6 +220,23 @@ describe("agent and scheduler API helpers", () => {
     await deleteScheduledJob("job-1");
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it("deletes user agent", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: "success", agent_name: "yield-bot" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await deleteUserAgent("0xowner", "yield-bot");
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/agents/yield-bot?owner_address=0xowner"),
+      { method: "DELETE" }
+    );
+  });
 });
+
 
 

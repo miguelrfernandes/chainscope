@@ -180,4 +180,17 @@ export async function deleteScheduledJob(jobId: string): Promise<void> {
   }
 }
 
+export async function deleteUserAgent(ownerAddress: string, agentName: string): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/agents/${encodeURIComponent(agentName)}?owner_address=${encodeURIComponent(ownerAddress)}`,
+    {
+      method: "DELETE",
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to archive agent (${res.status})`);
+  }
+}
+
+
 

@@ -1,62 +1,141 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Wallet, Bot, Calendar, Copy, Check, RefreshCw, X, ExternalLink, Plus, Trash2, Sparkles } from "lucide-react";
+
 import {
   deleteScheduledJob,
+  deleteUserAgent,
   fetchScheduledJobs,
   fetchUserAgents,
   type ManagedAgent,
   type ScheduledJob,
 } from "@/lib/api";
 
+
 type AgentsDrawerProps = {
   isOpen: boolean;
   onClose: () => void;
   ownerAddress: string;
   onAskPrompt?: (prompt: string) => void;
+  onPreparePrompt?: (prompt: string) => void;
+  initialTab?: "wallet" | "agents" | "schedules";
 };
+
+function getCachedAgents(owner: string): ManagedAgent[] {
+  if (typeof window === "undefined" || !owner) return [];
+  try {
+    const raw = localStorage.getItem(`chainscope_cached_agents_${owner.toLowerCase()}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function setCachedAgents(owner: string, data: ManagedAgent[]) {
+  if (typeof window === "undefined" || !owner) return;
+  try {
+    localStorage.setItem(`chainscope_cached_agents_${owner.toLowerCase()}`, JSON.stringify(data));
+  } catch {}
+}
+
+function getCachedSchedules(owner: string): ScheduledJob[] {
+  if (typeof window === "undefined" || !owner) return [];
+  try {
+    const raw = localStorage.getItem(`chainscope_cached_schedules_${owner.toLowerCase()}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function setCachedSchedules(owner: string, data: ScheduledJob[]) {
+  if (typeof window === "undefined" || !owner) return;
+  try {
+    localStorage.setItem(`chainscope_cached_schedules_${owner.toLowerCase()}`, JSON.stringify(data));
+  } catch {}
+}
+
+function SkeletonCard() {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/5 p-4 animate-pulse">
+      <div className="flex items-center justify-between">
+        <div className="h-4 w-28 rounded bg-white/10" />
+        <div className="h-4 w-14 rounded bg-white/10" />
+      </div>
+      <div className="mt-4 space-y-2">
+        <div className="h-3 w-full rounded bg-white/5" />
+        <div className="h-3 w-3/4 rounded bg-white/5" />
+      </div>
+    </div>
+  );
+}
 
 export function AgentsDrawer({
   isOpen,
   onClose,
   ownerAddress,
   onAskPrompt,
+  onPreparePrompt,
+  initialTab = "wallet",
 }: AgentsDrawerProps) {
-  const [activeTab, setActiveTab] = useState<"agents" | "schedules">("agents");
-  const [agents, setAgents] = useState<ManagedAgent[]>([]);
-  const [schedules, setSchedules] = useState<ScheduledJob[]>([]);
+  const [activeTab, setActiveTab] = useState<"wallet" | "agents" | "schedules">(initialTab);
+  const [agents, setAgents] = useState<ManagedAgent[]>(() =>
+    getCachedAgents(ownerAddress)
+  );
+  const [schedules, setSchedules] = useState<ScheduledJob[]>(() =>
+    getCachedSchedules(ownerAddress)
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
+  const [deletingAgentName, setDeletingAgentName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      queueMicrotask(() => {
+        setActiveTab(initialTab);
+      });
+    }
+  }, [isOpen, initialTab]);
+
 
   useEffect(() => {
     let ignore = false;
     if (isOpen && ownerAddress) {
       queueMicrotask(() => {
         if (ignore) return;
+        const cachedAgents = getCachedAgents(ownerAddress);
+        const cachedJobs = getCachedSchedules(ownerAddress);
+        if (cachedAgents.length > 0) setAgents(cachedAgents);
+        if (cachedJobs.length > 0) setSchedules(cachedJobs);
         setLoading(true);
         setError(null);
-        Promise.all([fetchUserAgents(ownerAddress), fetchScheduledJobs()])
-          .then(([agentsData, jobsData]) => {
-            if (!ignore) {
-              setAgents(agentsData);
-              setSchedules(jobsData);
-            }
-          })
-          .catch((err) => {
-            if (!ignore) {
-              setError(
-                err instanceof Error ? err.message : "Failed to load agent details"
-              );
-            }
-          })
-          .finally(() => {
-            if (!ignore) {
-              setLoading(false);
-            }
-          });
       });
+
+      Promise.all([fetchUserAgents(ownerAddress), fetchScheduledJobs()])
+        .then(([agentsData, jobsData]) => {
+          if (!ignore) {
+            setAgents(agentsData);
+            setSchedules(jobsData);
+            setCachedAgents(ownerAddress, agentsData);
+            setCachedSchedules(ownerAddress, jobsData);
+          }
+        })
+        .catch((err) => {
+          if (!ignore) {
+            setError(
+              err instanceof Error ? err.message : "Failed to load agent details"
+            );
+          }
+        })
+        .finally(() => {
+          if (!ignore) {
+            setLoading(false);
+          }
+        });
     }
     return () => {
       ignore = true;
@@ -71,6 +150,8 @@ export function AgentsDrawer({
       .then(([agentsData, jobsData]) => {
         setAgents(agentsData);
         setSchedules(jobsData);
+        setCachedAgents(ownerAddress, agentsData);
+        setCachedSchedules(ownerAddress, jobsData);
       })
       .catch((err) => {
         setError(
@@ -92,7 +173,11 @@ export function AgentsDrawer({
     setDeletingJobId(jobId);
     try {
       await deleteScheduledJob(jobId);
-      setSchedules((prev) => prev.filter((j) => (j.job_id || j.id) !== jobId));
+      setSchedules((prev) => {
+        const next = prev.filter((j) => (j.job_id || j.id) !== jobId);
+        setCachedSchedules(ownerAddress, next);
+        return next;
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to cancel schedule");
     } finally {
@@ -100,231 +185,385 @@ export function AgentsDrawer({
     }
   }
 
+  async function handleArchiveAgent(agentName: string) {
+    if (!ownerAddress) return;
+    setDeletingAgentName(agentName);
+    try {
+      await deleteUserAgent(ownerAddress, agentName);
+      setAgents((prev) => {
+        const next = prev.filter((a) => a.agent_name !== agentName);
+        setCachedAgents(ownerAddress, next);
+        return next;
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to archive agent");
+    } finally {
+      setDeletingAgentName(null);
+    }
+  }
+
+  function handleCreateAgent() {
+    const prompt = "Create a new agent named yield-bot";
+    if (onPreparePrompt) {
+      onPreparePrompt(prompt);
+    } else if (onAskPrompt) {
+      onAskPrompt(prompt);
+    }
+    onClose();
+  }
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex justify-end">
+        {/* Backdrop */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+          onClick={onClose}
+        />
 
-      {/* Drawer Container */}
-      <div className="relative z-10 flex h-full w-full max-w-md flex-col border-l border-[var(--border)] bg-[var(--bg)] shadow-2xl transition-transform duration-300">
-        {/* Drawer Header */}
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
-          <div>
-            <h2 className="text-base font-semibold text-[var(--ink)]">
-              Managed Sub-Agents
-            </h2>
-            <p className="text-xs text-[var(--ink-dim)]">
-              Hedera Vault & Autonomous Scheduler
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={loadData}
-              disabled={loading}
-              title="Refresh"
-              className="border border-[var(--border)] bg-[var(--bg-raised)] p-1.5 text-xs text-[var(--ink-dim)] transition hover:text-[var(--ink)] disabled:opacity-50"
-            >
-              ↻
-            </button>
-            <button
-              onClick={onClose}
-              className="border border-[var(--border)] bg-[var(--bg-raised)] px-2.5 py-1 text-xs text-[var(--ink-dim)] transition hover:text-[var(--ink)]"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-
-        {/* Navigation Tabs */}
-        <div className="flex border-b border-[var(--border)] bg-[var(--bg-raised)]/40 px-5">
-          <button
-            onClick={() => setActiveTab("agents")}
-            className={`border-b-2 py-2.5 text-xs font-medium transition ${
-              activeTab === "agents"
-                ? "border-[var(--accent)] text-[var(--accent)]"
-                : "border-transparent text-[var(--ink-dim)] hover:text-[var(--ink)]"
-            }`}
-          >
-            Agents ({agents.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("schedules")}
-            className={`ml-6 border-b-2 py-2.5 text-xs font-medium transition ${
-              activeTab === "schedules"
-                ? "border-[var(--accent)] text-[var(--accent)]"
-                : "border-transparent text-[var(--ink-dim)] hover:text-[var(--ink)]"
-            }`}
-          >
-            Schedules ({schedules.length})
-          </button>
-        </div>
-
-        {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-5">
-          {error && (
-            <div className="mb-4 border border-[var(--danger)]/40 bg-[var(--danger)]/10 px-3.5 py-2 text-xs text-[var(--danger)]">
-              {error}
+        {/* Drawer Container */}
+        <motion.div
+          initial={{ x: "100%" }}
+          animate={{ x: 0 }}
+          exit={{ x: "100%" }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          className="relative z-10 flex h-full w-full max-w-md flex-col border-l border-white/10 bg-[#070a09]/95 backdrop-blur-2xl shadow-2xl"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
+            <div>
+              <h2 className="text-base font-bold text-[var(--ink)]">
+                Wallet & Account Menu
+              </h2>
+              <p className="text-xs text-[var(--ink-dim)]">
+                Manage connected accounts, sub-agents & scheduled jobs
+              </p>
             </div>
-          )}
-
-          {loading ? (
-            <div className="flex py-12 justify-center text-xs text-[var(--ink-dim)]">
-              Loading agent details...
+            <div className="flex items-center gap-2">
+              <button
+                onClick={loadData}
+                disabled={loading}
+                title="Refresh details"
+                className={`rounded-full border border-white/10 bg-white/5 p-2 text-xs text-[var(--ink-dim)] transition hover:bg-white/10 hover:text-[var(--ink)] disabled:opacity-50 ${
+                  loading ? "animate-spin" : ""
+                }`}
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={onClose}
+                className="rounded-full border border-white/10 bg-white/5 p-2 text-xs text-[var(--ink-dim)] transition hover:bg-white/10 hover:text-[var(--ink)]"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
             </div>
-          ) : activeTab === "agents" ? (
-            <div className="flex flex-col gap-4">
-              {agents.length === 0 ? (
-                <div className="flex flex-col items-center py-10 text-center">
-                  <p className="text-xs text-[var(--ink-dim)]">
-                    No managed sub-agents found for this wallet.
-                  </p>
-                  <button
-                    onClick={() => {
-                      onAskPrompt?.("Create a new agent named yield-bot");
-                      onClose();
-                    }}
-                    className="mt-4 border border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/85"
-                  >
-                    + Provision New Agent
-                  </button>
+          </div>
+
+          {/* Navigation Tabs */}
+          <div className="flex border-b border-white/10 bg-white/[0.02] px-6">
+            <button
+              onClick={() => setActiveTab("wallet")}
+              className={`flex items-center gap-1.5 border-b-2 py-3 text-xs font-semibold transition ${
+                activeTab === "wallet"
+                  ? "border-[var(--accent)] text-[var(--accent)]"
+                  : "border-transparent text-[var(--ink-dim)] hover:text-[var(--ink)]"
+              }`}
+            >
+              <Wallet className="h-3.5 w-3.5" />
+              Account
+            </button>
+
+            <button
+              onClick={() => setActiveTab("agents")}
+              className={`ml-5 flex items-center gap-1.5 border-b-2 py-3 text-xs font-semibold transition ${
+                activeTab === "agents"
+                  ? "border-[var(--accent)] text-[var(--accent)]"
+                  : "border-transparent text-[var(--ink-dim)] hover:text-[var(--ink)]"
+              }`}
+            >
+              <Bot className="h-3.5 w-3.5" />
+              Sub-Agents ({agents.length})
+            </button>
+
+            <button
+              onClick={() => setActiveTab("schedules")}
+              className={`ml-5 flex items-center gap-1.5 border-b-2 py-3 text-xs font-semibold transition ${
+                activeTab === "schedules"
+                  ? "border-[var(--accent)] text-[var(--accent)]"
+                  : "border-transparent text-[var(--ink-dim)] hover:text-[var(--ink)]"
+              }`}
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              Schedules ({schedules.length})
+            </button>
+          </div>
+
+          {/* Content Area */}
+          <div className="relative flex-1 overflow-y-auto p-6">
+            {loading && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#070a09]/50 backdrop-blur-xs animate-pulse pointer-events-none">
+                <div className="flex items-center gap-2.5 rounded-full border border-[var(--accent)]/40 bg-[#131313] px-4 py-2 shadow-2xl">
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--accent)] opacity-75"></span>
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-[var(--accent)]"></span>
+                  </span>
+                  <span className="text-xs font-medium text-[var(--accent)]">
+                    Updating vault...
+                  </span>
                 </div>
-              ) : (
-                agents.map((agent) => (
-                  <div
-                    key={agent.agent_name}
-                    className="border border-[var(--border)] bg-[var(--bg-raised)]/60 p-4 transition hover:border-[var(--accent)]/30"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-sm text-[var(--ink)]">
-                        {agent.agent_name}
-                      </span>
-                      <span
-                        className={`px-2 py-0.5 text-[10px] uppercase tracking-wider font-semibold border ${
-                          agent.status === "ACTIVE"
-                            ? "border-[var(--success)]/40 bg-[var(--success)]/10 text-[var(--success)]"
-                            : "border-amber-500/40 bg-amber-500/10 text-amber-400"
-                        }`}
-                      >
-                        {agent.status}
+              </div>
+            )}
+
+            {error && (
+              <div className="mb-4 rounded-xl border border-[var(--danger)]/30 bg-[var(--danger)]/10 px-4 py-2.5 text-xs font-medium text-[var(--danger)]">
+                ⚠️ {error}
+              </div>
+            )}
+
+            {activeTab === "wallet" ? (
+              <div className="flex flex-col gap-4">
+                {/* Account Card */}
+                <div className="rounded-2xl border border-white/10 bg-[#0d1210]/90 p-5 shadow-xl">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full bg-[var(--success)] shadow-[0_0_8px_var(--success)]" />
+                      <span className="text-xs font-bold uppercase tracking-wider text-[var(--ink)]">
+                        Connected EVM Wallet
                       </span>
                     </div>
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[10px] font-mono text-[var(--ink-dim)]">
+                      Active
+                    </span>
+                  </div>
 
-                    <div className="mt-3 flex flex-col gap-1.5 text-xs">
-                      <div className="flex items-center justify-between text-[var(--ink-dim)]">
-                        <span>Hedera Account:</span>
-                        <span className="font-mono text-[var(--ink)]">
-                          {agent.account_id || "Pending creation"}
+                  <div className="mt-3 flex items-center justify-between">
+                    <span className="font-mono text-sm font-semibold text-[var(--ink)]">
+                      {ownerAddress ? `${ownerAddress.slice(0, 10)}...${ownerAddress.slice(-6)}` : "No EVM Wallet Connected"}
+                    </span>
+                    {ownerAddress && (
+                      <button
+                        onClick={() => handleCopy(ownerAddress)}
+                        className="flex items-center gap-1 text-xs text-[var(--accent)] hover:underline font-medium"
+                      >
+                        {copiedAddress === ownerAddress ? (
+                          <>
+                            <Check className="h-3 w-3" /> copied!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-3 w-3" /> copy
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Sub-Agents Overview */}
+                <div className="rounded-2xl border border-white/10 bg-[#0d1210]/90 p-5 shadow-xl">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Bot className="h-4 w-4 text-[var(--accent)]" />
+                      <span className="text-xs font-bold uppercase tracking-wider text-[var(--ink)]">
+                        Agent Vault Summary
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setActiveTab("agents")}
+                      className="text-xs font-medium text-[var(--accent)] hover:underline flex items-center gap-1"
+                    >
+                      view all <ExternalLink className="h-3 w-3" />
+                    </button>
+                  </div>
+                  <p className="mt-2 text-xs text-[var(--ink-dim)] leading-relaxed">
+                    {agents.length} active agent keypair{agents.length === 1 ? "" : "s"} encrypted in AES-256-GCM Vault.
+                  </p>
+                </div>
+              </div>
+            ) : activeTab === "agents" ? (
+              <div className="flex flex-col gap-4">
+                {agents.length === 0 && loading ? (
+                  <>
+                    <SkeletonCard />
+                    <SkeletonCard />
+                  </>
+                ) : agents.length === 0 ? (
+                  <div className="flex flex-col items-center py-10 text-center">
+                    <Bot className="h-8 w-8 text-[var(--ink-faint)] mb-2" />
+                    <p className="text-xs text-[var(--ink-dim)]">
+                      No managed sub-agents found for this wallet.
+                    </p>
+                    <button
+                      onClick={handleCreateAgent}
+                      className="mt-4 flex items-center gap-1.5 rounded-full border border-[var(--accent)] bg-[var(--accent)] px-4 py-2 text-xs font-semibold text-[var(--accent-ink)] shadow-[0_0_15px_rgba(255,180,84,0.25)] transition hover:bg-[var(--accent)]/90"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Provision New Agent
+                    </button>
+                  </div>
+                ) : (
+                  agents.map((agent) => (
+                    <div
+                      key={agent.agent_name}
+                      className="rounded-2xl border border-white/10 bg-[#0d1210]/90 p-5 shadow-xl transition hover:border-[var(--accent)]/30"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-sm text-[var(--ink)] flex items-center gap-2">
+                          <Bot className="h-4 w-4 text-[var(--accent)]" /> {agent.agent_name}
+                        </span>
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-wider font-semibold border ${
+                            agent.status === "ACTIVE"
+                              ? "border-[var(--success)]/40 bg-[var(--success)]/10 text-[var(--success)]"
+                              : "border-amber-500/40 bg-amber-500/10 text-amber-400"
+                          }`}
+                        >
+                          {agent.status}
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between text-[var(--ink-dim)]">
-                        <span>EVM Address:</span>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-[11px] text-[var(--ink)]">
-                            {agent.evm_address.slice(0, 8)}...
-                            {agent.evm_address.slice(-6)}
+                      <div className="mt-3 flex flex-col gap-1.5 text-xs">
+                        <div className="flex items-center justify-between text-[var(--ink-dim)]">
+                          <span>Hedera Account:</span>
+                          <span className="font-mono text-[var(--ink)] font-medium">
+                            {agent.account_id || "Pending creation"}
                           </span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[var(--ink-dim)]">
+                          <span>EVM Alias:</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-[11px] text-[var(--ink)]">
+                              {agent.evm_address.slice(0, 8)}...{agent.evm_address.slice(-6)}
+                            </span>
+                            <button
+                              onClick={() => handleCopy(agent.evm_address)}
+                              className="text-[10px] text-[var(--accent)] hover:underline"
+                            >
+                              {copiedAddress === agent.evm_address ? "copied!" : "copy"}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-[var(--ink-dim)]">
+                          <span>Live Balance:</span>
+                          <span className="font-semibold text-[var(--success)]">
+                            {agent.balance_hbar.toFixed(2)} HBAR
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 border-t border-white/10 pt-3 flex items-center justify-between">
+                        <div className="text-[10px] text-[var(--ink-faint)]">
+                          Created: {new Date(agent.created_at).toLocaleString()}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {agent.status === "PENDING" && (
+                            <button
+                              onClick={() => {
+                                const prompt = `Seed agent ${agent.agent_name} with 1 HBAR`;
+                                if (onPreparePrompt) onPreparePrompt(prompt);
+                                else if (onAskPrompt) onAskPrompt(prompt);
+                                onClose();
+                              }}
+                              className="flex items-center gap-1 rounded-full border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)] hover:text-[var(--accent-ink)]"
+                            >
+                              <Sparkles className="h-3 w-3" /> Provision & Seed
+                            </button>
+                          )}
                           <button
-                            onClick={() => handleCopy(agent.evm_address)}
-                            className="text-[10px] text-[var(--accent)] hover:underline"
+                            onClick={() => handleArchiveAgent(agent.agent_name)}
+                            disabled={deletingAgentName === agent.agent_name}
+                            className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-red-400/80 hover:bg-red-500/10 hover:text-red-400 transition disabled:opacity-50"
+                            title="Archive / Remove Agent"
                           >
-                            {copiedAddress === agent.evm_address ? "copied!" : "copy"}
+                            <Trash2 className="h-3 w-3" />
+                            {deletingAgentName === agent.agent_name ? "Archiving..." : "Archive"}
                           </button>
                         </div>
                       </div>
-
-                      <div className="flex items-center justify-between text-[var(--ink-dim)]">
-                        <span>Live Balance:</span>
-                        <span className="font-semibold text-[var(--success)]">
-                          {agent.balance_hbar.toFixed(2)} HBAR
-                        </span>
-                      </div>
                     </div>
+                  ))
+                )}
 
-                    <div className="mt-3 border-t border-[var(--border)]/60 pt-2 text-[10px] text-[var(--ink-faint)]">
-                      Created: {new Date(agent.created_at).toLocaleString()}
-                    </div>
+                {agents.length > 0 && (
+                  <button
+                    onClick={handleCreateAgent}
+                    className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-full border border-[var(--accent)]/40 bg-[var(--accent-soft)] py-2.5 text-xs font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)] hover:text-[var(--accent-ink)]"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Provision New Agent
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {schedules.length === 0 && loading ? (
+                  <>
+                    <SkeletonCard />
+                    <SkeletonCard />
+                  </>
+                ) : schedules.length === 0 ? (
+                  <div className="py-10 text-center text-xs text-[var(--ink-dim)]">
+                    No active background cron jobs scheduled.
                   </div>
-                ))
-              )}
-
-              {agents.length > 0 && (
-                <button
-                  onClick={() => {
-                    onAskPrompt?.("Create a new agent named yield-bot");
-                    onClose();
-                  }}
-                  className="mt-2 w-full border border-[var(--accent)]/50 bg-[var(--accent-soft)] py-2 text-xs font-medium text-[var(--accent)] transition hover:bg-[var(--accent)] hover:text-[var(--accent-ink)]"
-                >
-                  + Provision New Agent
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-4">
-              {schedules.length === 0 ? (
-                <div className="py-10 text-center text-xs text-[var(--ink-dim)]">
-                  No active background cron jobs scheduled.
-                </div>
-              ) : (
-                schedules.map((job) => {
-                  const id = job.job_id || job.id;
-                  return (
-                    <div
-                      key={id}
-                      className="border border-[var(--border)] bg-[var(--bg-raised)]/60 p-4"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-xs font-semibold text-[var(--ink)] truncate max-w-[200px]">
-                          {id}
-                        </span>
-                        <button
-                          onClick={() => handleCancelSchedule(id)}
-                          disabled={deletingJobId === id}
-                          className="border border-[var(--danger)]/40 bg-[var(--danger)]/10 px-2 py-0.5 text-[10px] text-[var(--danger)] transition hover:bg-[var(--danger)] hover:text-white disabled:opacity-50"
-                        >
-                          {deletingJobId === id ? "Canceling..." : "Cancel"}
-                        </button>
-                      </div>
-
-                      <div className="mt-3 flex flex-col gap-1.5 text-xs text-[var(--ink-dim)]">
+                ) : (
+                  schedules.map((job) => {
+                    const id = job.job_id || job.id;
+                    return (
+                      <div
+                        key={id}
+                        className="rounded-2xl border border-white/10 bg-[#0d1210]/90 p-5 shadow-xl"
+                      >
                         <div className="flex items-center justify-between">
-                          <span>Trigger:</span>
-                          <span className="font-mono text-[var(--ink)]">
-                            {job.trigger}
+                          <span className="font-mono text-xs font-semibold text-[var(--ink)] truncate max-w-[200px]">
+                            {id}
                           </span>
+                          <button
+                            onClick={() => handleCancelSchedule(id)}
+                            disabled={deletingJobId === id}
+                            className="rounded-full border border-[var(--danger)]/40 bg-[var(--danger)]/10 px-3 py-1 text-[10px] font-semibold text-[var(--danger)] transition hover:bg-[var(--danger)] hover:text-white disabled:opacity-50"
+                          >
+                            {deletingJobId === id ? "Canceling..." : "Cancel"}
+                          </button>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span>Next Run:</span>
-                          <span className="text-[var(--ink)]">
-                            {job.next_run_time
-                              ? new Date(job.next_run_time).toLocaleString()
-                              : "N/A"}
-                          </span>
-                        </div>
-                        {job.args && job.args.length > 0 && (
+
+                        <div className="mt-3 flex flex-col gap-1.5 text-xs text-[var(--ink-dim)]">
                           <div className="flex items-center justify-between">
-                            <span>Agent Target:</span>
-                            <span className="font-medium text-[var(--accent)]">
-                              {job.args[1] || job.args[0]}
+                            <span>Trigger:</span>
+                            <span className="font-mono text-[var(--ink)]">
+                              {job.trigger}
                             </span>
                           </div>
-                        )}
+                          <div className="flex items-center justify-between">
+                            <span>Next Run:</span>
+                            <span className="text-[var(--ink)]">
+                              {job.next_run_time
+                                ? new Date(job.next_run_time).toLocaleString()
+                                : "N/A"}
+                            </span>
+                          </div>
+                          {job.args && job.args.length > 0 && (
+                            <div className="flex items-center justify-between">
+                              <span>Agent Target:</span>
+                              <span className="font-semibold text-[var(--accent)]">
+                                {job.args[1] || job.args[0]}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          )}
-        </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
+        </motion.div>
       </div>
-    </div>
+    </AnimatePresence>
   );
 }

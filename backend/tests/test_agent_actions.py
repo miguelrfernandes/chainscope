@@ -252,3 +252,15 @@ def test_scheduled_jobs_endpoints(client):
     res_del_404 = client.delete(f"/api/scheduler/jobs/{job_id}")
     assert res_del_404.status_code == 404
 
+
+def test_delete_agent_endpoint(client):
+    save_agent("0xowner", "yield-bot", EVM_ADDRESS, "enc-key-1")
+
+    res_del = client.delete("/api/agents/yield-bot?owner_address=0xowner")
+    assert res_del.status_code == 200
+    assert res_del.json()["status"] == "success"
+
+    res_del_404 = client.delete("/api/agents/yield-bot?owner_address=0xowner")
+    assert res_del_404.status_code == 404
+
+

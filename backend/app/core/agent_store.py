@@ -143,3 +143,19 @@ def set_agent_account_and_status(
         )
         conn.commit()
         return cursor.rowcount > 0
+
+
+def delete_agent(owner_address: str, agent_name: str) -> bool:
+    """Delete the managed agent for (owner_address, agent_name).
+    Returns True if a row was deleted, False otherwise."""
+    with closing(_connect()) as conn:
+        cursor = conn.execute(
+            """
+            DELETE FROM managed_agents
+            WHERE owner_address = ? AND agent_name = ?
+            """,
+            (owner_address, agent_name),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
