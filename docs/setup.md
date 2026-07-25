@@ -8,6 +8,10 @@
   fallback or experimentation),
   LangSmith, Subgraph MCP endpoint/key, and a code-sandbox provider key if
   using a hosted sandbox (see [python-sandbox.md](./python-sandbox.md))
+- A funded Hedera testnet account for the backend operator (free at
+  https://portal.hedera.com/dashboard) — needed for the Hedera action
+  agent to sign and submit transactions autonomously (see
+  [agents.md](./agents.md#hedera-action-agent--acting-differently-than-the-yield-advisor))
 
 ## Environment variables
 
@@ -28,6 +32,12 @@ GRAPH_MCP_URL=...               # Subgraph MCP server endpoint
 GRAPH_API_KEY=...               # if the MCP endpoint requires one
 PINAX_API_TOKEN=...             # Pinax Token API, used by the portfolio agent
 SEPOLIA_RPC_URL=...             # public Sepolia RPC, used by the yield advisor's idle-balance checks
+
+HEDERA_MIRROR_NODE_BASE_URL=https://testnet.mirrornode.hedera.com  # public, no key
+HEDERA_OPERATOR_ACCOUNT_ID=...   # backend-held Hedera testnet account, e.g. 0.0.1234 — funds
+HEDERA_OPERATOR_PRIVATE_KEY=...  # AUTONOMOUS-mode actions (HBAR transfer, HCS, HTS); get a free
+                                 # funded testnet account at https://portal.hedera.com/dashboard
+HEDERA_NETWORK=testnet
 # Planned (MetaMask/EVM-relay Hedera actions — see agents.md):
 HEDERA_SCHEDULE_FACTORY_ADDRESS=...            # deployed ScheduledVaultFactory, Hedera testnet
 HEDERA_NATIVE_TRANSFER_STRATEGY_ADDRESS=...    # deployed NativeTransferStrategy, Hedera testnet

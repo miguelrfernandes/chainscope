@@ -14,10 +14,14 @@ import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.core.agent_store import get_agent_by_name, set_agent_account_and_status
+from app.core.agent_store import (
+    get_agent_by_name,
+    get_user_agents,
+    set_agent_account_and_status,
+)
 from app.tools.hedera_mirror import get_account_by_address_or_id, get_transaction_by_id
 
-router = APIRouter(prefix="/api/actions")
+router = APIRouter()
 
 # The seed funding action always asks for exactly 1 HBAR (see
 # hedera_provisioner.py) — a balance below this can't be the real seed funding.
@@ -30,7 +34,7 @@ class ConfirmAgentRequest(BaseModel):
     tx_id: str
 
 
-@router.post("/confirm-agent")
+@router.post("/api/actions/confirm-agent")
 async def confirm_agent(req: ConfirmAgentRequest):
     agent = get_agent_by_name(req.owner_address, req.agent_name)
     if agent is None:
@@ -86,3 +90,59 @@ async def confirm_agent(req: ConfirmAgentRequest):
             "created_at": agent["created_at"],
         },
     }
+
+
+@router.get("/api/agents")
+@router.get("/api/actions/agents")
+async def list_agents(owner_address: str):
+    raw_agents = get_user_agents(owner_address)
+    agents_out = []
+    for agent in raw_agents:
+        balance_hbar = 0.0
+        lookup_id = agent.get("account_id") or agent.get("evm_address")
+        if lookup_id:
+            try:
+                account_info = await get_account_by_address_or_id(lookup_id)
+                balance_tinybars = (account_info.get("balance") or {}).get("balance", 0)
+                balance_hbar = balance_tinybars / SEED_AMOUNT_TINYBARS
+            except Exception:
+                balance_hbar = 0.0
+
+        agents_out.append(
+            {
+                "agent_name": agent.get("agent_name"),
+                "account_id": agent.get("account_id", ""),
+                "evm_address": agent.get("evm_address", ""),
+                "status": agent.get("status", "PENDING"),
+                "balance_hbar": balance_hbar,
+                "created_at": agent.get("created_at", ""),
+            }
+        )
+    return agents_out
+
+
+@router.get("/api/scheduler/jobs")
+async def get_scheduled_jobs():
+    from app.core.scheduler import list_scheduled_jobs
+
+    jobs = list_scheduled_jobs()
+    res = []
+    for j in jobs:
+        item = dict(j)
+        item["job_id"] = j.get("id")
+        res.append(item)
+    return res
+
+
+@router.delete("/api/scheduler/jobs/{job_id}")
+async def delete_scheduled_job(job_id: str):
+    from app.core.scheduler import remove_scheduled_job
+
+    removed = remove_scheduled_job(job_id)
+    if not removed:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Scheduled job '{job_id}' not found.",
+        )
+    return {"status": "success", "job_id": job_id}
+

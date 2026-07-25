@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SCENARIOS, HISTORY, type Scenario } from "@/lib/scenarios";
-import { streamChat } from "@/lib/api";
+import { fetchUserAgents, streamChat } from "@/lib/api";
 import {
   deleteThread,
   loadThreads,
@@ -15,6 +15,7 @@ import { AssistantTurn } from "./AssistantTurn";
 import { LiveAssistantTurn, type LiveState } from "./LiveAssistantTurn";
 import { Logomark } from "./Logomark";
 import { HistorySidebar } from "./HistorySidebar";
+import { AgentsDrawer } from "./AgentsDrawer";
 
 type Message =
   | { id: number; role: "user"; text: string }
@@ -53,8 +54,23 @@ export function ChatShell() {
   const [loadedFromHistory, setLoadedFromHistory] = useState(false);
   const [promptOffset, setPromptOffset] = useState(0);
   const [selectedModel, setSelectedModel] = useState<ModelChoice>("chainscope");
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [agentCount, setAgentCount] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const suppressScrollRef = useRef(false);
+
+  useEffect(() => {
+    let ignore = false;
+    if (!wallet.address) return;
+    fetchUserAgents(wallet.address)
+      .then((agents) => {
+        if (!ignore) setAgentCount(agents.length);
+      })
+      .catch(() => {});
+    return () => {
+      ignore = true;
+    };
+  }, [wallet.address, drawerOpen, messages]);
 
   const visiblePrompts = useMemo(() => {
     const total = SCENARIOS.length;
@@ -307,6 +323,18 @@ export function ChatShell() {
                 ))}
               </select>
             </div>
+            {wallet.connected && (
+              <button
+                onClick={() => setDrawerOpen(true)}
+                title="View managed sub-agents & cron schedules"
+                className="flex items-center gap-1.5 border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-2.5 py-1.5 text-[11px] font-medium text-[var(--accent)] transition hover:bg-[var(--accent)] hover:text-[var(--accent-ink)]"
+              >
+                <span>Agents</span>
+                <span className="rounded-full bg-[var(--accent)] px-1.5 py-0.2 text-[10px] font-bold text-[var(--accent-ink)]">
+                  {wallet.address ? agentCount : 0}
+                </span>
+              </button>
+            )}
             {wallet.error && (
               <span className="hidden max-w-56 truncate text-[11px] text-[var(--danger)] sm:inline">
                 {wallet.error}
@@ -476,6 +504,13 @@ export function ChatShell() {
           </form>
         </div>
       </div>
+
+      <AgentsDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        ownerAddress={wallet.address || ""}
+        onAskPrompt={ask}
+      />
     </div>
   );
 }

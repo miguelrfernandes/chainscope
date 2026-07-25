@@ -4,3 +4,5 @@ demos/
 # Hackathon-internal docs (submission checklist, pitch deck) — not part of
 # the public-facing repo/product docs.
 docs/internal/
+
+.DS_Store

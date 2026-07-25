@@ -16,6 +16,15 @@ async def test_get_wallet_balances_polygon_slug():
 
 
 @pytest.mark.asyncio
+async def test_get_wallet_balances_sepolia_rpc_fallback():
+    with patch("app.tools.token_api._get_sepolia_rpc_balances", new_callable=AsyncMock) as mock_rpc:
+        mock_rpc.return_value = {"network": "sepolia", "address": "0x123", "data": []}
+        res = await get_wallet_balances.ainvoke({"address": "0x123", "network": "sepolia"})
+        mock_rpc.assert_called_once_with("0x123")
+        assert res["network"] == "sepolia"
+
+
+@pytest.mark.asyncio
 @pytest.mark.integration
 @pytest.mark.skip(reason="Live integration test requiring PINAX_API_TOKEN")
 async def test_get_wallet_balances_live_polygon():
@@ -23,3 +32,4 @@ async def test_get_wallet_balances_live_polygon():
         {"address": "0x67e6bb3400da3af23f1b54623ff5972494b8e132", "network": "polygon"}
     )
     assert isinstance(res, dict)
+

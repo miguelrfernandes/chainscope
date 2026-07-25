@@ -16,6 +16,16 @@ Aave v3 supply APY via a live Graph subgraph query, and proposes a
 one-click deposit — the user approves a real transaction from their own
 wallet (Aave v3 on Sepolia testnet), nothing is simulated.
 
+ChainScope's **Hedera action agent** goes further: it moves value
+autonomously, executing signed HBAR transfers, HCS topic creation/message
+submission, and HTS token create/mint/associate directly against Hedera
+Testnet via the Hedera Agent Kit (Python) — no user signature required for
+this path (a dedicated backend-held testnet operator account signs and
+submits). A second Hedera specialist builds unsigned transaction bytes for
+the user's own HashPack wallet to sign when the action should come from
+the user's funds instead. See
+[agents.md](./agents.md#hedera-action-agent--acting-differently-than-the-yield-advisor).
+
 ## Stack
 
 | Layer         | Tech                                                                       |
@@ -25,7 +35,8 @@ wallet (Aave v3 on Sepolia testnet), nothing is simulated.
 | Agents        | LangGraph + LangChain                                                      |
 | Inference     | OpenRouter, or 0G Compute Router (config swap, see [setup.md](./setup.md)) |
 | Observability | LangSmith                                                                  |
-| Data          | The Graph API (subgraph queries) + live Sepolia RPC reads                  |
+| Data          | The Graph API (subgraph queries) + live Sepolia RPC reads + Hedera Mirror Node |
+| Payments      | Hedera Agent Kit (Python) — autonomous HBAR/HTS/HCS transactions on Hedera Testnet |
 
 ## Docs index
 

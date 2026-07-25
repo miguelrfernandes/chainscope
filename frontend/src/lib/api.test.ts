@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { confirmAgent, streamChat } from "./api";
+import {
+  confirmAgent,
+  deleteScheduledJob,
+  fetchScheduledJobs,
+  fetchUserAgents,
+  streamChat,
+} from "./api";
 
 function sseResponse(frames: string[], { chunkSize = Infinity } = {}) {
   const body = frames.join("");
@@ -154,4 +160,65 @@ describe("confirmAgent", () => {
     );
   });
 });
+
+describe("agent and scheduler API helpers", () => {
+  it("fetches user agents", async () => {
+    const mockAgents = [
+      {
+        agent_name: "yield-bot",
+        account_id: "0.0.1001",
+        evm_address: "0x123",
+        status: "ACTIVE",
+        balance_hbar: 10,
+        created_at: "2026-07-25T00:00:00Z",
+      },
+    ];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(mockAgents), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+    );
+
+    const res = await fetchUserAgents("0xowner");
+    expect(res).toEqual(mockAgents);
+  });
+
+  it("fetches scheduled jobs and deletes job", async () => {
+    const mockJobs = [
+      {
+        job_id: "job-1",
+        id: "job-1",
+        name: "run_scheduled_rebalance",
+        next_run_time: "2026-07-26T00:00:00Z",
+        trigger: "cron[0 0 * * *]",
+      },
+    ];
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(mockJobs), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ status: "success", job_id: "job-1" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const jobs = await fetchScheduledJobs();
+    expect(jobs).toEqual(mockJobs);
+
+    await deleteScheduledJob("job-1");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
 

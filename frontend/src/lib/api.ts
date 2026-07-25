@@ -135,3 +135,49 @@ export async function confirmAgent(
   return res.json();
 }
 
+export type ManagedAgent = {
+  agent_name: string;
+  account_id: string;
+  evm_address: string;
+  status: string;
+  balance_hbar: number;
+  created_at: string;
+};
+
+export type ScheduledJob = {
+  job_id: string;
+  id: string;
+  name: string;
+  next_run_time: string | null;
+  trigger: string;
+  args?: [string, string, string?];
+};
+
+export async function fetchUserAgents(ownerAddress: string): Promise<ManagedAgent[]> {
+  const res = await fetch(
+    `${API_BASE}/api/agents?owner_address=${encodeURIComponent(ownerAddress)}`
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to fetch agents (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function fetchScheduledJobs(): Promise<ScheduledJob[]> {
+  const res = await fetch(`${API_BASE}/api/scheduler/jobs`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch scheduled jobs (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function deleteScheduledJob(jobId: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/scheduler/jobs/${encodeURIComponent(jobId)}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to delete scheduled job (${res.status})`);
+  }
+}
+
+

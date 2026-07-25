@@ -217,3 +217,38 @@ def test_confirm_agent_activates_on_evm_transaction_hash(client):
     stored = get_agent_by_name("0xowner", "yield-bot")
     assert stored["status"] == "ACTIVE"
     assert stored["account_id"] == "0.0.78492"
+
+
+def test_list_agents_returns_user_agents_with_balances(client):
+    save_agent("0xowner", "yield-bot", EVM_ADDRESS, "enc-key-1")
+
+    with patch("app.api.agent_actions.get_account_by_address_or_id", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = {"balance": {"balance": 250_000_000}}
+        res = client.get("/api/agents?owner_address=0xowner")
+
+    assert res.status_code == 200
+    agents = res.json()
+    assert len(agents) == 1
+    assert agents[0]["agent_name"] == "yield-bot"
+    assert agents[0]["evm_address"] == EVM_ADDRESS
+    assert agents[0]["balance_hbar"] == 2.5
+    assert "encrypted_private_key" not in agents[0]
+
+
+def test_scheduled_jobs_endpoints(client):
+    from app.core.scheduler import schedule_rebalance_job
+
+    job_id = schedule_rebalance_job("0xowner", "yield-bot", "0 0 * * *", "test-job-42")
+
+    res_get = client.get("/api/scheduler/jobs")
+    assert res_get.status_code == 200
+    jobs = res_get.json()
+    assert any(j["job_id"] == job_id for j in jobs)
+
+    res_del = client.delete(f"/api/scheduler/jobs/{job_id}")
+    assert res_del.status_code == 200
+    assert res_del.json()["job_id"] == job_id
+
+    res_del_404 = client.delete(f"/api/scheduler/jobs/{job_id}")
+    assert res_del_404.status_code == 404
+

@@ -183,13 +183,14 @@ def list_scheduled_jobs() -> List[Dict[str, Any]]:
 
     jobs_info = []
     for job in scheduler.get_jobs():
+        next_run = getattr(job, "next_run_time", None)
         jobs_info.append(
             {
                 "id": job.id,
                 "name": job.name,
-                "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
-                "trigger": str(job.trigger),
-                "args": job.args,
+                "next_run_time": next_run.isoformat() if next_run else None,
+                "trigger": str(getattr(job, "trigger", "")),
+                "args": getattr(job, "args", []),
             }
         )
     return jobs_info
