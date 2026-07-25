@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 
 import { SCENARIOS, HISTORY, type Scenario } from "@/lib/scenarios";
 import { fetchUserAgents, streamChat } from "@/lib/api";
+import type { ConversationTurn } from "@/lib/api";
 import {
   deleteThread,
   loadThreads,
@@ -14,6 +15,7 @@ import {
 } from "@/lib/history";
 import { useWallet } from "@/hooks/useWallet";
 import { useHederaWallet } from "@/hooks/useHederaWallet";
+import { useSuggestions } from "@/hooks/useSuggestions";
 import { AssistantTurn } from "./AssistantTurn";
 import { LiveAssistantTurn, type LiveState } from "./LiveAssistantTurn";
 import { HistorySidebar } from "./HistorySidebar";
@@ -121,6 +123,22 @@ export function ChatShell() {
       SCENARIOS[(promptOffset + 2) % total],
     ];
   }, [promptOffset]);
+
+  // Build conversation turns for suggestions (only live turns, not demo scenarios)
+  const suggestionTurns = useMemo((): ConversationTurn[] => {
+    if (messages.length === 0) return [];
+    const result: ConversationTurn[] = [];
+    for (const m of messages) {
+      if (m.role === "user") {
+        result.push({ role: "user", text: m.text });
+      } else if (m.role === "assistant" && m.kind === "live" && m.live.answer) {
+        result.push({ role: "assistant", text: m.live.answer });
+      }
+    }
+    return result;
+  }, [messages]);
+
+  const dynamicSuggestions = useSuggestions(suggestionTurns);
 
   useEffect(() => {
     if (suppressScrollRef.current) {
@@ -353,7 +371,7 @@ export function ChatShell() {
           : "connect wallet";
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-6xl">
+    <div className="mx-auto flex h-dvh w-full max-w-6xl overflow-x-hidden">
       <HistorySidebar
         activeId={activeThreadId}
         onSelectExample={openExample}
@@ -364,7 +382,7 @@ export function ChatShell() {
         walletConnected={wallet.connected}
       />
 
-      <div className="flex h-dvh flex-1 flex-col">
+      <div className="flex h-dvh flex-1 flex-col overflow-x-hidden">
         <AppHeader
           activePage="app"
           rightContent={
@@ -430,7 +448,7 @@ export function ChatShell() {
         />
 
 
-        <div className="flex-1 overflow-y-auto px-5 py-6">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar px-5 py-6">
           {messages.length === 0 && <EmptyState onPick={ask} wallet={wallet} />}
 
           <div className="flex flex-col gap-6">
@@ -492,30 +510,60 @@ export function ChatShell() {
         <div className="border-t border-[var(--border)] px-5 py-4">
           {messages.length > 0 && (
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              {visiblePrompts.map((s) => (
+              {suggestionTurns.length > 0 ? (
+                // Dynamic AI-generated follow-up questions
+                dynamicSuggestions === null ? (
+                  // Loading skeleton
+                  [0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className="h-7 w-32 animate-pulse rounded-xl border border-[var(--border)] bg-[var(--bg-raised)]/60"
+                    />
+                  ))
+                ) : dynamicSuggestions.length > 0 ? (
+                  dynamicSuggestions.map((q, i) => (
+                    <motion.button
+                      key={i}
+                      onClick={() => ask(q)}
+                      disabled={locked}
+                      whileHover={{ scale: locked ? 1 : 1.03, y: -2 }}
+                      whileTap={{ scale: locked ? 1 : 0.97 }}
+                      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                      className="rounded-xl border border-[var(--border)] bg-[var(--bg-raised)]/60 px-3.5 py-1.5 text-xs text-[var(--ink-dim)] transition-all hover:border-[var(--accent)]/50 hover:bg-[var(--accent-soft)] hover:text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {q}
+                    </motion.button>
+                  ))
+                ) : null
+              ) : (
+                // Static template prompts when viewing a demo / no live answer yet
+                visiblePrompts.map((s) => (
+                  <motion.button
+                    key={s.id}
+                    onClick={() => ask(s.question)}
+                    disabled={locked}
+                    whileHover={{ scale: locked ? 1 : 1.03, y: -2 }}
+                    whileTap={{ scale: locked ? 1 : 0.97 }}
+                    transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                    className="rounded-xl border border-[var(--border)] bg-[var(--bg-raised)]/60 px-3.5 py-1.5 text-xs text-[var(--ink-dim)] transition-all hover:border-[var(--accent)]/50 hover:bg-[var(--accent-soft)] hover:text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {s.question}
+                  </motion.button>
+                ))
+              )}
+              {suggestionTurns.length === 0 && (
                 <motion.button
-                  key={s.id}
-                  onClick={() => ask(s.question)}
+                  type="button"
+                  onClick={() => setPromptOffset((prev) => prev + 3)}
                   disabled={locked}
-                  whileHover={{ scale: locked ? 1 : 1.03, y: -2 }}
-                  whileTap={{ scale: locked ? 1 : 0.97 }}
-                  transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                  className="rounded-xl border border-[var(--border)] bg-[var(--bg-raised)]/60 px-3.5 py-1.5 text-xs text-[var(--ink-dim)] transition-all hover:border-[var(--accent)]/50 hover:bg-[var(--accent-soft)] hover:text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-40"
+                  whileHover={{ scale: locked ? 1 : 1.04 }}
+                  whileTap={{ scale: locked ? 1 : 0.96 }}
+                  title="Shuffle suggested questions"
+                  className="rounded-xl border border-[var(--border)] bg-[var(--bg-raised)] px-3 py-1.5 text-xs text-[var(--accent)] transition hover:border-[var(--accent)]/50 hover:bg-[var(--accent-soft)] disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  {s.question}
+                  ↻ Shuffle
                 </motion.button>
-              ))}
-              <motion.button
-                type="button"
-                onClick={() => setPromptOffset((prev) => prev + 3)}
-                disabled={locked}
-                whileHover={{ scale: locked ? 1 : 1.04 }}
-                whileTap={{ scale: locked ? 1 : 0.96 }}
-                title="Shuffle suggested questions"
-                className="rounded-xl border border-[var(--border)] bg-[var(--bg-raised)] px-3 py-1.5 text-xs text-[var(--accent)] transition hover:border-[var(--accent)]/50 hover:bg-[var(--accent-soft)] disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                ↻ Shuffle
-              </motion.button>
+              )}
             </div>
           )}
           <form
@@ -761,7 +809,7 @@ function EmptyState({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        className="flex w-full max-w-lg flex-col gap-2.5 max-h-[360px] overflow-y-auto px-1 py-1 rounded-2xl border border-[var(--border)]/40 bg-[var(--bg-raised)]/40 backdrop-blur-md"
+        className="flex w-full max-w-lg flex-col gap-2.5 max-h-[360px] overflow-y-auto overflow-x-hidden custom-scrollbar px-1 py-1 rounded-2xl border border-[var(--border)]/40 bg-[var(--bg-raised)]/40 backdrop-blur-md"
       >
         {visibleScenarios.map((s) => (
           <motion.button

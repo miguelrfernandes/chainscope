@@ -180,7 +180,7 @@ export async function deleteScheduledJob(jobId: string): Promise<void> {
   }
 }
 
-export async function deleteUserAgent(ownerAddress: string, agentName: string): Promise<void> {
+export async function archiveUserAgent(ownerAddress: string, agentName: string): Promise<void> {
   const res = await fetch(
     `${API_BASE}/api/agents/${encodeURIComponent(agentName)}?owner_address=${encodeURIComponent(ownerAddress)}`,
     {
@@ -192,5 +192,37 @@ export async function deleteUserAgent(ownerAddress: string, agentName: string): 
   }
 }
 
+export const deleteUserAgent = archiveUserAgent;
 
+export async function unarchiveUserAgent(ownerAddress: string, agentName: string): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/agents/${encodeURIComponent(agentName)}/unarchive?owner_address=${encodeURIComponent(ownerAddress)}`,
+    {
+      method: "POST",
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to restore agent (${res.status})`);
+  }
+}
+export type ConversationTurn = { role: "user" | "assistant"; text: string };
+
+export async function fetchSuggestions(
+  turns: ConversationTurn[],
+  signal?: AbortSignal
+): Promise<string[]> {
+  try {
+    const res = await fetch(`${API_BASE}/suggest`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ turns }),
+      signal,
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data.questions) ? (data.questions as string[]) : [];
+  } catch {
+    return [];
+  }
+}
 
