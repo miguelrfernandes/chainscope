@@ -40,18 +40,30 @@ function parseSseEvent(raw: string): { event: string; data: string } | null {
   return { event, data: dataLines.join("\n") };
 }
 
+export type StreamChatOptions = {
+  signal?: AbortSignal;
+  model?: "chainscope" | "0g";
+};
+
 export async function streamChat(
   threadId: string,
   message: string,
   handlers: ChatHandlers,
-  signal?: AbortSignal
+  optionsOrSignal?: AbortSignal | StreamChatOptions
 ): Promise<void> {
+  const signal =
+    optionsOrSignal instanceof AbortSignal ? optionsOrSignal : optionsOrSignal?.signal;
+  const model =
+    optionsOrSignal instanceof AbortSignal
+      ? "chainscope"
+      : optionsOrSignal?.model || "chainscope";
+
   let res: Response;
   try {
     res = await fetch(`${API_BASE}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ thread_id: threadId, message }),
+      body: JSON.stringify({ thread_id: threadId, message, model }),
       signal,
     });
   } catch {

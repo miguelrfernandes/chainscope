@@ -1,10 +1,12 @@
 import json
+from typing import Literal
 
 from fastapi import APIRouter
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
 from app.agents.graph import build_graph
+from app.core.llm import reset_llm_provider, set_llm_provider
 
 router = APIRouter()
 _graph = None
@@ -20,6 +22,8 @@ def get_graph():
 class ChatRequest(BaseModel):
     thread_id: str
     message: str
+    model: Literal["chainscope", "0g"] | None = "chainscope"
+    llm_provider: str | None = None
 
 
 def _sse(event: str, data: dict) -> dict:
@@ -40,8 +44,10 @@ async def chat(req: ChatRequest):
         "steps": [],
         "final_answer": None,
     }
+    selected_provider = req.model or req.llm_provider or "chainscope"
 
     async def event_generator():
+        token = set_llm_provider(selected_provider)
         sources: list[dict] = []
         artifacts: list[dict] = []
         final_answer: str | None = None
@@ -59,6 +65,8 @@ async def chat(req: ChatRequest):
         except Exception as exc:  # noqa: BLE001 - surface the failure to the client instead of dropping the connection
             yield _sse("error", {"message": str(exc)})
             return
+        finally:
+            reset_llm_provider(token)
 
         yield _sse(
             "answer",
@@ -66,3 +74,4 @@ async def chat(req: ChatRequest):
         )
 
     return EventSourceResponse(event_generator())
+

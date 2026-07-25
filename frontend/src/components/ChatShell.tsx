@@ -16,6 +16,13 @@ type Message =
   | { id: number; role: "assistant"; kind: "history"; scenario: Scenario | null }
   | { id: number; role: "assistant"; kind: "live"; live: LiveState };
 
+type ModelChoice = "chainscope" | "0g";
+
+const MODEL_OPTIONS: Array<{ value: ModelChoice; label: string }> = [
+  { value: "chainscope", label: "Chainscope (default)" },
+  { value: "0g", label: "0G" },
+];
+
 let nextId = 1;
 
 function newThreadId(): string {
@@ -35,6 +42,7 @@ export function ChatShell() {
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [loadedFromHistory, setLoadedFromHistory] = useState(false);
   const [promptOffset, setPromptOffset] = useState(0);
+  const [selectedModel, setSelectedModel] = useState<ModelChoice>("chainscope");
   const bottomRef = useRef<HTMLDivElement>(null);
   const suppressScrollRef = useRef(false);
 
@@ -134,7 +142,10 @@ export function ChatShell() {
       promptWithWallet += `\n(Connected Hedera wallet: ${hederaWallet.accountId})`;
     }
 
-    streamChat(threadId, promptWithWallet, {
+    streamChat(
+      threadId,
+      promptWithWallet,
+      {
       onStep: (step) =>
         updateLive(assistantId, (l) => ({ ...l, steps: [...l.steps, step] })),
       onAnswer: (payload) =>
@@ -145,7 +156,9 @@ export function ChatShell() {
           artifacts: payload.artifacts,
         })),
       onError: (message) => updateLive(assistantId, (l) => ({ ...l, error: message })),
-    }).finally(() => setBusy(false));
+      },
+      { model: selectedModel }
+    ).finally(() => setBusy(false));
   }
 
   function openExample(id: string) {
@@ -238,6 +251,21 @@ export function ChatShell() {
           </button>
 
           <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 border border-[var(--border)] bg-[var(--bg-raised)] px-3 py-1.5 text-[11px] text-[var(--ink-dim)]">
+              <span className="uppercase tracking-wider text-[var(--ink-faint)]">Model</span>
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value as ModelChoice)}
+                className="bg-transparent text-[var(--ink)] outline-none"
+                aria-label="Select model"
+              >
+                {MODEL_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
             {wallet.error && (
               <span className="hidden max-w-56 truncate text-[11px] text-[var(--danger)] sm:inline">
                 {wallet.error}

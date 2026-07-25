@@ -96,3 +96,47 @@ def test_chat_requires_message_and_thread_id():
     response = client.post("/chat", json={"thread_id": "t1"})
 
     assert response.status_code == 422
+
+
+def test_chat_accepts_model_parameter(monkeypatch):
+    from app.core.llm import get_llm
+
+    captured_providers = []
+
+    class FakeGraph:
+        async def astream(self, inputs, config, stream_mode):
+            llm = get_llm()
+            # check provider tag/metadata
+            captured_providers.append(llm.runnable.config.get("metadata", {}).get("provider"))
+            yield {"orchestrator_synthesize": {"final_answer": "ok"}}
+
+    monkeypatch.setattr(chat_module, "get_graph", lambda: FakeGraph())
+
+    app = FastAPI()
+    app.include_router(chat_module.router)
+    client = TestClient(app)
+
+    res = client.post("/chat", json={"thread_id": "t1", "message": "hi", "model": "0g"})
+    assert res.status_code == 200
+    assert captured_providers == ["0g"]
+
+
+def test_chat_defaults_to_chainscope_model(monkeypatch):
+    captured_providers = []
+
+    class FakeGraph:
+        async def astream(self, inputs, config, stream_mode):
+            yield {"orchestrator_synthesize": {"final_answer": "ok"}}
+
+    monkeypatch.setattr(chat_module, "get_graph", lambda: FakeGraph())
+    monkeypatch.setattr(chat_module, "set_llm_provider", lambda provider: captured_providers.append(provider))
+    monkeypatch.setattr(chat_module, "reset_llm_provider", lambda token: None)
+
+    app = FastAPI()
+    app.include_router(chat_module.router)
+    client = TestClient(app)
+
+    res = client.post("/chat", json={"thread_id": "t1", "message": "hi"})
+    assert res.status_code == 200
+    assert captured_providers == ["chainscope"]
+
