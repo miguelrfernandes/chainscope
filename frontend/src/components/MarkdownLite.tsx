@@ -5,7 +5,7 @@ export function MarkdownLite({ text }: { text: string }) {
     <>
       {parts.map((part, i) =>
         part.startsWith("**") && part.endsWith("**") ? (
-          <strong key={i} className="font-semibold text-white">
+          <strong key={i} className="font-medium text-[var(--accent)]">
             {part.slice(2, -2)}
           </strong>
         ) : (

@@ -1,19 +1,105 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0b0b10;
-  --foreground: #ffffff;
+  --bg: #070a09;
+  --bg-raised: #0d1210;
+  --ink: #eef4f0;
+  --ink-dim: #8a978f;
+  --ink-faint: #55605a;
+  --accent: #ffb454;
+  --accent-ink: #1c1400;
+  --accent-soft: rgba(255, 180, 84, 0.12);
+  --success: #6fe3a1;
+  --danger: #ff7369;
+  --border: rgba(238, 244, 240, 0.1);
+  --border-soft: rgba(238, 244, 240, 0.06);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--bg);
+  --color-foreground: var(--ink);
+  --font-display: var(--font-fraunces);
+  --font-mono: var(--font-jetbrains);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background:
+    radial-gradient(ellipse 900px 500px at 12% -10%, rgba(255, 180, 84, 0.09), transparent 60%),
+    radial-gradient(ellipse 700px 500px at 100% 0%, rgba(111, 227, 161, 0.06), transparent 55%),
+    repeating-linear-gradient(
+      0deg,
+      var(--border-soft) 0px,
+      var(--border-soft) 1px,
+      transparent 1px,
+      transparent 32px
+    ),
+    var(--bg);
+  color: var(--ink);
+  font-family: var(--font-jetbrains), ui-monospace, monospace;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-faint);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes caret-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.animate-caret {
+  animation: caret-blink 0.9s steps(1) infinite;
+}
+
+@keyframes scan {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 64px;
+  }
 }

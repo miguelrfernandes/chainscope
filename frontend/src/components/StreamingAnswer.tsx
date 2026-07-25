@@ -29,10 +29,10 @@ export function StreamingAnswer({
   const streaming = count < words.length;
 
   return (
-    <p className="leading-relaxed text-white/90">
+    <p className="text-[15px] leading-relaxed text-[var(--ink)]">
       <MarkdownLite text={visible} />
       {streaming && (
-        <span className="ml-0.5 inline-block h-4 w-1.5 translate-y-0.5 animate-pulse bg-violet-400" />
+        <span className="ml-0.5 inline-block h-4 w-2 translate-y-0.5 animate-caret bg-[var(--accent)]" />
       )}
     </p>
   );

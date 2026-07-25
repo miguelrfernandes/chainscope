@@ -41,22 +41,23 @@ export function AgentStatusList({
   const shown = steps.slice(0, visibleCount);
 
   return (
-    <div className="flex flex-col gap-1.5 rounded-xl border border-white/10 bg-white/[0.03] px-3.5 py-3 text-sm">
+    <div className="flex flex-col gap-2 border-l-2 border-[var(--border)] py-1 pl-3.5 text-[13px]">
       {shown.map((step, i) => {
         const isLast = i === shown.length - 1;
         const isDone = !isLast || activeDone;
         return (
-          <div key={i} className="flex items-center gap-2 text-white/70">
+          <div key={i} className="flex items-baseline gap-2 text-[var(--ink-dim)]">
             {isDone ? (
-              <span className="text-emerald-400 shrink-0">✓</span>
+              <span className="shrink-0 text-[var(--success)]">✓</span>
             ) : (
-              <span className="shrink-0 h-3 w-3 rounded-full border-2 border-white/25 border-t-violet-400 animate-spin" />
+              <span className="relative shrink-0 text-[var(--accent)]">
+                <span className="animate-caret">▮</span>
+              </span>
             )}
-            <span className="text-violet-300 font-medium shrink-0">
+            <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-[var(--accent)]">
               {step.agent}
             </span>
-            <span className="text-white/50">·</span>
-            <span className={isDone ? "text-white/60" : "text-white/85"}>
+            <span className={isDone ? "text-[var(--ink-faint)]" : "text-[var(--ink)]"}>
               {step.text}
             </span>
           </div>

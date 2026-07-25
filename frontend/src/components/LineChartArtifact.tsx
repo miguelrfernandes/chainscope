@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Scenario } from "@/lib/scenarios";
+import { ProvenanceTag } from "./ProvenanceTag";
 
 const WIDTH = 480;
 const HEIGHT = 140;
@@ -33,14 +34,12 @@ export function LineChartArtifact({ line }: { line: NonNullable<Scenario["line"]
   const areaPath = `${path} L ${points[points.length - 1].x.toFixed(1)} ${HEIGHT - PAD} L ${points[0].x.toFixed(1)} ${HEIGHT - PAD} Z`;
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+    <div className="border border-[var(--border)] bg-[var(--bg-raised)]/50 p-4">
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-xs font-medium uppercase tracking-wide text-white/50">
+        <p className="text-xs font-medium uppercase tracking-wide text-[var(--ink-dim)]">
           {line.title}
         </p>
-        <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-white/40">
-          generated in python sandbox
-        </span>
+        <ProvenanceTag icon="⌁">python · pandas</ProvenanceTag>
       </div>
       <svg
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
@@ -49,8 +48,8 @@ export function LineChartArtifact({ line }: { line: NonNullable<Scenario["line"]
       >
         <defs>
           <linearGradient id="lineFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#8b7cf6" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#8b7cf6" stopOpacity="0" />
+            <stop offset="0%" stopColor="#ffb454" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#ffb454" stopOpacity="0" />
           </linearGradient>
         </defs>
         <path
@@ -62,8 +61,8 @@ export function LineChartArtifact({ line }: { line: NonNullable<Scenario["line"]
         <path
           d={path}
           fill="none"
-          stroke="#a78bfa"
-          strokeWidth={2.5}
+          stroke="#ffb454"
+          strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
           pathLength={1}
@@ -77,13 +76,13 @@ export function LineChartArtifact({ line }: { line: NonNullable<Scenario["line"]
             cx={p.x}
             cy={p.y}
             r={2.5}
-            fill="#a78bfa"
+            fill="#ffb454"
             className="transition-opacity duration-700"
             style={{ opacity: drawn ? 1 : 0, transitionDelay: `${i * 60}ms` }}
           />
         ))}
       </svg>
-      <div className="mt-1 flex justify-between text-[10px] text-white/40">
+      <div className="mt-1 flex justify-between text-[10px] text-[var(--ink-faint)]">
         {line.data.map((d) => (
           <span key={d.label}>{d.label}</span>
         ))}
