@@ -62,7 +62,9 @@ export function ChatShell() {
   // persistence effect below; render itself must stay pure).
   const threads = useMemo(() => {
     const base = wallet.address ? loadThreads(wallet.address) : [];
-    const live = activeThreadSnapshot(Number.POSITIVE_INFINITY);
+    const saved = base.find((t) => t.id === activeThreadId);
+    const timestamp = saved ? saved.updatedAt : 0;
+    const live = activeThreadSnapshot(timestamp);
     if (!live) return base;
     return [live, ...base.filter((t) => t.id !== live.id)];
     // eslint-disable-next-line react-hooks/exhaustive-deps

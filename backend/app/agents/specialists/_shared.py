@@ -8,7 +8,7 @@ guessing (see docs/agents.md).
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.tools import BaseTool
-from langgraph.prebuilt import create_react_agent
+from langgraph.prebuilt import ToolNode, create_react_agent
 
 from app.agents.state import GraphState
 from app.core.llm import get_llm
@@ -62,7 +62,8 @@ def _source_id(name: str, args: dict) -> str:
 async def run_specialist(
     state: GraphState, *, key: str, label: str, system_prompt: str, tools: list[BaseTool]
 ) -> dict:
-    agent = create_react_agent(get_llm(), tools=tools, prompt=system_prompt)
+    tool_node = ToolNode(tools, handle_tool_errors=True)
+    agent = create_react_agent(get_llm(), tools=tool_node, prompt=system_prompt)
 
     result = await agent.ainvoke({"messages": [HumanMessage(content=state["question"])]})
     messages = result["messages"]

@@ -53,6 +53,7 @@ export function saveThread(address: string, thread: StoredThread): StoredThread[
 
 export function formatRelativeTime(timestampMs: number): string {
   const diffMs = Date.now() - timestampMs;
+  if (diffMs <= 0) return "just now";
   const minutes = Math.floor(diffMs / 60_000);
   if (minutes < 1) return "just now";
   if (minutes < 60) return `${minutes}m ago`;
