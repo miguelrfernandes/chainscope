@@ -6,9 +6,9 @@ export function SourcesRow({ sources }: { sources: Source[] }) {
       <span className="uppercase tracking-wider text-[var(--ink-faint)]">
         sources
       </span>
-      {sources.map((s) => (
+      {sources.map((s, i) => (
         <span
-          key={s.id}
+          key={`${s.id}-${i}`}
           tabIndex={0}
           className="group relative inline-flex items-baseline gap-1.5 outline-none"
         >
