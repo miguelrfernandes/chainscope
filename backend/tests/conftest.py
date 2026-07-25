@@ -1,0 +1,19 @@
+import os
+
+import pytest
+
+from app.core.config import get_settings
+
+REQUIRED_ENV = {
+    "OPENROUTER_API_KEY": "test-key",
+    "GRAPH_MCP_URL": "https://example.invalid/sse",
+}
+
+
+@pytest.fixture(autouse=True)
+def _test_settings(monkeypatch):
+    for key, value in REQUIRED_ENV.items():
+        monkeypatch.setenv(key, value)
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
