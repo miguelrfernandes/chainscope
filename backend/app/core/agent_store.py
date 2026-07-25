@@ -54,6 +54,10 @@ def _connect() -> sqlite3.Connection:
     return conn
 
 
+def _norm(address: str) -> str:
+    return (address or "").lower().strip()
+
+
 def save_agent(
     owner_address: str,
     agent_name: str,
@@ -65,6 +69,7 @@ def save_agent(
     (owner_address, agent_name). `account_id` is normally empty at creation
     time — the account doesn't exist on-chain yet — and gets filled in by
     set_agent_account_and_status once seed funding auto-creates it."""
+    owner_address = _norm(owner_address)
     with closing(_connect()) as conn:
         conn.execute(
             """
@@ -82,6 +87,7 @@ def save_agent(
 
 def get_user_agents(owner_address: str) -> list[dict]:
     """All managed agents belonging to owner_address, oldest first."""
+    owner_address = _norm(owner_address)
     with closing(_connect()) as conn:
         rows = conn.execute(
             """
@@ -97,6 +103,7 @@ def get_user_agents(owner_address: str) -> list[dict]:
 
 def get_agent_by_name(owner_address: str, agent_name: str) -> dict | None:
     """The single managed agent for (owner_address, agent_name), or None."""
+    owner_address = _norm(owner_address)
     with closing(_connect()) as conn:
         row = conn.execute(
             """
@@ -113,6 +120,7 @@ def set_agent_status(owner_address: str, agent_name: str, status: str) -> bool:
     """Update the lifecycle status (e.g. 'PENDING' -> 'ACTIVE') of the managed
     agent identified by (owner_address, agent_name). Returns whether a row was
     found and updated."""
+    owner_address = _norm(owner_address)
     with closing(_connect()) as conn:
         cursor = conn.execute(
             """
@@ -132,6 +140,7 @@ def set_agent_account_and_status(
     """Record the real Hedera account_id resolved from Mirror Node after
     Auto Account Creation and update lifecycle status in one step. Returns
     whether a row was found and updated."""
+    owner_address = _norm(owner_address)
     with closing(_connect()) as conn:
         cursor = conn.execute(
             """

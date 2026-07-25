@@ -10,6 +10,8 @@ before flipping the agent to "ACTIVE" — so a rejected or failed signature
 never activates an agent.
 """
 
+import asyncio
+
 import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -55,40 +57,41 @@ async def confirm_agent(req: ConfirmAgentRequest):
         ) from exc
 
     # The agent's account_id isn't known until now — Auto Account Creation
-    # assigns it the moment its EVM address first receives funds — so resolve
-    # it (and confirm the balance) straight from Mirror Node by EVM address.
+    # assigns it the moment its EVM address first receives funds. Mirror node
+    # indexing may take a few seconds after the transaction is submitted, so
+    # retry checking the account record for up to ~15 seconds.
     account_info = {}
-    try:
-        account_info = await get_account_by_address_or_id(agent["evm_address"])
-    except httpx.HTTPError as exc:
-        if not tx_succeeded:
-            raise HTTPException(
-                status_code=400,
-                detail="Seed funding transaction was not found or did not succeed.",
-            ) from exc
-        raise HTTPException(
-            status_code=400,
-            detail=f"Transaction succeeded, but no Hedera account was found yet at "
-            f"{agent['evm_address']} (mirror node may still be indexing): {exc}",
-        ) from exc
+    last_exc = None
+    for attempt in range(10):
+        try:
+            account_info = await get_account_by_address_or_id(agent["evm_address"])
+            resolved_acc = account_info.get("account") or ""
+            balance = (account_info.get("balance") or {}).get("balance", 0)
+            if resolved_acc and balance >= SEED_AMOUNT_TINYBARS:
+                break
+        except httpx.HTTPError as exc:
+            last_exc = exc
+        if attempt < 9:
+            await asyncio.sleep(1.5)
 
     balance = (account_info.get("balance") or {}).get("balance", 0)
     resolved_account_id = account_info.get("account") or ""
 
-    if not tx_succeeded:
-        # For native EVM transfers, the Mirror Node /contracts/results endpoint returns 404.
-        # Check if Auto Account Creation generated a Hedera account with at least 1 HBAR.
-        if not resolved_account_id or balance < SEED_AMOUNT_TINYBARS:
+    if not resolved_account_id or balance < SEED_AMOUNT_TINYBARS:
+        if not tx_succeeded:
+            if last_exc:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Seed funding transaction was not found or did not succeed.",
+                ) from last_exc
             raise HTTPException(
                 status_code=400,
                 detail="Seed funding transaction was not found or did not succeed.",
             )
-
-    if balance < SEED_AMOUNT_TINYBARS:
         raise HTTPException(
             status_code=400,
-            detail=f"Seed funding did not credit {agent['evm_address']} with at least 1 HBAR "
-            f"(current balance: {balance} tinybars).",
+            detail=f"Transaction succeeded, but no Hedera account was found yet at "
+            f"{agent['evm_address']} (mirror node may still be indexing).",
         )
 
     set_agent_account_and_status(req.owner_address, req.agent_name, resolved_account_id, "ACTIVE")
