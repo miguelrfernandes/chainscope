@@ -73,10 +73,12 @@ export async function streamChat(
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
 
-    let sepIndex: number;
-    while ((sepIndex = buffer.indexOf("\n\n")) !== -1) {
+    let match: RegExpExecArray | null;
+    while ((match = /\r?\n\r?\n/.exec(buffer)) !== null) {
+      const sepIndex = match.index;
+      const sepLength = match[0].length;
       const rawEvent = buffer.slice(0, sepIndex);
-      buffer = buffer.slice(sepIndex + 2);
+      buffer = buffer.slice(sepIndex + sepLength);
       const event = parseSseEvent(rawEvent);
       if (!event) continue;
 

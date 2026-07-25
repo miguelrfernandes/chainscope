@@ -54,6 +54,25 @@ describe("streamChat", () => {
     expect(error).toBeNull();
   });
 
+  it("handles SSE data lines with spaces or trailing carriage returns (sse_starlette format)", async () => {
+    const frames = [
+      "event: step\r\ndata: {\"agent\":\"Orchestrator\",\"text\":\"Routing to portfolio...\"}\r\n\r\n",
+      "event: answer\r\ndata: {\"answer\":\"Hello!\",\"sources\":[],\"artifacts\":[]}\r\n\r\n",
+    ];
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(sseResponse(frames)));
+
+    const steps: unknown[] = [];
+    let answer: unknown = null;
+
+    await streamChat("t1", "hi", {
+      onStep: (s) => steps.push(s),
+      onAnswer: (a) => (answer = a),
+    });
+
+    expect(steps).toEqual([{ agent: "Orchestrator", text: "Routing to portfolio..." }]);
+    expect(answer).toEqual({ answer: "Hello!", sources: [], artifacts: [] });
+  });
+
   it("reassembles SSE frames split across network chunks", async () => {
     const frames = [
       `event: answer\ndata: ${JSON.stringify({ answer: "hi", sources: [], artifacts: [] })}\n\n`,
