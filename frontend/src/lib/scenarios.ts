@@ -373,7 +373,7 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: "hedera-list-agents",
-    question: "Which Hedera sub-agents do I have registered in my vault?",
+    question: "Check current agents registered in my vault",
     agent: "Hedera agent",
     steps: [
       { agent: "Orchestrator", text: "Routing to Hedera agent..." },

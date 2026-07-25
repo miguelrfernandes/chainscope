@@ -403,6 +403,7 @@ const CATEGORIES = [
   { id: "featured", label: "Featured" },
   { id: "portfolio", label: "Portfolio & Risk" },
   { id: "defi", label: "DeFi & Yield" },
+  { id: "agents", label: "Agents" },
   { id: "hedera", label: "Hedera & Automation" },
   { id: "all", label: "All Questions" },
 ] as const;
@@ -411,9 +412,10 @@ type CategoryId = (typeof CATEGORIES)[number]["id"];
 
 const FEATURED_IDS = ["portfolio", "yield-advisor", "hedera-scheduled-transfer"];
 
-function getScenarioCategory(id: string): "portfolio" | "defi" | "hedera" {
+function getScenarioCategory(id: string): "portfolio" | "defi" | "agents" | "hedera" {
   if (["portfolio", "risk-monitor", "sprawl"].includes(id)) return "portfolio";
   if (["yield-advisor", "trading", "saucerswap-apr", "saucerswap-swap"].includes(id)) return "defi";
+  if (["hedera-list-agents", "hedera-create-agent", "hedera-schedule-loop"].includes(id)) return "agents";
   return "hedera";
 }
 

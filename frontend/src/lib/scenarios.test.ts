@@ -64,4 +64,10 @@ describe("SCENARIOS end-to-end question verification", () => {
     expect(FALLBACK_ANSWER).toBeTruthy();
     expect(typeof FALLBACK_ANSWER).toBe("string");
   });
+
+  it("contains an agent listing scenario under hedera-list-agents", () => {
+    const listScenario = SCENARIOS.find((s) => s.id === "hedera-list-agents");
+    expect(listScenario).toBeDefined();
+    expect(listScenario?.question.toLowerCase()).toContain("check current agents");
+  });
 });
