@@ -14,7 +14,13 @@ export type LiveState = {
   error: string | null;
 };
 
-export function LiveAssistantTurn({ live }: { live: LiveState }) {
+export function LiveAssistantTurn({
+  live,
+  instant = false,
+}: {
+  live: LiveState;
+  instant?: boolean;
+}) {
   if (live.error) {
     return (
       <p className="text-[13px] text-[var(--danger)]">
@@ -59,7 +65,7 @@ export function LiveAssistantTurn({ live }: { live: LiveState }) {
 
       {live.answer && (
         <div className="flex flex-col gap-3">
-          <StreamingAnswer text={live.answer} />
+          <StreamingAnswer text={live.answer} instant={instant} />
           {live.artifacts.length > 0 && (
             <div className="flex flex-col gap-3">
               {live.artifacts.map((a, i) => (
