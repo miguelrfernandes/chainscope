@@ -82,6 +82,7 @@ export function ChatShell() {
   });
   const bottomRef = useRef<HTMLDivElement>(null);
   const suppressScrollRef = useRef(false);
+  const lastSyncedRef = useRef<string | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -182,10 +183,17 @@ export function ChatShell() {
   const threadParam = searchParams.get("thread");
 
   useEffect(() => {
-    if (!threadParam) return;
-    if (threadParam === activeThreadId) return;
+    if (!threadParam) {
+      if (lastSyncedRef.current !== null) {
+        lastSyncedRef.current = null;
+      }
+      return;
+    }
+
+    if (threadParam === lastSyncedRef.current) return;
 
     if (EXAMPLE_IDS.has(threadParam)) {
+      lastSyncedRef.current = threadParam;
       openExample(threadParam);
       return;
     }
@@ -193,11 +201,12 @@ export function ChatShell() {
     if (wallet.address) {
       const stored = loadThreads(wallet.address);
       if (stored.some((t) => t.id === threadParam)) {
+        lastSyncedRef.current = threadParam;
         openThread(threadParam);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [threadParam, wallet.address, activeThreadId]);
+  }, [threadParam, wallet.address]);
 
   function updateLive(id: number, updater: (live: LiveState) => LiveState) {
     setMessages((msgs) =>
@@ -218,6 +227,7 @@ export function ChatShell() {
         : newThreadId();
     const assistantId = nextId++;
 
+    lastSyncedRef.current = threadId;
     setActiveThreadId(threadId);
     router.replace(`/app?thread=${encodeURIComponent(threadId)}`);
     setLoadedFromHistory(false);
@@ -274,6 +284,7 @@ export function ChatShell() {
   function openExample(id: string) {
     const entry = HISTORY.find((h) => h.scenario.id === id);
     if (!entry) return;
+    lastSyncedRef.current = id;
     setBusy(false);
     setLoadedFromHistory(false);
     setActiveThreadId(id);
@@ -294,6 +305,7 @@ export function ChatShell() {
     const base = wallet.address ? loadThreads(wallet.address) : [];
     const thread = base.find((t) => t.id === id) || threads.find((t) => t.id === id);
     if (!thread) return;
+    lastSyncedRef.current = id;
     setBusy(false);
     setLoadedFromHistory(true);
     setActiveThreadId(id);
@@ -309,6 +321,7 @@ export function ChatShell() {
   }
 
   function newConversation() {
+    lastSyncedRef.current = null;
     suppressScrollRef.current = true;
     setMessages([]);
     setActiveThreadId(null);
@@ -582,6 +595,7 @@ const CATEGORIES = [
   { id: "featured", label: "Featured" },
   { id: "portfolio", label: "Portfolio & Risk" },
   { id: "defi", label: "DeFi & Yield" },
+  { id: "whales", label: "Whale Tracking" },
   { id: "agents", label: "Agents" },
   { id: "hedera", label: "Hedera & Automation" },
   { id: "all", label: "All Questions" },
@@ -592,24 +606,32 @@ type CategoryId = (typeof CATEGORIES)[number]["id"];
 const FEATURED_IDS = [
   "portfolio",
   "yield-advisor",
+  "whale-tracker",
   "hedera-scheduled-transfer",
 ];
 
 function getScenarioCategory(
   id: string,
-): "portfolio" | "defi" | "agents" | "hedera" {
+): "portfolio" | "defi" | "whales" | "agents" | "hedera" {
   if (["portfolio", "risk-monitor", "sprawl"].includes(id)) return "portfolio";
   if (
-    ["yield-advisor", "trading", "saucerswap-apr", "saucerswap-swap"].includes(
-      id,
-    )
+    [
+      "yield-advisor",
+      "trading",
+      "saucerswap-apr",
+      "saucerswap-swap",
+      "uniswap-best-yield",
+    ].includes(id)
   )
     return "defi";
+  if (["whale-tracker"].includes(id)) return "whales";
   if (
     [
       "hedera-list-agents",
       "hedera-create-agent",
       "hedera-schedule-loop",
+      "whale-copy-agent",
+      "twitter-trigger-bot",
     ].includes(id)
   )
     return "agents";
