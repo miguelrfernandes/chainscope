@@ -81,12 +81,10 @@ async def test_build_recurring_hbar_transfer_actions():
         }
     )
     payload = json.loads(res_json)
-    assert "Schedule recurring transfer" in payload["human_message"]
-    steps = payload["steps"]
-    assert len(steps) >= 3
-    # Check deposit step value: 2.0 HBAR = 2e18 wei = 0x1bc16d674ec80000
-    deposit_step = [s for s in steps if "Deposit" in s["label"]][0]
-    assert deposit_step["value"] == "0x1bc16d674ec80000"
+    assert "Schedule transfer" in payload["human_message"]
+    assert payload["to"] == "0x000000000000000000000000000000000000016b"
+    assert payload["value"] == "0x1bc16d674ec80000"
+    assert payload["data"].startswith("0x6f5bfde8")
 
 
 @pytest.mark.asyncio
