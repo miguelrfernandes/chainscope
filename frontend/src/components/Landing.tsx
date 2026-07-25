@@ -100,7 +100,7 @@ export function Landing() {
           href="/app"
           className="border border-[var(--accent)] bg-[var(--accent)] px-3.5 py-1.5 text-[13px] font-medium text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/85"
         >
-          open demo →
+          open app →
         </Link>
       </nav>
 
@@ -121,7 +121,7 @@ export function Landing() {
             href="/app"
             className="border border-[var(--accent)] bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/85"
           >
-            launch live demo →
+            launch app →
           </Link>
           <span className="text-xs text-[var(--ink-faint)]">
             no wallet needed to look around — connect one when you want saved
@@ -220,7 +220,7 @@ export function Landing() {
           Graph bounty.
         </span>
         <Link href="/app" className="text-[var(--accent)] hover:underline">
-          open the demo →
+          open the app →
         </Link>
       </footer>
     </div>
