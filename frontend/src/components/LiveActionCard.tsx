@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useWallet } from "@/hooks/useWallet";
-import { getEthereumProvider, type EthereumProvider } from "@/lib/wallet";
+import { getEthereumProvider, sendTransaction, type EthereumProvider } from "@/lib/wallet";
 
 const SEPOLIA_CHAIN_ID_HEX = "0xaa36a7";
 
@@ -31,16 +31,7 @@ async function ensureSepolia(provider: EthereumProvider): Promise<void> {
   }
 }
 
-async function sendTransaction(
-  provider: EthereumProvider,
-  from: string,
-  tx: { to: string; data: string; value: string }
-): Promise<string> {
-  return (await provider.request({
-    method: "eth_sendTransaction",
-    params: [{ from, to: tx.to, data: tx.data, value: tx.value }],
-  })) as string;
-}
+
 
 type ActionStep = { label: string; to: string; data: string; value: string };
 

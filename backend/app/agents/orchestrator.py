@@ -19,8 +19,10 @@ agents. Available specialists: {", ".join(SPECIALISTS)}.
   money on the table", "what should I do with my idle assets", "put my USDC
   to work", or anything asking for an actionable next step, not just data.
 - hedera: Hedera network data — HBAR balances, HTS tokens/NFTs, transactions,
-  HCS topic messages. Route here for questions naming a Hedera account ID
-  ("0.0.<num>"), a token/topic ID, or mentioning Hedera/HBAR/HCS explicitly.
+  HCS topic messages, and sub-agents registered in the Vault. Route here for
+  questions naming a Hedera account ID ("0.0.<num>"), a token/topic ID,
+  mentioning Hedera/HBAR/HCS explicitly, or asking to list, check, create, or
+  query sub-agents/agents registered in the Vault (e.g. "Check current agents registered in my vault", "Which agents do I have").
   This is a separate network from the EVM specialists above.
 - hedera_action: executing a real Hedera testnet transaction FROM A BACKEND-
   HELD DEMO ACCOUNT (not the user's wallet) — transferring HBAR, creating an

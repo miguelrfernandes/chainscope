@@ -113,3 +113,32 @@ async def test_hedera_wallet_action_resolves_evm_account(monkeypatch):
     assert "0.0.9999" in captured["system_prompt"]
 
 
+@pytest.mark.asyncio
+async def test_hedera_wallet_action_evm_plain_system_prompt_includes_provision_guidance(monkeypatch):
+    captured = {}
+
+    async def fake_run_specialist(state, *, key, label, system_prompt, tools, action_artifact_types=None):
+        captured["system_prompt"] = system_prompt
+        captured["tool_names"] = {t.name for t in tools}
+        return {
+            "specialist_results": {key: "ok"},
+            "raw_data": {key: []},
+            "steps": [],
+            "sources": [],
+            "artifacts": [],
+        }
+
+    monkeypatch.setattr(
+        "app.agents.specialists.hedera_wallet_action.run_specialist", fake_run_specialist
+    )
+
+    evm_owner = "0x67e6bb3400da3af23f1b54623ff5972494b8e132"
+    state = {"question": f"Create a Hedera agent named YieldSentinel (Connected wallet: {evm_owner})"}
+    await hedera_wallet_action_node(state)
+
+    assert "do NOT call build_hbar_transfer_evm_tx" in captured["system_prompt"]
+    assert "provision_hedera_agent" in captured["tool_names"]
+    assert "build_hbar_transfer_evm_tx" in captured["tool_names"]
+
+
+

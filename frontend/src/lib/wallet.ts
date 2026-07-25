@@ -173,11 +173,18 @@ export function explorerTxUrl(chainId: number | null, hash: string): string {
 export async function sendTransaction(
   provider: EthereumProvider,
   from: string,
-  tx: { to: string; data: string; value: string }
+  tx: { to: string; data?: string; value: string; gas?: string }
 ): Promise<string> {
+  const isPlainTransfer = !tx.data || tx.data === "0x" || tx.data === "";
+  // Hedera testnet JSON-RPC relay caps max gas limit per tx at 15,000,000 (0xe4e1c0).
+  // Default to 21,000 (0x5208) for native HBAR/ETH transfers, or 2,000,000 (0x1e8480) for contract calls,
+  // preventing wallets (e.g. MetaMask) from defaulting to 52.5M gas limit which Hedera rejects.
+  const defaultGas = isPlainTransfer ? "0x5208" : "0x1e8480";
+  const gas = tx.gas || defaultGas;
+
   const hash = (await provider.request({
     method: "eth_sendTransaction",
-    params: [{ from, to: tx.to, data: tx.data, value: tx.value }],
+    params: [{ from, to: tx.to, data: tx.data || "0x", value: tx.value, gas }],
   })) as string;
   return hash;
 }
