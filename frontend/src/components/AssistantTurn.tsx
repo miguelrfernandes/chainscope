@@ -10,6 +10,7 @@ import { BarChartArtifact } from "./BarChartArtifact";
 import { LineChartArtifact } from "./LineChartArtifact";
 import { DataTableArtifact } from "./DataTableArtifact";
 import { HealthFactorGauge } from "./HealthFactorGauge";
+import { SuggestedActions } from "./SuggestedActions";
 import { SourcesRow } from "./SourcesRow";
 
 type Phase = "steps" | "answer" | "reveal";
@@ -49,6 +50,9 @@ export function AssistantTurn({
               <HealthFactorGauge value={scenario.healthFactor} />
             )}
             {scenario.table && <DataTableArtifact table={scenario.table} />}
+            {scenario.actions && scenario.actions.length > 0 && (
+              <SuggestedActions actions={scenario.actions} />
+            )}
             <SourcesRow sources={scenario.sources} />
           </div>
         )}

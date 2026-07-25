@@ -8,6 +8,15 @@ export type BarDatum = { label: string; value: number; color: string };
 export type LineDatum = { label: string; value: number };
 export type TableRow = Record<string, string>;
 
+export type ScenarioAction = {
+  id: string;
+  label: string;
+  description: string;
+  protocol: string;
+  value?: string;
+  cta: string;
+};
+
 export type Scenario = {
   id: string;
   question: string;
@@ -19,6 +28,7 @@ export type Scenario = {
   line?: { title: string; unit: string; data: LineDatum[] };
   table?: { title: string; columns: string[]; rows: TableRow[] };
   healthFactor?: number;
+  actions?: ScenarioAction[];
 };
 
 export const ACCOUNT = {
@@ -156,6 +166,95 @@ export const SCENARIOS: Scenario[] = [
       },
     ],
     healthFactor: 1.34,
+    actions: [
+      {
+        id: "add-collateral",
+        label: "Add $5,000 stETH collateral",
+        description:
+          "Would raise your health factor from 1.34 to roughly 1.58, giving more buffer if stETH drops.",
+        protocol: "Aave v3 · Ethereum",
+        cta: "Add collateral",
+      },
+    ],
+  },
+  {
+    id: "sprawl",
+    question: "Do I have any idle or forgotten positions across DeFi?",
+    agent: "Discovery agent",
+    steps: [
+      { agent: "Orchestrator", text: "Routing to Discovery agent..." },
+      {
+        agent: "Discovery agent",
+        text: "Scanning lending, LP, and staking subgraphs across Ethereum and Arbitrum via Subgraph MCP...",
+      },
+      {
+        agent: "Discovery agent",
+        text: "Cross-referencing your full wallet history for every protocol you've ever interacted with...",
+      },
+      {
+        agent: "Discovery agent",
+        text: "Checking unclaimed rewards and unwithdrawn deposits across 14 protocols...",
+      },
+      {
+        agent: "Analyst agent",
+        text: "Ranking positions by USD value and days since last activity with pandas...",
+      },
+    ],
+    answer:
+      "DeFi sprawls — turns out you do. You have **4 positions worth $2,154** that you haven't touched in 90+ days, spread across protocols you likely forgot you'd used. The biggest is **0.8 ETH ($1,340) still supplied to Compound v2**, deposited back in March 2022 and never withdrawn — Compound v2 is effectively legacy now, so it's just sitting there earning a below-market rate. There's also **$284 in unclaimed Uniswap v3 LP fees** on Arbitrum accruing since December, plus small dust positions in Curve's 3pool and an old SushiSwap LP. I've pulled the two worth acting on below.",
+    sources: [
+      {
+        label: "Compound v2 — account positions",
+        id: "compound/compound-v2",
+        query:
+          "{ account(id: \"0x8f2a19b4...\") { tokens { symbol supplyBalanceUnderlying } } }",
+      },
+      {
+        label: "Uniswap v3 Arbitrum — LP positions",
+        id: "uniswap/uniswap-v3-arbitrum",
+        query:
+          "{ positions(where: { owner: \"0x8f2a19b4...\" }) { pool { token0 token1 } collectedFeesToken0 collectedFeesToken1 } }",
+      },
+      {
+        label: "Curve — liquidity positions",
+        id: "curve/curve-finance",
+        query: "{ liquidityPositions(where: { user: \"0x8f2a19b4...\" }) { liquidityPool { name } balance } }",
+      },
+      {
+        label: "SushiSwap — LP positions",
+        id: "sushiswap/exchange",
+        query: "{ liquidityPositions(where: { user: \"0x8f2a19b4...\" }) { pair { token0 token1 } } }",
+      },
+    ],
+    table: {
+      title: "Idle & forgotten positions (90+ days untouched)",
+      columns: ["Protocol", "Chain", "Position", "Value", "Idle since"],
+      rows: [
+        { Protocol: "Compound v2", Chain: "Ethereum", Position: "0.8 ETH supplied (cETH)", Value: "$1,340", "Idle since": "Mar 2022" },
+        { Protocol: "Curve", Chain: "Ethereum", Position: "3pool LP (dust)", Value: "$320", "Idle since": "Nov 2021" },
+        { Protocol: "Uniswap v3", Chain: "Arbitrum", Position: "USDC/ARB LP, unclaimed fees", Value: "$284", "Idle since": "Dec 2024" },
+        { Protocol: "SushiSwap", Chain: "Ethereum", Position: "ETH/USDC LP (dust)", Value: "$210", "Idle since": "Jun 2022" },
+      ],
+    },
+    actions: [
+      {
+        id: "claim-uniswap-fees",
+        label: "Claim Uniswap v3 LP fees",
+        description: "$284 in accrued USDC/ARB fees on Arbitrum, unclaimed since December.",
+        protocol: "Uniswap v3 · Arbitrum",
+        value: "$284",
+        cta: "Claim fees",
+      },
+      {
+        id: "withdraw-compound",
+        label: "Withdraw idle Compound v2 ETH",
+        description:
+          "0.8 ETH supplied in 2022, still earning cETH. Compound v3 offers a better rate for the same risk.",
+        protocol: "Compound v2 · Ethereum",
+        value: "$1,340",
+        cta: "Withdraw",
+      },
+    ],
   },
   {
     id: "governance",
@@ -233,7 +332,7 @@ export const SCENARIOS: Scenario[] = [
   },
 ];
 
-const HISTORY_AGO = ["2h ago", "yesterday", "2d ago", "4d ago", "6d ago"];
+const HISTORY_AGO = ["2h ago", "yesterday", "2d ago", "3d ago", "4d ago", "6d ago"];
 
 export const HISTORY = SCENARIOS.map((s, i) => ({
   scenario: s,
