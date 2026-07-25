@@ -47,10 +47,12 @@ agents. Available specialists: {", ".join(SPECIALISTS)}.
   swap transactions on SaucerSwap for the user's own connected wallet to
   sign. Route here for "what's the best APR on SaucerSwap", "where should I
   farm", or "swap <token> for <token> on SaucerSwap" style questions.
-- uniswap: live Uniswap Trading API integration on Ethereum mainnet (chain 1)
-  and Base (chain 8453) for quote-and-swap trade execution. Route here for live
-  Uniswap quotes, routes, or swap transaction requests on Ethereum mainnet or
-  Base (e.g. "quote 1 ETH to USDC on Ethereum", "swap 100 USDC to WETH on Base").
+- uniswap: live Uniswap Trading API integration on Ethereum mainnet (chain 1),
+  Base (chain 8453), and Sepolia testnet (chain 11155111) for quote-and-swap
+  trade execution. Route here for live Uniswap quotes, routes, or swap
+  transaction requests on Ethereum mainnet, Base, or Sepolia (e.g. "quote 1 ETH
+  to USDC on Ethereum", "swap 100 USDC to WETH on Base", "swap 50 USDC to ETH
+  on Sepolia").
 
 
 Pick every specialist whose domain the question touches — a compound
