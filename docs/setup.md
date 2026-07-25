@@ -13,14 +13,23 @@
 Backend (`.env` in the FastAPI service):
 
 ```
-ANTHROPIC_API_KEY=...           # or OPENAI_API_KEY, depending on model choice
+OPENROUTER_API_KEY=...
+LLM_PROVIDER=openrouter         # or "0g" to route through 0G Compute Router instead
+ZG_API_KEY=...                  # only needed if LLM_PROVIDER=0g — from pc.testnet.0g.ai
+ZG_MODEL=llama-3.3-70b-instruct # confirm against pc.testnet.0g.ai's live model catalog
 LANGCHAIN_TRACING_V2=true
 LANGCHAIN_API_KEY=...
 LANGCHAIN_PROJECT=chainscope-dev
 GRAPH_MCP_URL=...               # Subgraph MCP server endpoint
 GRAPH_API_KEY=...               # if the MCP endpoint requires one
-SANDBOX_PROVIDER_API_KEY=...    # hosted python sandbox, if used
+PINAX_API_TOKEN=...             # Pinax Token API, used by the portfolio agent
+SEPOLIA_RPC_URL=...             # public Sepolia RPC, used by the yield advisor's idle-balance checks
 ```
+
+See `backend/.env.example` for the full list. Swapping `LLM_PROVIDER` to
+`0g` is a config-only change (`app/core/llm.py`) — both providers are the
+same `ChatOpenAI` client pointed at a different OpenAI-compatible
+`base_url`.
 
 Frontend (`.env.local` in the Next.js app):
 
