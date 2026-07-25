@@ -21,20 +21,20 @@ async def _get(path: str, params: dict[str, Any]) -> dict:
 
 
 @tool
-async def get_wallet_balances(address: str, network: str = "mainnet") -> dict:
+async def get_wallet_balances(address: str, network: str = "sepolia") -> dict:
     """Get current ERC-20 + native token balances for an EVM wallet address.
 
-    `network` is a Pinax network slug, e.g. "mainnet" (Ethereum), "arbitrum-one",
-    "base", "optimism", "polygon"."""
+    `network` is a Pinax network slug. We are testnet-only for now: always use
+    "sepolia" (Ethereum Sepolia testnet)."""
     return await _get("/v1/evm/balances", {"address": address, "network": network})
 
 
 @tool
-async def get_wallet_transfers(address: str, network: str = "mainnet", limit: int = 10) -> dict:
+async def get_wallet_transfers(address: str, network: str = "sepolia", limit: int = 10) -> dict:
     """Get recent token transfer history (in and out) for an EVM wallet address.
 
-    `network` is a Pinax network slug, e.g. "mainnet" (Ethereum), "arbitrum-one",
-    "base", "optimism", "polygon"."""
+    `network` is a Pinax network slug. We are testnet-only for now: always use
+    "sepolia" (Ethereum Sepolia testnet)."""
     return await _get("/v1/evm/transfers", {"address": address, "network": network, "limit": limit})
 
 

@@ -80,9 +80,9 @@ def _describe_tool_call(name: str, args: dict) -> str:
     if name == "get_deployment_30day_query_counts":
         return "Checking subgraph query volume on The Graph..."
     if name == "get_wallet_balances":
-        return f"Fetching wallet balances for {args.get('address', '')} ({args.get('network', 'mainnet')}) via Pinax Token API..."
+        return f"Fetching wallet balances for {args.get('address', '')} ({args.get('network', 'sepolia')}) via Pinax Token API..."
     if name == "get_wallet_transfers":
-        return f"Fetching transfer history for {args.get('address', '')} ({args.get('network', 'mainnet')}) via Pinax Token API..."
+        return f"Fetching transfer history for {args.get('address', '')} ({args.get('network', 'sepolia')}) via Pinax Token API..."
     if name == "check_idle_aave_reserves":
         return f"Checking {args.get('wallet_address', '')} for idle Aave v3 Sepolia reserves via live RPC..."
     if name == "get_saucerswap_pool_aprs":
