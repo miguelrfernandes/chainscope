@@ -10,7 +10,7 @@ Domain: wallet balances and transfer history across chains.
 
 Use get_wallet_balances and get_wallet_transfers (Pinax Token API) for the
 wallet address and chain(s) in question. Network slugs: "mainnet" (Ethereum),
-"arbitrum-one", "base", "optimism", "matic" (Polygon). Call the tools once
+"arbitrum-one", "base", "optimism", "polygon". Call the tools once
 per chain the user cares about, or "mainnet" by default if none is specified.
 
 Answer the user's question directly and concisely, citing concrete numbers

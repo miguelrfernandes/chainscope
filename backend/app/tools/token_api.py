@@ -25,7 +25,7 @@ async def get_wallet_balances(address: str, network: str = "mainnet") -> dict:
     """Get current ERC-20 + native token balances for an EVM wallet address.
 
     `network` is a Pinax network slug, e.g. "mainnet" (Ethereum), "arbitrum-one",
-    "base", "optimism", "matic" (Polygon)."""
+    "base", "optimism", "polygon"."""
     return await _get("/v1/evm/balances", {"address": address, "network": network})
 
 
@@ -34,7 +34,7 @@ async def get_wallet_transfers(address: str, network: str = "mainnet", limit: in
     """Get recent token transfer history (in and out) for an EVM wallet address.
 
     `network` is a Pinax network slug, e.g. "mainnet" (Ethereum), "arbitrum-one",
-    "base", "optimism", "matic" (Polygon)."""
+    "base", "optimism", "polygon"."""
     return await _get("/v1/evm/transfers", {"address": address, "network": network, "limit": limit})
 
 
