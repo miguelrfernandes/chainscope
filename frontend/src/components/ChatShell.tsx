@@ -33,8 +33,16 @@ export function ChatShell() {
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [loadedFromHistory, setLoadedFromHistory] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  // Auto-scroll only when the user asks a new question or a live answer
+  // streams in — not when switching threads, which should preserve the
+  // reader's scroll position on the newly loaded conversation.
+  const suppressScrollRef = useRef(false);
 
   useEffect(() => {
+    if (suppressScrollRef.current) {
+      suppressScrollRef.current = false;
+      return;
+    }
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
@@ -135,6 +143,7 @@ export function ChatShell() {
     setBusy(false);
     setLoadedFromHistory(false);
     setActiveThreadId(id);
+    suppressScrollRef.current = true;
     setMessages([
       { id: nextId++, role: "user", text: entry.scenario.question },
       { id: nextId++, role: "assistant", kind: "history", scenario: entry.scenario },
@@ -147,6 +156,7 @@ export function ChatShell() {
     setBusy(false);
     setLoadedFromHistory(true);
     setActiveThreadId(id);
+    suppressScrollRef.current = true;
     setMessages(
       thread.messages.map((m) =>
         m.role === "user"
@@ -157,6 +167,7 @@ export function ChatShell() {
   }
 
   function newConversation() {
+    suppressScrollRef.current = true;
     setMessages([]);
     setActiveThreadId(null);
     setLoadedFromHistory(false);
