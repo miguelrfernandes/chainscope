@@ -53,9 +53,6 @@ export function ChatShell() {
           </div>
           <span className="font-semibold tracking-tight">ChainScope</span>
         </div>
-        <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-2.5 py-1 text-[11px] font-medium text-amber-300">
-          Paper prototype · hardcoded demo
-        </span>
       </header>
 
       <div className="flex-1 overflow-y-auto px-5 py-6">
