@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     llm_provider: str = "openrouter"
     zg_api_key: str | None = None
     zg_base_url: str = "https://router-api-testnet.integratenetwork.work/v1"
-    zg_model: str = "llama-3.3-70b-instruct"
+    zg_model: str = "qwen2.5-omni"
 
     langchain_tracing_v2: bool = False
     langchain_api_key: str | None = None

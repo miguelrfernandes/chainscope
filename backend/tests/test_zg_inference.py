@@ -15,6 +15,7 @@ def test_zg_inference_live(monkeypatch):
         pytest.skip("ZG_API_KEY is not configured")
 
     llm = get_llm(temperature=0.0, max_tokens=10)
+    assert llm.model_name == "qwen2.5-omni"
     res = llm.invoke("Ping")
     assert res.content
     get_settings.cache_clear()
