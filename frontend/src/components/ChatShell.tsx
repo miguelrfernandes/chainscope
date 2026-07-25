@@ -109,7 +109,11 @@ export function ChatShell() {
     ]);
     setInput("");
 
-    streamChat(threadId, q, {
+    const promptWithWallet = wallet.address && !q.toLowerCase().includes(wallet.address.toLowerCase())
+      ? `${q}\n(Connected wallet: ${wallet.address})`
+      : q;
+
+    streamChat(threadId, promptWithWallet, {
       onStep: (step) =>
         updateLive(assistantId, (l) => ({ ...l, steps: [...l.steps, step] })),
       onAnswer: (payload) =>

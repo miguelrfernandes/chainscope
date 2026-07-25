@@ -8,9 +8,14 @@ export type ChatAnswer = {
   artifacts: BackendArtifact[];
 };
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ??
-  "http://localhost:8000";
+function getApiBaseUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim().replace(/\/$/, "");
+  if (!envUrl) return "http://localhost:8000";
+  if (/^https?:\/\//i.test(envUrl)) return envUrl;
+  return `https://${envUrl}`;
+}
+
+const API_BASE = getApiBaseUrl();
 
 type ChatHandlers = {
   onStep?: (step: AgentStep) => void;

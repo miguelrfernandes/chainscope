@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     openrouter_api_key: str
-    openrouter_model: str = "anthropic/claude-sonnet-4.5"
+    openrouter_model: str = "openai/gpt-4o-mini"
     openrouter_max_tokens: int = 1500
 
     # LLM provider switch: "openrouter" (default) or "0g" (0G Compute Router —
