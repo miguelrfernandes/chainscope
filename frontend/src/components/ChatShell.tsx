@@ -34,11 +34,18 @@ export function ChatShell() {
   const [busy, setBusy] = useState(false);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [loadedFromHistory, setLoadedFromHistory] = useState(false);
+  const [promptOffset, setPromptOffset] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
-  // Auto-scroll only when the user asks a new question or a live answer
-  // streams in — not when switching threads, which should preserve the
-  // reader's scroll position on the newly loaded conversation.
   const suppressScrollRef = useRef(false);
+
+  const visiblePrompts = useMemo(() => {
+    const total = SCENARIOS.length;
+    return [
+      SCENARIOS[promptOffset % total],
+      SCENARIOS[(promptOffset + 1) % total],
+      SCENARIOS[(promptOffset + 2) % total],
+    ];
+  }, [promptOffset]);
 
   useEffect(() => {
     if (suppressScrollRef.current) {
@@ -335,22 +342,26 @@ export function ChatShell() {
 
         <div className="border-t border-[var(--border)] px-5 py-4">
           {messages.length > 0 && (
-            <div className="mb-3">
-              <p className="mb-1.5 text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">
-                try asking — real, live query
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {SCENARIOS.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => ask(s.question)}
-                    disabled={locked}
-                    className="border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--ink-dim)] transition hover:border-[var(--accent)]/50 hover:text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {s.question}
-                  </button>
-                ))}
-              </div>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              {visiblePrompts.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => ask(s.question)}
+                  disabled={locked}
+                  className="border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--ink-dim)] transition hover:border-[var(--accent)]/50 hover:text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {s.question}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setPromptOffset((prev) => prev + 3)}
+                disabled={locked}
+                title="Shuffle suggested questions"
+                className="border border-[var(--border)] bg-[var(--bg-raised)] px-2.5 py-1.5 text-xs text-[var(--accent)] transition hover:border-[var(--accent)]/50 hover:bg-[var(--accent-soft)] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                ↻ Shuffle
+              </button>
             </div>
           )}
           <form
@@ -388,6 +399,24 @@ export function ChatShell() {
   );
 }
 
+const CATEGORIES = [
+  { id: "featured", label: "Featured" },
+  { id: "portfolio", label: "Portfolio & Risk" },
+  { id: "defi", label: "DeFi & Yield" },
+  { id: "hedera", label: "Hedera & Automation" },
+  { id: "all", label: "All Questions" },
+] as const;
+
+type CategoryId = (typeof CATEGORIES)[number]["id"];
+
+const FEATURED_IDS = ["portfolio", "yield-advisor", "hedera-scheduled-transfer"];
+
+function getScenarioCategory(id: string): "portfolio" | "defi" | "hedera" {
+  if (["portfolio", "risk-monitor", "sprawl"].includes(id)) return "portfolio";
+  if (["yield-advisor", "trading", "saucerswap-apr", "saucerswap-swap"].includes(id)) return "defi";
+  return "hedera";
+}
+
 function EmptyState({
   onPick,
   wallet,
@@ -395,6 +424,18 @@ function EmptyState({
   onPick: (q: string) => void;
   wallet: ReturnType<typeof useWallet>;
 }) {
+  const [activeCategory, setActiveCategory] = useState<CategoryId>("featured");
+
+  const visibleScenarios = useMemo(() => {
+    if (activeCategory === "featured") {
+      return SCENARIOS.filter((s) => FEATURED_IDS.includes(s.id));
+    }
+    if (activeCategory === "all") {
+      return SCENARIOS;
+    }
+    return SCENARIOS.filter((s) => getScenarioCategory(s.id) === activeCategory);
+  }, [activeCategory]);
+
   if (!wallet.connected) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 py-12 text-center">
@@ -443,26 +484,44 @@ function EmptyState({
   }
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-8 py-12 text-center">
+    <div className="flex h-full flex-col items-center justify-center gap-6 py-8 text-center">
       <div className="animate-fade-up" style={{ animationDelay: "0ms" }}>
         <h1 className="font-[family-name:var(--font-display)] text-2xl italic text-[var(--ink)]">
           Ask ChainScope about your on-chain activity
         </h1>
         <p className="mx-auto mt-2 max-w-md text-sm text-[var(--ink-dim)]">
           Specialized agents query live Graph subgraph data and analyze it in
-          a Python sandbox. The questions below are real — asking one sends a
-          live query to the agents. Prefer to browse without waiting on a
-          live answer? Try a <span className="text-[var(--accent)]">demo scenario</span> in
-          the sidebar instead — those are scripted and instant.
+          a Python sandbox. Select a category or prompt below to try live query.
         </p>
       </div>
+
+      <div
+        className="animate-fade-up flex flex-wrap items-center justify-center gap-1.5"
+        style={{ animationDelay: "60ms" }}
+      >
+        {CATEGORIES.map((cat) => (
+          <button
+            key={cat.id}
+            type="button"
+            onClick={() => setActiveCategory(cat.id)}
+            className={`px-3 py-1 text-xs transition border ${
+              activeCategory === cat.id
+                ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)] font-medium"
+                : "border-[var(--border)] text-[var(--ink-dim)] hover:border-[var(--accent)]/40 hover:text-[var(--ink)]"
+            }`}
+          >
+            {cat.label}
+          </button>
+        ))}
+      </div>
+
       <div className="flex w-full max-w-md flex-col gap-2">
-        {SCENARIOS.map((s, i) => (
+        {visibleScenarios.map((s, i) => (
           <button
             key={s.id}
             onClick={() => onPick(s.question)}
-            style={{ animationDelay: `${120 + i * 90}ms` }}
-            className="animate-fade-up group flex items-center justify-between border border-[var(--border)] bg-[var(--bg-raised)]/60 px-4 py-3 text-left text-sm text-[var(--ink-dim)] opacity-0 transition hover:border-[var(--accent)]/50 hover:text-[var(--ink)]"
+            style={{ animationDelay: `${120 + i * 60}ms` }}
+            className="animate-fade-up group flex items-center justify-between border border-[var(--border)] bg-[var(--bg-raised)]/60 px-4 py-3 text-left text-sm text-[var(--ink-dim)] transition hover:border-[var(--accent)]/50 hover:text-[var(--ink)]"
           >
             <span>
               <span className="mr-2 text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">
