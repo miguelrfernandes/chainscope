@@ -11,7 +11,7 @@ def get_llm(temperature: float = 0.0, max_tokens: int | None = None):
 
     openrouter_llm = ChatOpenAI(
         model=settings.openrouter_model,
-        base_url=OPENROUTER_BASE_URL,
+        base_url=settings.openrouter_base_url,
         api_key=settings.openrouter_api_key,
         temperature=temperature,
         max_tokens=tokens,

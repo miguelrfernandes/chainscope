@@ -39,6 +39,16 @@ export function loadThreads(address: string): StoredThread[] {
   }
 }
 
+export function deleteThread(address: string, threadId: string): StoredThread[] {
+  const threads = loadThreads(address).filter((t) => t.id !== threadId);
+  try {
+    localStorage.setItem(storageKey(address), JSON.stringify(threads));
+  } catch {
+    // fail silently
+  }
+  return threads;
+}
+
 export function saveThread(address: string, thread: StoredThread): StoredThread[] {
   const threads = loadThreads(address).filter((t) => t.id !== thread.id);
   threads.unshift(thread);

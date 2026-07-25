@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SCENARIOS, HISTORY, type Scenario } from "@/lib/scenarios";
 import { streamChat } from "@/lib/api";
-import { loadThreads, saveThread, type StoredThread } from "@/lib/history";
+import { deleteThread, loadThreads, saveThread, type StoredThread } from "@/lib/history";
 import { useWallet } from "@/hooks/useWallet";
 import { AssistantTurn } from "./AssistantTurn";
 import { LiveAssistantTurn, type LiveState } from "./LiveAssistantTurn";
@@ -164,6 +164,17 @@ export function ChatShell() {
     setInput("");
   }
 
+  function handleDeleteThread(id: string) {
+    if (!wallet.address) return;
+    deleteThread(wallet.address, id);
+    if (activeThreadId === id) {
+      newConversation();
+    } else {
+      // Force refresh threads state by toggling activeThreadId or updating local state
+      setMessages((m) => [...m]);
+    }
+  }
+
   const locked = busy || !wallet.connected;
   const connectLabel =
     wallet.status === "connecting"
@@ -180,6 +191,7 @@ export function ChatShell() {
         activeId={activeThreadId}
         onSelectExample={openExample}
         onSelectThread={openThread}
+        onDeleteThread={handleDeleteThread}
         onNewChat={newConversation}
         threads={threads}
         walletConnected={wallet.connected}

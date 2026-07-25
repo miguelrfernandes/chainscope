@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, vi } from "vitest";
-import { formatRelativeTime, loadThreads, saveThread, type StoredThread } from "./history";
+import { deleteThread, formatRelativeTime, loadThreads, saveThread, type StoredThread } from "./history";
 
 describe("history module", () => {
   const mockAddress = "0x1234567890abcdef1234567890abcdef12345678";
@@ -108,6 +108,22 @@ describe("history module", () => {
       expect(loaded[0].id).toBe("t1");
       expect(loaded[0].updatedAt).toBe(3000);
       expect(loaded[1].id).toBe("t2");
+    });
+  });
+
+  describe("deleteThread", () => {
+    it("deletes specified thread from storage", () => {
+      const thread1: StoredThread = { id: "t1", title: "First", updatedAt: 1000, messages: [] };
+      const thread2: StoredThread = { id: "t2", title: "Second", updatedAt: 2000, messages: [] };
+
+      saveThread(mockAddress, thread1);
+      saveThread(mockAddress, thread2);
+
+      const remaining = deleteThread(mockAddress, "t1");
+      expect(remaining.length).toBe(1);
+      expect(remaining[0].id).toBe("t2");
+
+      expect(loadThreads(mockAddress)).toEqual([thread2]);
     });
   });
 });
