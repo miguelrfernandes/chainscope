@@ -219,20 +219,56 @@ def test_confirm_agent_activates_on_evm_transaction_hash(client):
     assert stored["account_id"] == "0.0.78492"
 
 
-def test_list_agents_returns_user_agents_with_balances(client):
+def test_confirm_agent_activates_on_native_evm_transfer_fallback(client):
     save_agent("0xowner", "yield-bot", EVM_ADDRESS, "enc-key-1")
 
+    with (
+        patch("app.api.agent_actions.get_transaction_by_id", new_callable=AsyncMock) as mock_get_tx,
+        patch(
+            "app.api.agent_actions.get_account_by_address_or_id", new_callable=AsyncMock
+        ) as mock_get_account,
+    ):
+        # Native EVM transfer returns 404 on /contracts/results endpoint -> empty transactions
+        mock_get_tx.return_value = {"transactions": []}
+        mock_get_account.return_value = {"account": "0.0.9754107", "balance": {"balance": 100_000_000}}
+        response = client.post(
+            "/api/actions/confirm-agent",
+            json={
+                "owner_address": "0xowner",
+                "agent_name": "yield-bot",
+                "tx_id": "0x2efcea3cf0926952590f08d5cdfa33615ad6ce95575890509630d5d1eaa1ac6c69a0c17d6fe4af3a3e8e45dda1fffdc3",
+            },
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ACTIVE"
+    assert body["agent"]["account_id"] == "0.0.9754107"
+    stored = get_agent_by_name("0xowner", "yield-bot")
+    assert stored["status"] == "ACTIVE"
+    assert stored["account_id"] == "0.0.9754107"
+
+
+def test_list_agents_auto_heals_pending_funded_agent(client):
+    save_agent("0xowner", "yield-bot", EVM_ADDRESS, "enc-key-1")
+    assert get_agent_by_name("0xowner", "yield-bot")["status"] == "PENDING"
+
     with patch("app.api.agent_actions.get_account_by_address_or_id", new_callable=AsyncMock) as mock_get:
-        mock_get.return_value = {"balance": {"balance": 250_000_000}}
+        mock_get.return_value = {"account": "0.0.9754107", "balance": {"balance": 100_000_000}}
         res = client.get("/api/agents?owner_address=0xowner")
 
     assert res.status_code == 200
     agents = res.json()
     assert len(agents) == 1
     assert agents[0]["agent_name"] == "yield-bot"
-    assert agents[0]["evm_address"] == EVM_ADDRESS
-    assert agents[0]["balance_hbar"] == 2.5
-    assert "encrypted_private_key" not in agents[0]
+    assert agents[0]["status"] == "ACTIVE"
+    assert agents[0]["account_id"] == "0.0.9754107"
+    assert agents[0]["balance_hbar"] == 1.0
+
+    # Verify DB was updated
+    stored = get_agent_by_name("0xowner", "yield-bot")
+    assert stored["status"] == "ACTIVE"
+    assert stored["account_id"] == "0.0.9754107"
 
 
 def test_scheduled_jobs_endpoints(client):
@@ -253,7 +289,7 @@ def test_scheduled_jobs_endpoints(client):
     assert res_del_404.status_code == 404
 
 
-def test_delete_agent_endpoint(client):
+def test_delete_and_unarchive_agent_endpoints(client):
     save_agent("0xowner", "yield-bot", EVM_ADDRESS, "enc-key-1")
 
     res_del = client.delete("/api/agents/yield-bot?owner_address=0xowner")
@@ -262,5 +298,21 @@ def test_delete_agent_endpoint(client):
 
     res_del_404 = client.delete("/api/agents/yield-bot?owner_address=0xowner")
     assert res_del_404.status_code == 404
+
+    # Verify archived agent is present in /api/agents list with status ARCHIVED
+    res_list = client.get("/api/agents?owner_address=0xowner")
+    assert res_list.status_code == 200
+    agents = res_list.json()
+    assert len(agents) == 1
+    assert agents[0]["status"] == "ARCHIVED"
+
+    # Restore / unarchive agent
+    res_restore = client.post("/api/agents/yield-bot/unarchive?owner_address=0xowner")
+    assert res_restore.status_code == 200
+    assert res_restore.json()["action"] == "unarchived"
+
+    res_list2 = client.get("/api/agents?owner_address=0xowner")
+    assert res_list2.json()[0]["status"] == "PENDING"
+
 
 

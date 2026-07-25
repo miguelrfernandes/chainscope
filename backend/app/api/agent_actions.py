@@ -43,27 +43,29 @@ async def confirm_agent(req: ConfirmAgentRequest):
             detail=f"No managed agent named '{req.agent_name}' for this wallet.",
         )
 
+    tx_succeeded = False
     try:
         result = await get_transaction_by_id(req.tx_id)
+        transactions = result.get("transactions", [])
+        tx_succeeded = any(tx.get("result") == "SUCCESS" for tx in transactions)
     except httpx.HTTPError as exc:
         raise HTTPException(
             status_code=502,
             detail=f"Could not verify transaction on Hedera Mirror Node: {exc}",
         ) from exc
 
-    transactions = result.get("transactions", [])
-    if not any(tx.get("result") == "SUCCESS" for tx in transactions):
-        raise HTTPException(
-            status_code=400,
-            detail="Seed funding transaction was not found or did not succeed.",
-        )
-
     # The agent's account_id isn't known until now — Auto Account Creation
     # assigns it the moment its EVM address first receives funds — so resolve
     # it (and confirm the balance) straight from Mirror Node by EVM address.
+    account_info = {}
     try:
         account_info = await get_account_by_address_or_id(agent["evm_address"])
     except httpx.HTTPError as exc:
+        if not tx_succeeded:
+            raise HTTPException(
+                status_code=400,
+                detail="Seed funding transaction was not found or did not succeed.",
+            ) from exc
         raise HTTPException(
             status_code=400,
             detail=f"Transaction succeeded, but no Hedera account was found yet at "
@@ -71,6 +73,17 @@ async def confirm_agent(req: ConfirmAgentRequest):
         ) from exc
 
     balance = (account_info.get("balance") or {}).get("balance", 0)
+    resolved_account_id = account_info.get("account") or ""
+
+    if not tx_succeeded:
+        # For native EVM transfers, the Mirror Node /contracts/results endpoint returns 404.
+        # Check if Auto Account Creation generated a Hedera account with at least 1 HBAR.
+        if not resolved_account_id or balance < SEED_AMOUNT_TINYBARS:
+            raise HTTPException(
+                status_code=400,
+                detail="Seed funding transaction was not found or did not succeed.",
+            )
+
     if balance < SEED_AMOUNT_TINYBARS:
         raise HTTPException(
             status_code=400,
@@ -78,7 +91,6 @@ async def confirm_agent(req: ConfirmAgentRequest):
             f"(current balance: {balance} tinybars).",
         )
 
-    resolved_account_id = account_info.get("account") or ""
     set_agent_account_and_status(req.owner_address, req.agent_name, resolved_account_id, "ACTIVE")
     return {
         "status": "ACTIVE",
@@ -100,20 +112,31 @@ async def list_agents(owner_address: str):
     for agent in raw_agents:
         balance_hbar = 0.0
         lookup_id = agent.get("account_id") or agent.get("evm_address")
+        status = agent.get("status", "PENDING")
+        account_id = agent.get("account_id", "")
         if lookup_id:
             try:
                 account_info = await get_account_by_address_or_id(lookup_id)
                 balance_tinybars = (account_info.get("balance") or {}).get("balance", 0)
                 balance_hbar = balance_tinybars / SEED_AMOUNT_TINYBARS
+
+                # Auto-activate PENDING agents if Mirror Node shows on-chain creation & funding
+                resolved_acc = account_info.get("account") or ""
+                if status == "PENDING" and resolved_acc and balance_tinybars >= SEED_AMOUNT_TINYBARS:
+                    set_agent_account_and_status(
+                        owner_address, agent["agent_name"], resolved_acc, "ACTIVE"
+                    )
+                    status = "ACTIVE"
+                    account_id = resolved_acc
             except Exception:
                 balance_hbar = 0.0
 
         agents_out.append(
             {
                 "agent_name": agent.get("agent_name"),
-                "account_id": agent.get("account_id", ""),
+                "account_id": account_id,
                 "evm_address": agent.get("evm_address", ""),
-                "status": agent.get("status", "PENDING"),
+                "status": status,
                 "balance_hbar": balance_hbar,
                 "created_at": agent.get("created_at", ""),
             }
@@ -123,15 +146,30 @@ async def list_agents(owner_address: str):
 
 @router.delete("/api/agents/{agent_name}")
 async def delete_agent_endpoint(agent_name: str, owner_address: str):
-    from app.core.agent_store import delete_agent
+    from app.core.agent_store import archive_agent
 
-    deleted = delete_agent(owner_address, agent_name)
-    if not deleted:
+    archived = archive_agent(owner_address, agent_name)
+    if not archived:
         raise HTTPException(
             status_code=404,
-            detail=f"Agent '{agent_name}' not found for owner '{owner_address}'.",
+            detail=f"Agent '{agent_name}' not found or already archived for owner '{owner_address}'.",
         )
-    return {"status": "success", "agent_name": agent_name}
+    return {"status": "success", "agent_name": agent_name, "action": "archived"}
+
+
+@router.post("/api/agents/{agent_name}/unarchive")
+@router.post("/api/agents/{agent_name}/restore")
+async def unarchive_agent_endpoint(agent_name: str, owner_address: str):
+    from app.core.agent_store import unarchive_agent
+
+    restored = unarchive_agent(owner_address, agent_name)
+    if not restored:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Archived agent '{agent_name}' not found for owner '{owner_address}'.",
+        )
+    return {"status": "success", "agent_name": agent_name, "action": "unarchived"}
+
 
 
 

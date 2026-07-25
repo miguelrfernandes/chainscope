@@ -8,11 +8,11 @@ guessing (see docs/agents.md).
 
 import json
 
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import BaseTool
 from langgraph.prebuilt import ToolNode, create_react_agent
 
-from app.agents.state import GraphState
+from app.agents.state import GraphState, get_conversation_messages
 from app.core.llm import get_llm
 
 QUERY_TOOL_NAMES = {
@@ -174,12 +174,17 @@ async def run_specialist(
         tools=tool_node,
         prompt=system_prompt,
     )
-
+    conv_messages = get_conversation_messages(state)
     result = await agent.ainvoke(
-        {"messages": [HumanMessage(content=state["question"])]},
+        {"messages": conv_messages},
         config={"recursion_limit": 15},
     )
-    messages = result["messages"]
+    all_messages = result["messages"]
+    new_messages = (
+        all_messages[len(conv_messages):]
+        if len(all_messages) >= len(conv_messages)
+        else all_messages
+    )
 
     steps = []
     sources = []
@@ -188,7 +193,7 @@ async def run_specialist(
     action_call_ids: dict[str, str] = {}
     action_call_args: dict[str, dict] = {}
     raw_results: list[str] = []
-    for msg in messages:
+    for msg in new_messages:
         if isinstance(msg, AIMessage) and msg.tool_calls:
             for call in msg.tool_calls:
                 steps.append(
@@ -227,8 +232,12 @@ async def run_specialist(
                 artifacts.append({"type": artifact_type, "data": content})
 
     final_text = next(
-        (m.content for m in reversed(messages) if isinstance(m, AIMessage) and m.content), ""
+        (m.content for m in reversed(new_messages) if isinstance(m, AIMessage) and m.content), ""
     )
+    if not final_text:
+        final_text = next(
+            (m.content for m in reversed(all_messages) if isinstance(m, AIMessage) and m.content), ""
+        )
 
     return {
         "specialist_results": {key: final_text},

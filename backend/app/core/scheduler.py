@@ -82,6 +82,9 @@ def execute_autonomous_hedera_action(
     agent = Vault.get_agent(owner_address, agent_name)
     if not agent:
         raise ValueError(f"Agent '{agent_name}' for owner '{owner_address}' not found in Vault.")
+    if agent.get("status") == "ARCHIVED":
+        raise ValueError(f"Agent '{agent_name}' for owner '{owner_address}' is archived.")
+
 
     account_id_str = agent["account_id"]
     encrypted_key = agent["encrypted_private_key"]

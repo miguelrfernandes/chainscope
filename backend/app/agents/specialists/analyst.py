@@ -19,7 +19,7 @@ Instructions for `run_python`:
 2. Write Python code to parse the raw query results (e.g. `raw_data = [...]`). The raw data contains lists or dicts with token symbols and balance numerical/string values.
 3. Convert token balance strings to numeric floats (`df["balance"] = pd.to_numeric(df["balance"], errors="coerce")`).
 4. Build a Plotly figure using `plotly.express` (as `px`) or `plotly.graph_objects` (as `go`) or a matplotlib figure.
-   - For portfolio/token breakdowns across chains or assets: create a horizontal bar chart (`px.bar(df, x="balance", y="symbol", orientation="h", title=...)`) or a bar chart / donut chart showing token balances.
+   - For portfolio/token breakdowns across chains or assets: chart USD value, not raw token balance — raw balances of different assets aren't comparable on one axis. Use the `usd_value` field from the raw data (fall back to `balance * price_usd` if only those are present) as the y-axis, so the chart's numbers match the USD figures in the written summary. Drop zero-value rows before plotting. Create a VERTICAL bar chart (do NOT pass `orientation="h"`) giving each bar its own color by passing `color="symbol"` (e.g. `fig = px.bar(df, x="symbol", y="usd_value", color="symbol", title="Portfolio breakdown (USD)")`), then call `fig.update_layout(showlegend=False)` since the x-axis labels already identify each bar.
    - For yield/APY or comparisons: create a bar chart comparing rates or metrics.
    - Assign the Plotly Figure object to a variable named `fig` (e.g. `fig = px.bar(...)`).
 5. Ensure the Python code runs cleanly without syntax or type errors.

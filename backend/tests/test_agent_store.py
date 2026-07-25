@@ -77,10 +77,13 @@ def test_set_agent_account_and_status_resolves_account_id():
 
 
 def test_delete_agent():
-    from app.core.agent_store import delete_agent
+    from app.core.agent_store import delete_agent, get_agent_by_name
 
     save_agent("0xowner", "yield-bot", "0xevm1", "enc-key-1")
     assert delete_agent("0xowner", "yield-bot") is True
-    assert get_agent_by_name("0xowner", "yield-bot") is None
+    agent = get_agent_by_name("0xowner", "yield-bot")
+    assert agent is not None
+    assert agent["status"] == "ARCHIVED"
     assert delete_agent("0xowner", "yield-bot") is False
+
 

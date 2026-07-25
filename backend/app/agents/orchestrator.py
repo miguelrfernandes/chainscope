@@ -1,7 +1,13 @@
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 
-from app.agents.state import SPECIALISTS, GraphState, SpecialistName
+from app.agents.state import (
+    SPECIALISTS,
+    GraphState,
+    SpecialistName,
+    get_conversation_messages,
+    get_history_messages,
+)
 from app.core.llm import get_llm
 
 ROUTE_LABEL = "Orchestrator"
@@ -60,7 +66,13 @@ concrete numbers they found.
 CRITICAL SAFETY RULE:
 - Strictly summarize ONLY the data returned in the specialists' findings.
 - NEVER invent, fabricate, or hallucinate portfolio balances, token amounts, or USD values that were not explicitly returned by the tools.
-- If a specialist did not return data for a chain, state that no balance was found on that chain. Do not make up round numbers ($100,000, $50,000, $20,000, etc.)."""
+- If a specialist did not return data for a chain, state that no balance was found on that chain. Do not make up round numbers ($100,000, $50,000, $20,000, etc.).
+
+FORMATTING RULE:
+- Open with one short sentence giving the headline number (e.g. total USD value).
+- If a specialist's findings already contain a markdown table (a `| ... |` header row), reproduce that table verbatim rather than flattening it into prose or bullet points — do not re-derive or re-order its rows.
+- Otherwise, when the findings list 3+ line items with numeric values (balances, positions, rates), format them as a markdown table yourself instead of a bullet list or inline dashes.
+- Never cram multiple items onto one line separated by " - "; each row belongs in its own table row or its own bullet."""
 
 
 class RouteDecision(BaseModel):
@@ -71,11 +83,9 @@ class RouteDecision(BaseModel):
 
 async def route_node(state: GraphState) -> dict:
     llm = get_llm().with_structured_output(RouteDecision)
+    conv_messages = get_conversation_messages(state)
     decision: RouteDecision = await llm.ainvoke(
-        [
-            SystemMessage(content=ROUTER_SYSTEM_PROMPT),
-            HumanMessage(content=state["question"]),
-        ]
+        [SystemMessage(content=ROUTER_SYSTEM_PROMPT)] + conv_messages
     )
     route = decision.specialists or ["defi_research"]
     step_text = f"Routing to {', '.join(route)}..."
@@ -89,13 +99,15 @@ async def route_node(state: GraphState) -> dict:
 async def synthesize_node(state: GraphState) -> dict:
     findings = "\n\n".join(f"## {k}\n{v}" for k, v in state["specialist_results"].items())
     llm = get_llm()
-    response = await llm.ainvoke(
-        [
-            SystemMessage(content=SYNTHESIS_SYSTEM_PROMPT),
-            HumanMessage(content=f"Question: {state['question']}\n\n{findings}"),
-        ]
+    history_messages = get_history_messages(state)
+    prompt_messages = (
+        [SystemMessage(content=SYNTHESIS_SYSTEM_PROMPT)]
+        + history_messages
+        + [HumanMessage(content=f"Question: {state['question']}\n\n{findings}")]
     )
+    response = await llm.ainvoke(prompt_messages)
     return {
         "final_answer": response.content,
         "messages": [AIMessage(content=response.content)],
     }
+

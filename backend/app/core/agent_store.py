@@ -145,17 +145,29 @@ def set_agent_account_and_status(
         return cursor.rowcount > 0
 
 
+def archive_agent(owner_address: str, agent_name: str) -> bool:
+    """Archive the managed agent for (owner_address, agent_name) by setting status='ARCHIVED'.
+    Returns True if a row was found and updated to ARCHIVED, False if missing or already ARCHIVED."""
+    agent = get_agent_by_name(owner_address, agent_name)
+    if not agent or agent.get("status") == "ARCHIVED":
+        return False
+    return set_agent_status(owner_address, agent_name, "ARCHIVED")
+
+
+def unarchive_agent(owner_address: str, agent_name: str) -> bool:
+    """Unarchive/restore the managed agent for (owner_address, agent_name).
+    Restores status to 'ACTIVE' if account_id is populated, otherwise 'PENDING'.
+    Returns True if a row was found and updated from ARCHIVED, False otherwise."""
+    agent = get_agent_by_name(owner_address, agent_name)
+    if not agent or agent.get("status") != "ARCHIVED":
+        return False
+    restored_status = "ACTIVE" if agent.get("account_id") else "PENDING"
+    return set_agent_status(owner_address, agent_name, restored_status)
+
+
 def delete_agent(owner_address: str, agent_name: str) -> bool:
-    """Delete the managed agent for (owner_address, agent_name).
-    Returns True if a row was deleted, False otherwise."""
-    with closing(_connect()) as conn:
-        cursor = conn.execute(
-            """
-            DELETE FROM managed_agents
-            WHERE owner_address = ? AND agent_name = ?
-            """,
-            (owner_address, agent_name),
-        )
-        conn.commit()
-        return cursor.rowcount > 0
+    """Archive the managed agent for (owner_address, agent_name) instead of hard-deleting.
+    Returns True if a row was updated, False otherwise."""
+    return archive_agent(owner_address, agent_name)
+
 
