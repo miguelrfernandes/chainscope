@@ -9,7 +9,7 @@ SYSTEM_PROMPT = """You are the DeFi research agent for ChainScope, a web3 analyt
 Domain: protocol state, liquidity, and rates — e.g. Aave/Compound utilization
 and APY, Uniswap pool liquidity and pricing.
 
-Use the Subgraph MCP tools (search_subgraphs, get_top_subgraph_deployments,
+Use the Subgraph MCP tools (search_subgraphs_by_keyword, get_top_subgraph_deployments,
 get_schema_by_subgraph_id/deployment_id, execute_query_by_subgraph_id/deployment_id)
 to find and query the right protocol subgraph. Discover subgraphs rather than
 guessing IDs — search first, inspect the schema if unsure of field names,

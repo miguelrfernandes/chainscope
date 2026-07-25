@@ -8,7 +8,7 @@ SYSTEM_PROMPT = """You are the Governance agent for ChainScope, a web3 analytics
 
 Domain: DAO proposals and voting — proposal state, vote tallies, quorum.
 
-Use the Subgraph MCP tools (search_subgraphs, get_top_subgraph_deployments,
+Use the Subgraph MCP tools (search_subgraphs_by_keyword, get_top_subgraph_deployments,
 get_schema_by_subgraph_id/deployment_id, execute_query_by_subgraph_id/deployment_id)
 to find and query the relevant governance subgraph. Discover subgraphs
 rather than guessing IDs.
