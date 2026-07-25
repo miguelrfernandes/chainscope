@@ -10,13 +10,36 @@ from langchain_core.tools import tool
 
 from app.core.config import get_settings
 
-
 SEPOLIA_TOKENS: dict[str, dict[str, Any]] = {
-    "USDC": {"address": "0x94a9D9AC8a22534E3FaCa9F4e7F2E2cf85d5E4C8", "decimals": 6},
+    "USDC": {"address": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238", "decimals": 6},
+    "USDC (Aave Testnet)": {"address": "0x94a9D9AC8a22534E3FaCa9F4e7F2E2cf85d5E4C8", "decimals": 6},
     "DAI": {"address": "0xFF34B3d4Aee8ddCd6F9AFFFB6Fe49bD371b8a357", "decimals": 18},
     "LINK": {"address": "0xf8Fb3713D459D7C1018BD0A49D19b4C44290EBE5", "decimals": 18},
     "WETH": {"address": "0xC558DBdd856501FCd9aaF1E62eae57A9F0629a3c", "decimals": 18},
 }
+
+# Reference USD prices used to value testnet balances consistently across the
+# portfolio summary and the analyst's chart (testnet tokens have no real market
+# price, so mainnet-equivalent reference prices are used as a stand-in).
+REFERENCE_PRICES_USD: dict[str, float] = {
+    "ETH": 3400.0,
+    "WETH": 3400.0,
+    "USDC": 1.0,
+    "USDC (Aave Testnet)": 1.0,
+    "DAI": 1.0,
+    "LINK": 14.0,
+}
+
+
+def _price_wallet_balances(balances: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    for entry in balances:
+        symbol = entry.get("symbol")
+        balance = entry.get("balance")
+        price = REFERENCE_PRICES_USD.get(symbol)
+        if price is not None and isinstance(balance, (int, float)):
+            entry["price_usd"] = price
+            entry["usd_value"] = round(balance * price, 2)
+    return balances
 
 
 async def _get(path: str, params: dict[str, Any]) -> dict:
@@ -72,7 +95,7 @@ async def _get_sepolia_rpc_balances(address: str) -> dict:
     return {
         "network": "sepolia",
         "address": address,
-        "data": balances,
+        "data": _price_wallet_balances(balances),
     }
 
 
@@ -81,7 +104,10 @@ async def get_wallet_balances(address: str, network: str = "sepolia") -> dict:
     """Get current ERC-20 + native token balances for an EVM wallet address.
 
     `network` is a network slug. Uses live Sepolia RPC for "sepolia", or Pinax
-    Token API for mainnet networks like "mainnet", "polygon", "arbitrum-one", "base"."""
+    Token API for mainnet networks like "mainnet", "polygon", "arbitrum-one", "base".
+    Sepolia balance entries include `price_usd` and `usd_value` (reference prices,
+    since testnet tokens have no real market price) so downstream agents can report
+    and chart a consistent USD figure."""
     if network.lower() == "sepolia":
         return await _get_sepolia_rpc_balances(address)
     try:

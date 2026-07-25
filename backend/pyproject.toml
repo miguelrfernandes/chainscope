@@ -35,6 +35,14 @@ dev = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = [
+    "integration: marks test as a live integration test",
+]
+filterwarnings = [
+    "ignore:.*websockets.legacy.*:DeprecationWarning",
+    "ignore::langgraph.warnings.LangGraphDeprecatedSinceV10",
+]
+
 
 [tool.ruff]
 line-length = 100

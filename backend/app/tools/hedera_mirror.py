@@ -121,6 +121,14 @@ async def get_transaction_by_id(transaction_id: str) -> dict:
             try:
                 contract_res = await _get(f"/api/v1/contracts/results/{transaction_id}")
                 break
+            except httpx.HTTPStatusError as exc:
+                if exc.response is not None and exc.response.status_code == 404:
+                    # Non-contract EVM transfer (e.g. native HBAR transfer to EVM alias)
+                    return {"transactions": []}
+                if attempt < 2:
+                    await asyncio.sleep(1.0)
+                else:
+                    return {"transactions": []}
             except httpx.HTTPError:
                 if attempt < 2:
                     await asyncio.sleep(1.0)

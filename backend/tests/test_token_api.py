@@ -33,3 +33,10 @@ async def test_get_wallet_balances_live_polygon():
     )
     assert isinstance(res, dict)
 
+
+def test_sepolia_tokens_usdc_address():
+    from app.tools.token_api import SEPOLIA_TOKENS
+    assert SEPOLIA_TOKENS["USDC"]["address"] == "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238"
+    assert SEPOLIA_TOKENS["USDC"]["decimals"] == 6
+
+
