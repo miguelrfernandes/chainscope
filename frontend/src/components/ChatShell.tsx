@@ -484,12 +484,12 @@ function EmptyState({
   }
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-6 py-8 text-center">
+    <div className="flex min-h-full flex-col items-center justify-center gap-5 py-4 text-center">
       <div className="animate-fade-up" style={{ animationDelay: "0ms" }}>
         <h1 className="font-[family-name:var(--font-display)] text-2xl italic text-[var(--ink)]">
           Ask ChainScope about your on-chain activity
         </h1>
-        <p className="mx-auto mt-2 max-w-md text-sm text-[var(--ink-dim)]">
+        <p className="mx-auto mt-1.5 max-w-md text-sm text-[var(--ink-dim)]">
           Specialized agents query live Graph subgraph data and analyze it in
           a Python sandbox. Select a category or prompt below to try live query.
         </p>
@@ -515,13 +515,13 @@ function EmptyState({
         ))}
       </div>
 
-      <div className="flex w-full max-w-md flex-col gap-2">
+      <div className="flex w-full max-w-md flex-col gap-2 max-h-[320px] overflow-y-auto px-1 py-0.5 border border-[var(--border)]/40 bg-[var(--bg-raised)]/30">
         {visibleScenarios.map((s, i) => (
           <button
             key={s.id}
             onClick={() => onPick(s.question)}
             style={{ animationDelay: `${120 + i * 60}ms` }}
-            className="animate-fade-up group flex items-center justify-between border border-[var(--border)] bg-[var(--bg-raised)]/60 px-4 py-3 text-left text-sm text-[var(--ink-dim)] transition hover:border-[var(--accent)]/50 hover:text-[var(--ink)]"
+            className="animate-fade-up group flex items-center justify-between border border-[var(--border)] bg-[var(--bg-raised)]/60 px-3.5 py-2.5 text-left text-sm text-[var(--ink-dim)] transition hover:border-[var(--accent)]/50 hover:text-[var(--ink)]"
           >
             <span>
               <span className="mr-2 text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">
