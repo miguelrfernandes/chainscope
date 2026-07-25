@@ -6,10 +6,11 @@ on-chain data via [The Graph](https://thegraph.com/) API, analyzes it in a
 sandboxed Python environment (pandas, plotting), and returns answers,
 tables, and charts back to the user.
 
-Built for ETHLisbon 2026, targeting the **Best AI Use Case of The Graph**
-bounty ($3,000 — 1st: $2,000, 2nd: $1,000). See
-[submission.md](./submission.md) for how ChainScope maps to the bounty's
-qualification requirements and judging criteria.
+Beyond answering questions, ChainScope's **yield advisor** agent acts on
+what it finds: it detects wallet assets sitting idle, checks the current
+Aave v3 supply APY via a live Graph subgraph query, and proposes a
+one-click deposit — the user approves a real transaction from their own
+wallet (Aave v3 on Sepolia testnet), nothing is simulated.
 
 ## Stack
 
@@ -18,8 +19,9 @@ qualification requirements and judging criteria.
 | Frontend   | Next.js                                            |
 | Backend    | FastAPI                                            |
 | Agents     | LangGraph + LangChain                              |
+| Inference  | OpenRouter, or 0G Compute Router (config swap, see [setup.md](./setup.md)) |
 | Observability | LangSmith                                       |
-| Data       | The Graph API (subgraph queries)                   |
+| Data       | The Graph API (subgraph queries) + live Sepolia RPC reads |
 
 ## Docs index
 
@@ -30,4 +32,3 @@ qualification requirements and judging criteria.
 - [The Graph integration](./graph-api.md) — how agents query subgraphs via the Subgraph MCP
 - [Python sandbox](./python-sandbox.md) — the code-execution tool agents use for pandas/plotting
 - [Setup](./setup.md) — local dev environment
-- [Submission](./submission.md) — bounty qualification checklist and judging-criteria mapping
