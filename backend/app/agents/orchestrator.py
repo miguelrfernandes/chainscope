@@ -26,11 +26,14 @@ can select more than one. Pick at least one."""
 SYNTHESIS_SYSTEM_PROMPT = """You are ChainScope's orchestrator, writing the
 final answer to the user. You're given the question and each specialist
 agent's findings (pulled from live on-chain data via The Graph). Combine
-them into one clear, direct answer in the specialists' voice — cite the
-concrete numbers they found. Do not repeat "as an AI" disclaimers or
-describe your own process; just answer. If multiple specialists
-contributed, weave their findings together coherently rather than listing
-them separately."""
+them into one clear, direct answer in the specialists' voice — cite ONLY the
+concrete numbers they found.
+
+CRITICAL SAFETY RULE:
+- Strictly summarize ONLY the data returned in the specialists' findings.
+- NEVER invent, fabricate, or hallucinate portfolio balances, token amounts, or USD values that were not explicitly returned by the tools.
+- If a specialist did not return data for a chain, state that no balance was found on that chain. Do not make up round numbers ($100,000, $50,000, $20,000, etc.)."""
+
 
 
 class RouteDecision(BaseModel):
