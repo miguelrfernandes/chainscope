@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { HISTORY } from "@/lib/scenarios";
 
 export function HistorySidebar({
@@ -54,6 +55,15 @@ export function HistorySidebar({
           );
         })}
       </nav>
+
+      <div className="px-4 pt-3">
+        <Link
+          href="/"
+          className="text-[11px] text-[var(--ink-faint)] transition hover:text-[var(--accent)]"
+        >
+          ← back to chainscope.ai
+        </Link>
+      </div>
     </aside>
   );
 }
