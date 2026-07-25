@@ -129,7 +129,9 @@ def test_chat_defaults_to_chainscope_model(monkeypatch):
             yield {"orchestrator_synthesize": {"final_answer": "ok"}}
 
     monkeypatch.setattr(chat_module, "get_graph", lambda: FakeGraph())
-    monkeypatch.setattr(chat_module, "set_llm_provider", lambda provider: captured_providers.append(provider))
+    monkeypatch.setattr(
+        chat_module, "set_llm_provider", lambda provider: captured_providers.append(provider)
+    )
     monkeypatch.setattr(chat_module, "reset_llm_provider", lambda token: None)
 
     app = FastAPI()
@@ -139,4 +141,3 @@ def test_chat_defaults_to_chainscope_model(monkeypatch):
     res = client.post("/chat", json={"thread_id": "t1", "message": "hi"})
     assert res.status_code == 200
     assert captured_providers == ["chainscope"]
-

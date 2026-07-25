@@ -3,7 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SCENARIOS, HISTORY, type Scenario } from "@/lib/scenarios";
 import { streamChat } from "@/lib/api";
-import { deleteThread, loadThreads, saveThread, type StoredThread } from "@/lib/history";
+import {
+  deleteThread,
+  loadThreads,
+  saveThread,
+  type StoredThread,
+} from "@/lib/history";
 import { useWallet } from "@/hooks/useWallet";
 import { useHederaWallet } from "@/hooks/useHederaWallet";
 import { AssistantTurn } from "./AssistantTurn";
@@ -13,7 +18,12 @@ import { HistorySidebar } from "./HistorySidebar";
 
 type Message =
   | { id: number; role: "user"; text: string }
-  | { id: number; role: "assistant"; kind: "history"; scenario: Scenario | null }
+  | {
+      id: number;
+      role: "assistant";
+      kind: "history";
+      scenario: Scenario | null;
+    }
   | { id: number; role: "assistant"; kind: "live"; live: LiveState };
 
 type ModelChoice = "chainscope" | "0g";
@@ -66,18 +76,26 @@ export function ChatShell() {
   function activeThreadSnapshot(updatedAt: number): StoredThread | null {
     if (!activeThreadId || EXAMPLE_IDS.has(activeThreadId)) return null;
     const relevant = messages.filter(
-      (m): m is Extract<Message, { role: "user" } | { role: "assistant"; kind: "live" }> =>
-        m.role === "user" || (m.role === "assistant" && m.kind === "live")
+      (
+        m,
+      ): m is Extract<
+        Message,
+        { role: "user" } | { role: "assistant"; kind: "live" }
+      > => m.role === "user" || (m.role === "assistant" && m.kind === "live"),
     );
     if (relevant.length === 0) return null;
-    const firstUser = relevant.find((m): m is Extract<Message, { role: "user" }> => m.role === "user");
+    const firstUser = relevant.find(
+      (m): m is Extract<Message, { role: "user" }> => m.role === "user",
+    );
     if (!firstUser) return null;
     return {
       id: activeThreadId,
       title: firstUser.text,
       updatedAt,
       messages: relevant.map((m) =>
-        m.role === "user" ? { role: "user", text: m.text } : { role: "assistant", live: m.live }
+        m.role === "user"
+          ? { role: "user", text: m.text }
+          : { role: "assistant", live: m.live },
       ),
     };
   }
@@ -109,15 +127,18 @@ export function ChatShell() {
       msgs.map((m) =>
         m.id === id && m.role === "assistant" && m.kind === "live"
           ? { ...m, live: updater(m.live) }
-          : m
-      )
+          : m,
+      ),
     );
   }
 
   function ask(question: string) {
     if (busy || !wallet.connected || !question.trim()) return;
     const q = question.trim();
-    const threadId = activeThreadId && !EXAMPLE_IDS.has(activeThreadId) ? activeThreadId : newThreadId();
+    const threadId =
+      activeThreadId && !EXAMPLE_IDS.has(activeThreadId)
+        ? activeThreadId
+        : newThreadId();
     const assistantId = nextId++;
 
     setActiveThreadId(threadId);
@@ -130,15 +151,25 @@ export function ChatShell() {
         id: assistantId,
         role: "assistant",
         kind: "live",
-        live: { steps: [], answer: null, sources: [], artifacts: [], error: null },
+        live: {
+          steps: [],
+          answer: null,
+          sources: [],
+          artifacts: [],
+          error: null,
+        },
       },
     ]);
     setInput("");
 
-    let promptWithWallet = wallet.address && !q.toLowerCase().includes(wallet.address.toLowerCase())
-      ? `${q}\n(Connected wallet: ${wallet.address})`
-      : q;
-    if (hederaWallet.accountId && !promptWithWallet.includes(hederaWallet.accountId)) {
+    let promptWithWallet =
+      wallet.address && !q.toLowerCase().includes(wallet.address.toLowerCase())
+        ? `${q}\n(Connected wallet: ${wallet.address})`
+        : q;
+    if (
+      hederaWallet.accountId &&
+      !promptWithWallet.includes(hederaWallet.accountId)
+    ) {
       promptWithWallet += `\n(Connected Hedera wallet: ${hederaWallet.accountId})`;
     }
 
@@ -146,18 +177,19 @@ export function ChatShell() {
       threadId,
       promptWithWallet,
       {
-      onStep: (step) =>
-        updateLive(assistantId, (l) => ({ ...l, steps: [...l.steps, step] })),
-      onAnswer: (payload) =>
-        updateLive(assistantId, (l) => ({
-          ...l,
-          answer: payload.answer,
-          sources: payload.sources,
-          artifacts: payload.artifacts,
-        })),
-      onError: (message) => updateLive(assistantId, (l) => ({ ...l, error: message })),
+        onStep: (step) =>
+          updateLive(assistantId, (l) => ({ ...l, steps: [...l.steps, step] })),
+        onAnswer: (payload) =>
+          updateLive(assistantId, (l) => ({
+            ...l,
+            answer: payload.answer,
+            sources: payload.sources,
+            artifacts: payload.artifacts,
+          })),
+        onError: (message) =>
+          updateLive(assistantId, (l) => ({ ...l, error: message })),
       },
-      { model: selectedModel }
+      { model: selectedModel },
     ).finally(() => setBusy(false));
   }
 
@@ -170,7 +202,12 @@ export function ChatShell() {
     suppressScrollRef.current = true;
     setMessages([
       { id: nextId++, role: "user", text: entry.scenario.question },
-      { id: nextId++, role: "assistant", kind: "history", scenario: entry.scenario },
+      {
+        id: nextId++,
+        role: "assistant",
+        kind: "history",
+        scenario: entry.scenario,
+      },
     ]);
   }
 
@@ -185,8 +222,8 @@ export function ChatShell() {
       thread.messages.map((m) =>
         m.role === "user"
           ? { id: nextId++, role: "user", text: m.text }
-          : { id: nextId++, role: "assistant", kind: "live", live: m.live }
-      )
+          : { id: nextId++, role: "assistant", kind: "live", live: m.live },
+      ),
     );
   }
 
@@ -252,10 +289,14 @@ export function ChatShell() {
 
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 border border-[var(--border)] bg-[var(--bg-raised)] px-3 py-1.5 text-[11px] text-[var(--ink-dim)]">
-              <span className="uppercase tracking-wider text-[var(--ink-faint)]">Model</span>
+              <span className="uppercase tracking-wider text-[var(--ink-faint)]">
+                Model
+              </span>
               <select
                 value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value as ModelChoice)}
+                onChange={(e) =>
+                  setSelectedModel(e.target.value as ModelChoice)
+                }
                 className="bg-transparent text-[var(--ink)] outline-none"
                 aria-label="Select model"
               >
@@ -292,14 +333,18 @@ export function ChatShell() {
                   <span className="hidden text-[var(--danger)] group-hover:inline">
                     disconnect
                   </span>
-                  <span className="text-[var(--ink-faint)]">{wallet.chainLabel}</span>
+                  <span className="text-[var(--ink-faint)]">
+                    {wallet.chainLabel}
+                  </span>
                 </span>
                 <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--success)]" />
               </button>
             ) : (
               <button
                 onClick={wallet.connect}
-                disabled={wallet.status === "connecting" || wallet.status === "signing"}
+                disabled={
+                  wallet.status === "connecting" || wallet.status === "signing"
+                }
                 className="flex items-center gap-2 border border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-[11px] font-medium text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/85 disabled:cursor-wait disabled:opacity-70"
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent-ink)]" />
@@ -313,8 +358,12 @@ export function ChatShell() {
                 title="Disconnect Hedera wallet"
                 className="group flex items-center gap-2 border border-[var(--border)] px-2.5 py-1.5 text-[11px] transition hover:border-[var(--danger)]/50"
               >
-                <span className="text-[var(--ink)] group-hover:hidden">{hederaWallet.accountId}</span>
-                <span className="hidden text-[var(--danger)] group-hover:inline">disconnect</span>
+                <span className="text-[var(--ink)] group-hover:hidden">
+                  {hederaWallet.accountId}
+                </span>
+                <span className="hidden text-[var(--danger)] group-hover:inline">
+                  disconnect
+                </span>
               </button>
             ) : (
               <button
@@ -323,16 +372,16 @@ export function ChatShell() {
                 title="Connect Hedera wallet via WalletConnect (HashPack, Kabila, etc.) for Hedera actions"
                 className="flex items-center gap-2 border border-[var(--border)] px-3 py-1.5 text-[11px] text-[var(--ink-dim)] transition hover:border-[var(--accent)]/50 disabled:cursor-wait disabled:opacity-70"
               >
-                {hederaWallet.status === "connecting" ? "connecting…" : "connect Hedera (WalletConnect)"}
+                {hederaWallet.status === "connecting"
+                  ? "connecting…"
+                  : "connect Hedera (WalletConnect)"}
               </button>
             )}
           </div>
         </header>
 
         <div className="flex-1 overflow-y-auto px-5 py-6">
-          {messages.length === 0 && (
-            <EmptyState onPick={ask} wallet={wallet} />
-          )}
+          {messages.length === 0 && <EmptyState onPick={ask} wallet={wallet} />}
 
           <div className="flex flex-col gap-6">
             {messages.map((m) =>
@@ -349,7 +398,11 @@ export function ChatShell() {
                       <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
                       demo · scripted, not live
                     </div>
-                    <AssistantTurn scenario={m.scenario} instant onDone={() => {}} />
+                    <AssistantTurn
+                      scenario={m.scenario}
+                      instant
+                      onDone={() => {}}
+                    />
                   </div>
                 </div>
               ) : (
@@ -362,7 +415,7 @@ export function ChatShell() {
                     />
                   </div>
                 </div>
-              )
+              ),
             )}
           </div>
           <div ref={bottomRef} />
@@ -438,12 +491,30 @@ const CATEGORIES = [
 
 type CategoryId = (typeof CATEGORIES)[number]["id"];
 
-const FEATURED_IDS = ["portfolio", "yield-advisor", "hedera-scheduled-transfer"];
+const FEATURED_IDS = [
+  "portfolio",
+  "yield-advisor",
+  "hedera-scheduled-transfer",
+];
 
-function getScenarioCategory(id: string): "portfolio" | "defi" | "agents" | "hedera" {
+function getScenarioCategory(
+  id: string,
+): "portfolio" | "defi" | "agents" | "hedera" {
   if (["portfolio", "risk-monitor", "sprawl"].includes(id)) return "portfolio";
-  if (["yield-advisor", "trading", "saucerswap-apr", "saucerswap-swap"].includes(id)) return "defi";
-  if (["hedera-list-agents", "hedera-create-agent", "hedera-schedule-loop"].includes(id)) return "agents";
+  if (
+    ["yield-advisor", "trading", "saucerswap-apr", "saucerswap-swap"].includes(
+      id,
+    )
+  )
+    return "defi";
+  if (
+    [
+      "hedera-list-agents",
+      "hedera-create-agent",
+      "hedera-schedule-loop",
+    ].includes(id)
+  )
+    return "agents";
   return "hedera";
 }
 
@@ -463,7 +534,9 @@ function EmptyState({
     if (activeCategory === "all") {
       return SCENARIOS;
     }
-    return SCENARIOS.filter((s) => getScenarioCategory(s.id) === activeCategory);
+    return SCENARIOS.filter(
+      (s) => getScenarioCategory(s.id) === activeCategory,
+    );
   }, [activeCategory]);
 
   if (!wallet.connected) {
@@ -475,14 +548,16 @@ function EmptyState({
           </h1>
           <p className="mx-auto mt-2 max-w-md text-sm text-[var(--ink-dim)]">
             ChainScope&apos;s agents ground every answer in your live on-chain
-            activity — balances, positions, and history pulled from The
-            Graph. Signing in with your wallet also keeps your questions
-            saved for next time, on this device.
+            activity — balances, positions, and history pulled from The Graph.
+            Signing in with your wallet also keeps your questions saved for next
+            time, on this device.
           </p>
         </div>
         <button
           onClick={wallet.connect}
-          disabled={wallet.status === "connecting" || wallet.status === "signing"}
+          disabled={
+            wallet.status === "connecting" || wallet.status === "signing"
+          }
           className="animate-fade-up border border-[var(--accent)] bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/85 disabled:cursor-wait disabled:opacity-70"
           style={{ animationDelay: "120ms" }}
         >
@@ -507,7 +582,9 @@ function EmptyState({
           </p>
         )}
         {wallet.error && wallet.status === "error" && (
-          <p className="animate-fade-up max-w-sm text-xs text-[var(--danger)]">{wallet.error}</p>
+          <p className="animate-fade-up max-w-sm text-xs text-[var(--danger)]">
+            {wallet.error}
+          </p>
         )}
       </div>
     );
@@ -520,8 +597,8 @@ function EmptyState({
           Ask ChainScope about your on-chain activity
         </h1>
         <p className="mx-auto mt-1.5 max-w-md text-sm text-[var(--ink-dim)]">
-          Specialized agents query live Graph subgraph data and analyze it in
-          a Python sandbox. Select a category or prompt below to try live query.
+          Specialized agents query live Graph subgraph data and analyze it in a
+          Python sandbox. Select a category or prompt below to try live query.
         </p>
       </div>
 

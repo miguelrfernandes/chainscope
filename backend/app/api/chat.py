@@ -74,4 +74,3 @@ async def chat(req: ChatRequest):
         )
 
     return EventSourceResponse(event_generator())
-
