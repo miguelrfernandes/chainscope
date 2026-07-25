@@ -11,7 +11,7 @@ For what the product does and how the pieces fit together, read
 - [docs/architecture.md](./docs/architecture.md) — request flow, how
   frontend/backend/agents connect
 - [docs/agents.md](./docs/agents.md) — the LangGraph orchestrator +
-  specialist agents (this is about the *product's* AI agents, not this
+  specialist agents (this is about the _product's_ AI agents, not this
   AGENTS.md file)
 - [docs/backend.md](./docs/backend.md) — FastAPI service layout, API surface
 - [docs/frontend.md](./docs/frontend.md) — Next.js app structure, provenance
@@ -73,9 +73,16 @@ Before considering frontend work done, run `just lint-frontend` and
 
 ## Git workflow
 
-Commit and push regularly rather than batching up large, long-lived
-diffs — small, frequent commits with clear messages, pushed to the
-remote as you go.
+**Work directly on `main`**. Feature branches slow down iteration during
+the hackathon. The auto-deploy workflow (GitHub Actions) watches `main`
+and redeploys the VPS on every push to `backend/**` or `deploy/**`, so
+keeping commits small and pushing frequently gives fast feedback.
 
-- **Error Fixing & Testing**: Every time an error is fixed, write a test to cover it. Once verified as working, commit and push immediately.
-- **Cost-Sensitive & Integration Tests**: Always be mindful of tests that incur monetary costs or rely on live external APIs/tokens. Use `@pytest.mark.skip` (or skip conditions) so they do not execute automatically in standard CI/CD test runs.
+- **Small, frequent commits**: Push regularly rather than batching up large
+  diffs. Each commit should be one logical change with a clear message.
+- **Error Fixing & Testing**: Every time an error is fixed, write a test to
+  cover it. Once verified as working, commit and push immediately.
+- **Cost-Sensitive & Integration Tests**: Always be mindful of tests that
+  incur monetary costs or rely on live external APIs/tokens. Use
+  `@pytest.mark.skip` (or skip conditions) so they do not execute
+  automatically in standard CI/CD test runs.
