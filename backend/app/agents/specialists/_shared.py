@@ -57,15 +57,16 @@ ACTION_ARTIFACT_TYPES = {
 def _describe_tool_call(name: str, args: dict) -> str:
     if name in QUERY_TOOL_NAMES:
         target = args.get("subgraph_id") or args.get("deployment_id") or args.get("ipfs_hash") or ""
-        return f"Querying {target} via Subgraph MCP..."
+        return f"Querying {target} on The Graph via Subgraph MCP..." if target else "Querying subgraph on The Graph via Subgraph MCP..."
     if name == "search_subgraphs_by_keyword":
-        return f"Searching subgraphs for '{args.get('keyword', '')}'..."
+        return f"Searching subgraphs on The Graph for '{args.get('keyword', '')}'..."
     if name in {"get_schema_by_subgraph_id", "get_schema_by_deployment_id", "get_schema_by_ipfs_hash"}:
-        return "Inspecting subgraph schema..."
+        target = args.get("subgraph_id") or args.get("deployment_id") or args.get("ipfs_hash") or ""
+        return f"Inspecting subgraph schema on The Graph{f' ({target})' if target else ''}..."
     if name == "get_top_subgraph_deployments":
-        return f"Resolving best-indexed subgraph for {args.get('contract_address', 'contract')}..."
+        return f"Resolving best-indexed subgraph on The Graph for {args.get('contract_address', 'contract')}..."
     if name == "get_deployment_30day_query_counts":
-        return "Checking subgraph query volume..."
+        return "Checking subgraph query volume on The Graph..."
     if name == "get_wallet_balances":
         return f"Fetching wallet balances for {args.get('address', '')} ({args.get('network', 'mainnet')}) via Pinax Token API..."
     if name == "get_wallet_transfers":

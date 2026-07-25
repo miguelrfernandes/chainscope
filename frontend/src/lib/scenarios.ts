@@ -47,11 +47,11 @@ export const SCENARIOS: Scenario[] = [
       { agent: "Orchestrator", text: "Routing to Portfolio agent..." },
       {
         agent: "Portfolio agent",
-        text: "Querying wallet balances subgraph on Ethereum via Subgraph MCP...",
+        text: "Querying wallet balances subgraph on Ethereum via The Graph Subgraph MCP...",
       },
       {
         agent: "Portfolio agent",
-        text: "Querying wallet balances subgraph on Arbitrum via Subgraph MCP...",
+        text: "Querying wallet balances subgraph on Arbitrum via The Graph Subgraph MCP...",
       },
       {
         agent: "Analyst agent",
@@ -105,7 +105,7 @@ export const SCENARIOS: Scenario[] = [
       { agent: "Orchestrator", text: "Routing to Risk monitor agent..." },
       {
         agent: "Risk monitor agent",
-        text: "Querying your Aave v3 user position subgraph via Subgraph MCP...",
+        text: "Querying your Aave v3 user position subgraph on The Graph via Subgraph MCP...",
       },
       {
         agent: "Risk monitor agent",
@@ -146,7 +146,7 @@ export const SCENARIOS: Scenario[] = [
       },
       {
         agent: "Yield advisor agent",
-        text: "Querying Aave v3 Sepolia subgraph via Subgraph MCP for current supply APY...",
+        text: "Querying Aave v3 Sepolia subgraph on The Graph via Subgraph MCP for current supply APY...",
       },
       {
         agent: "Yield advisor agent",
@@ -182,7 +182,7 @@ export const SCENARIOS: Scenario[] = [
       { agent: "Orchestrator", text: "Routing to Discovery agent..." },
       {
         agent: "Discovery agent",
-        text: "Scanning lending, LP, and staking subgraphs across Ethereum and Arbitrum via Subgraph MCP...",
+        text: "Scanning lending, LP, and staking subgraphs on The Graph across Ethereum and Arbitrum via Subgraph MCP...",
       },
       {
         agent: "Discovery agent",
@@ -261,7 +261,7 @@ export const SCENARIOS: Scenario[] = [
       { agent: "Orchestrator", text: "Routing to Trading agent..." },
       {
         agent: "Trading agent",
-        text: "Querying Uniswap v3 Ethereum subgraph via Subgraph MCP (pool: USDC/ETH 0.05%)...",
+        text: "Querying Uniswap v3 Ethereum subgraph on The Graph via Subgraph MCP (pool: USDC/ETH 0.05%)...",
       },
       {
         agent: "Trading agent",
