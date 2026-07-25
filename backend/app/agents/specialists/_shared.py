@@ -34,9 +34,10 @@ DATA_TOOL_NAMES = (
     | {
         "get_wallet_balances",
         "get_wallet_transfers",
-        "check_idle_aave_reserves",
+        "check_aave_positions",
         "get_saucerswap_pool_aprs",
         "get_uniswap_quote",
+        "get_uniswap_v3_pool_aprs",
     }
 )
 HEDERA_ACTION_TOOL_NAMES = {
@@ -53,6 +54,7 @@ HEDERA_ACTION_TOOL_NAMES = {
 # the time the tool returns, hence the different artifact type.
 ACTION_ARTIFACT_TYPES = {
     "propose_yield_action": "action/yield-supply",
+    "build_uniswap_lp_tx": "action/evm-tx-batch",
     "provision_hedera_agent": "action/seed-agent-hbar",
     **{name: "action/hedera-tx" for name in HEDERA_ACTION_TOOL_NAMES},
 }
@@ -83,8 +85,8 @@ def _describe_tool_call(name: str, args: dict) -> str:
         return f"Fetching wallet balances for {args.get('address', '')} ({args.get('network', 'sepolia')}) via Pinax Token API..."
     if name == "get_wallet_transfers":
         return f"Fetching transfer history for {args.get('address', '')} ({args.get('network', 'sepolia')}) via Pinax Token API..."
-    if name == "check_idle_aave_reserves":
-        return f"Checking {args.get('wallet_address', '')} for idle Aave v3 Sepolia reserves via live RPC..."
+    if name == "check_aave_positions":
+        return f"Checking Aave v3 Sepolia positions for {args.get('wallet_address', '')} via live RPC..."
     if name == "get_saucerswap_pool_aprs":
         return "Fetching SaucerSwap farms/pools/token prices to compute pool APRs..."
     if name == "build_saucerswap_swap_tx":
@@ -93,6 +95,11 @@ def _describe_tool_call(name: str, args: dict) -> str:
         return f"Fetching quote for {args.get('amount_in', '')} ({args.get('token_in_address', '')} -> {args.get('token_out_address', '')}) via Uniswap Trading API..."
     if name == "build_uniswap_swap_tx":
         return f"Building Uniswap swap: {args.get('amount_in', '')} ({args.get('token_in_address', '')} -> {args.get('token_out_address', '')}) via Trading API..."
+    if name == "get_uniswap_v3_pool_aprs":
+        return f"Querying Uniswap v3 pool APRs for {args.get('token_address', '')} (chain {args.get('chain_id', 1)}) via The Graph..."
+    if name == "build_uniswap_lp_tx":
+        fee_pct = (args.get('fee_tier', 3000) or 3000) / 10_000
+        return f"Building Uniswap v3 addLiquidity tx ({fee_pct:.2f}% pool, {args.get('amount0_desired', '')} + {args.get('amount1_desired', '')}..."
     if name == "propose_yield_action":
         return f"Building Aave v3 Sepolia supply transaction for {args.get('amount', '')} {args.get('asset_symbol', '')}..."
     if name == "provision_hedera_agent":
@@ -141,12 +148,15 @@ def _source_id(name: str, args: dict) -> str:
         return args.get("subgraph_id") or args.get("deployment_id") or args.get("ipfs_hash") or ""
     if name in {"get_wallet_balances", "get_wallet_transfers"}:
         return f"pinax/token-api/{name}"
-    if name == "check_idle_aave_reserves":
-        return "aave-v3-sepolia/live-rpc-balances"
+    if name == "check_aave_positions":
+        return "aave-v3-sepolia/live-rpc-atokens"
     if name == "get_saucerswap_pool_aprs":
         return "saucerswap/rest-api/farms-pools-tokens"
     if name == "get_uniswap_quote":
         return "uniswap/trading-api/quote"
+    if name == "get_uniswap_v3_pool_aprs":
+        chain = args.get('chain_id', 1)
+        return f"uniswap-v3/the-graph/pool-aprs/chain-{chain}"
     if name in HEDERA_TOOL_NAMES:
         return f"hedera-mirror-node/{name}"
     return name
@@ -160,6 +170,7 @@ async def run_specialist(
     system_prompt: str,
     tools: list[BaseTool],
     action_artifact_types: dict[str, str] | None = None,
+    recursion_limit: int = 15,
 ) -> dict:
     """`action_artifact_types` lets a specialist override the artifact type for
     its own action tool calls, on top of ACTION_ARTIFACT_TYPES — needed
@@ -177,7 +188,7 @@ async def run_specialist(
     conv_messages = get_conversation_messages(state)
     result = await agent.ainvoke(
         {"messages": conv_messages},
-        config={"recursion_limit": 15},
+        config={"recursion_limit": recursion_limit},
     )
     all_messages = result["messages"]
     new_messages = (

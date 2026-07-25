@@ -50,6 +50,17 @@ RESERVES: dict[str, dict[str, Any]] = {
     },
 }
 
+# Tokens that may appear in the wallet but are NOT supported by Aave v3 Sepolia.
+# We check their balances so the agent can inform the user why they can't be supplied.
+NON_AAVE_TOKENS: dict[str, dict[str, Any]] = {
+    "USDC (Circle)": {
+        "underlying": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+        "decimals": 6,
+        "note": "Circle USDC — not listed in the Aave v3 Sepolia market. "
+                "Use the Aave faucet to mint Aave testnet USDC instead.",
+    },
+}
+
 BALANCE_OF_SELECTOR = "70a08231"
 APPROVE_SELECTOR = "095ea7b3"
 SUPPLY_SELECTOR = "617ba037"
@@ -81,31 +92,40 @@ async def _eth_call(to: str, data: str) -> int:
 
 
 @tool
-async def check_idle_aave_reserves(wallet_address: str) -> str:
-    """Check a wallet's balances on Aave v3 Sepolia's supported reserves.
+async def check_aave_positions(wallet_address: str) -> str:
+    """Check what a wallet has already supplied into Aave v3 Sepolia.
 
-    For each of USDC, DAI, LINK, WETH, reads (via a live Sepolia RPC call)
-    both the wallet's underlying token balance and its aToken balance (the
-    receipt token you hold once you've supplied to Aave). An asset with a
-    nonzero underlying balance and a zero (or much smaller) aToken balance
-    is idle — held in the wallet but not earning any yield. Returns JSON."""
+    Reads (via live Sepolia RPC) the aToken balance for each supported
+    reserve (USDC, DAI, LINK, WETH). An aToken balance > 0 means that
+    asset is already earning yield in Aave. Returns zero for reserves
+    not yet supplied.
+
+    NOTE: This tool only reports Aave positions (aTokens). To find out what
+    the wallet *holds* in the first place, use get_wallet_balances — that
+    is the single source of truth for wallet balances, shared with the
+    portfolio agent."""
     results = {}
+    call_data = "0x" + BALANCE_OF_SELECTOR + _encode_address(wallet_address)
+
     for symbol, reserve in RESERVES.items():
-        call_data = "0x" + BALANCE_OF_SELECTOR + _encode_address(wallet_address)
-        underlying_raw, a_token_raw = 0, 0
         try:
-            underlying_raw = await _eth_call(reserve["underlying"], call_data)
             a_token_raw = await _eth_call(reserve["a_token"], call_data)
-        except Exception as exc:  # noqa: BLE001 - surface as zero balance, not a crash
+        except Exception as exc:  # noqa: BLE001
             results[symbol] = {"error": str(exc)}
             continue
         decimals = reserve["decimals"]
         results[symbol] = {
-            "wallet_balance": underlying_raw / 10**decimals,
             "supplied_to_aave": a_token_raw / 10**decimals,
-            "idle": underlying_raw > 0 and a_token_raw == 0,
+            "aave_compatible": True,
         }
-    return json.dumps({"chain": "Sepolia", "wallet_address": wallet_address, "reserves": results})
+
+    return json.dumps(
+        {
+            "chain": "Sepolia",
+            "wallet_address": wallet_address,
+            "aave_positions": results,
+        }
+    )
 
 
 @tool
@@ -169,4 +189,4 @@ def propose_yield_action(
     )
 
 
-AAVE_ACTION_TOOLS = [check_idle_aave_reserves, propose_yield_action]
+AAVE_ACTION_TOOLS = [check_aave_positions, propose_yield_action]
