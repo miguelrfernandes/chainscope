@@ -36,8 +36,30 @@ class Settings(BaseSettings):
     # and broadcasts the actual transactions.
     sepolia_rpc_url: str = "https://ethereum-sepolia-rpc.publicnode.com"
 
+    # Public Hedera Mirror Node REST API (no key needed) — see
+    # app/tools/hedera_mirror.py. Testnet by default; swap to
+    # "https://mainnet.mirrornode.hedera.com" for mainnet data.
+    hedera_mirror_node_base_url: str = "https://testnet.mirrornode.hedera.com"
+
+    # Hedera Agent Kit action agent — a dedicated backend-held testnet
+    # operator account (AUTONOMOUS mode: the backend signs and submits
+    # directly, unlike the yield advisor where the user's own wallet signs).
+    # Create a free funded testnet account at
+    # https://portal.hedera.com/dashboard. Leave unset to disable the
+    # action agent — the read-only Hedera specialist still works without it.
+    hedera_operator_account_id: str | None = None
+    hedera_operator_private_key: str | None = None
+    hedera_network: str = "testnet"
+
     cors_origins: str = "http://localhost:3000"
     sandbox_timeout_seconds: int = 10
+
+    # SQLite store for managed Hedera agent accounts (owner_address ->
+    # agent_name -> account_id/encrypted key) — see app/core/agent_store.py.
+    # Callers encrypt the private key before it reaches this store; this
+    # setting only controls where the (already-encrypted) rows live on disk.
+    managed_agent_db_path: str = "managed_agents.db"
+    scheduler_db_path: str = "scheduler.db"
 
     @property
     def cors_origin_list(self) -> list[str]:
