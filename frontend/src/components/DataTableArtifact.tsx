@@ -6,7 +6,7 @@ export function DataTableArtifact({ table }: { table: NonNullable<Scenario["tabl
       <p className="border-b border-[var(--border)] px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-[var(--ink-dim)]">
         {table.title}
       </p>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto custom-scrollbar">
         <table className="w-full text-left text-[13px]">
           <thead>
             <tr className="text-[var(--ink-faint)]">

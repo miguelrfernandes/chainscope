@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Wallet, Bot, Calendar, Copy, Check, RefreshCw, X, ExternalLink, Plus, Trash2, Sparkles } from "lucide-react";
+import { Wallet, Bot, Calendar, Copy, Check, RefreshCw, X, ExternalLink, Plus, Trash2, Sparkles, Archive, RotateCcw } from "lucide-react";
 
 import {
   deleteScheduledJob,
   deleteUserAgent,
+  unarchiveUserAgent,
   fetchScheduledJobs,
   fetchUserAgents,
   type ManagedAgent,
@@ -92,6 +93,10 @@ export function AgentsDrawer({
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
   const [deletingAgentName, setDeletingAgentName] = useState<string | null>(null);
+  const [restoringAgentName, setRestoringAgentName] = useState<string | null>(null);
+
+  const activeAgents = agents.filter((a) => a.status !== "ARCHIVED");
+  const archivedAgents = agents.filter((a) => a.status === "ARCHIVED");
 
   useEffect(() => {
     if (isOpen && initialTab) {
@@ -191,7 +196,9 @@ export function AgentsDrawer({
     try {
       await deleteUserAgent(ownerAddress, agentName);
       setAgents((prev) => {
-        const next = prev.filter((a) => a.agent_name !== agentName);
+        const next = prev.map((a) =>
+          a.agent_name === agentName ? { ...a, status: "ARCHIVED" } : a
+        );
         setCachedAgents(ownerAddress, next);
         return next;
       });
@@ -199,6 +206,21 @@ export function AgentsDrawer({
       setError(err instanceof Error ? err.message : "Failed to archive agent");
     } finally {
       setDeletingAgentName(null);
+    }
+  }
+
+  async function handleUnarchiveAgent(agentName: string) {
+    if (!ownerAddress) return;
+    setRestoringAgentName(agentName);
+    try {
+      await unarchiveUserAgent(ownerAddress, agentName);
+      const updatedAgents = await fetchUserAgents(ownerAddress);
+      setAgents(updatedAgents);
+      setCachedAgents(ownerAddress, updatedAgents);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to restore agent");
+    } finally {
+      setRestoringAgentName(null);
     }
   }
 
@@ -287,7 +309,7 @@ export function AgentsDrawer({
               }`}
             >
               <Bot className="h-3.5 w-3.5" />
-              Sub-Agents ({agents.length})
+              Sub-Agents ({activeAgents.length})
             </button>
 
             <button
@@ -381,7 +403,8 @@ export function AgentsDrawer({
                     </button>
                   </div>
                   <p className="mt-2 text-xs text-[var(--ink-dim)] leading-relaxed">
-                    {agents.length} active agent keypair{agents.length === 1 ? "" : "s"} encrypted in AES-256-GCM Vault.
+                    {activeAgents.length} active agent keypair{activeAgents.length === 1 ? "" : "s"} encrypted in AES-256-GCM Vault
+                    {archivedAgents.length > 0 ? ` (${archivedAgents.length} archived)` : ""}.
                   </p>
                 </div>
               </div>
@@ -392,7 +415,7 @@ export function AgentsDrawer({
                     <SkeletonCard />
                     <SkeletonCard />
                   </>
-                ) : agents.length === 0 ? (
+                ) : activeAgents.length === 0 && archivedAgents.length === 0 ? (
                   <div className="flex flex-col items-center py-10 text-center">
                     <Bot className="h-8 w-8 text-[var(--ink-faint)] mb-2" />
                     <p className="text-xs text-[var(--ink-dim)]">
@@ -406,88 +429,151 @@ export function AgentsDrawer({
                     </button>
                   </div>
                 ) : (
-                  agents.map((agent) => (
-                    <div
-                      key={agent.agent_name}
-                      className="rounded-2xl border border-white/10 bg-[#0d1210]/90 p-5 shadow-xl transition hover:border-[var(--accent)]/30"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-sm text-[var(--ink)] flex items-center gap-2">
-                          <Bot className="h-4 w-4 text-[var(--accent)]" /> {agent.agent_name}
-                        </span>
-                        <span
-                          className={`rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-wider font-semibold border ${
-                            agent.status === "ACTIVE"
-                              ? "border-[var(--success)]/40 bg-[var(--success)]/10 text-[var(--success)]"
-                              : "border-amber-500/40 bg-amber-500/10 text-amber-400"
-                          }`}
-                        >
-                          {agent.status}
-                        </span>
+                  <>
+                    {activeAgents.length === 0 && (
+                      <div className="rounded-xl border border-white/5 bg-white/5 p-4 text-center text-xs text-[var(--ink-dim)]">
+                        No active sub-agents. Archived agents are shown below.
                       </div>
-
-                      <div className="mt-3 flex flex-col gap-1.5 text-xs">
-                        <div className="flex items-center justify-between text-[var(--ink-dim)]">
-                          <span>Hedera Account:</span>
-                          <span className="font-mono text-[var(--ink)] font-medium">
-                            {agent.account_id || "Pending creation"}
+                    )}
+                    {activeAgents.map((agent) => (
+                      <div
+                        key={agent.agent_name}
+                        className="rounded-2xl border border-white/10 bg-[#0d1210]/90 p-5 shadow-xl transition hover:border-[var(--accent)]/30"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-sm text-[var(--ink)] flex items-center gap-2">
+                            <Bot className="h-4 w-4 text-[var(--accent)]" /> {agent.agent_name}
+                          </span>
+                          <span
+                            className={`rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-wider font-semibold border ${
+                              agent.status === "ACTIVE"
+                                ? "border-[var(--success)]/40 bg-[var(--success)]/10 text-[var(--success)]"
+                                : "border-amber-500/40 bg-amber-500/10 text-amber-400"
+                            }`}
+                          >
+                            {agent.status}
                           </span>
                         </div>
 
-                        <div className="flex items-center justify-between text-[var(--ink-dim)]">
-                          <span>EVM Alias:</span>
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-mono text-[11px] text-[var(--ink)]">
-                              {agent.evm_address.slice(0, 8)}...{agent.evm_address.slice(-6)}
+                        <div className="mt-3 flex flex-col gap-1.5 text-xs">
+                          <div className="flex items-center justify-between text-[var(--ink-dim)]">
+                            <span>Hedera Account:</span>
+                            <span className="font-mono text-[var(--ink)] font-medium">
+                              {agent.account_id || "Pending creation"}
                             </span>
-                            <button
-                              onClick={() => handleCopy(agent.evm_address)}
-                              className="text-[10px] text-[var(--accent)] hover:underline"
-                            >
-                              {copiedAddress === agent.evm_address ? "copied!" : "copy"}
-                            </button>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[var(--ink-dim)]">
+                            <span>EVM Alias:</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono text-[11px] text-[var(--ink)]">
+                                {agent.evm_address.slice(0, 8)}...{agent.evm_address.slice(-6)}
+                              </span>
+                              <button
+                                onClick={() => handleCopy(agent.evm_address)}
+                                className="text-[10px] text-[var(--accent)] hover:underline"
+                              >
+                                {copiedAddress === agent.evm_address ? "copied!" : "copy"}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[var(--ink-dim)]">
+                            <span>Live Balance:</span>
+                            <span className="font-semibold text-[var(--success)]">
+                              {agent.balance_hbar.toFixed(2)} HBAR
+                            </span>
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between text-[var(--ink-dim)]">
-                          <span>Live Balance:</span>
-                          <span className="font-semibold text-[var(--success)]">
-                            {agent.balance_hbar.toFixed(2)} HBAR
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 border-t border-white/10 pt-3 flex items-center justify-between">
-                        <div className="text-[10px] text-[var(--ink-faint)]">
-                          Created: {new Date(agent.created_at).toLocaleString()}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {agent.status === "PENDING" && (
+                        <div className="mt-4 border-t border-white/10 pt-3 flex items-center justify-between">
+                          <div className="text-[10px] text-[var(--ink-faint)]">
+                            Created: {new Date(agent.created_at).toLocaleString()}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {agent.status === "PENDING" && (
+                              <button
+                                onClick={() => {
+                                  const prompt = `Seed agent ${agent.agent_name} with 1 HBAR`;
+                                  if (onPreparePrompt) onPreparePrompt(prompt);
+                                  else if (onAskPrompt) onAskPrompt(prompt);
+                                  onClose();
+                                }}
+                                className="flex items-center gap-1 rounded-full border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)] hover:text-[var(--accent-ink)]"
+                              >
+                                <Sparkles className="h-3 w-3" /> Provision & Seed
+                              </button>
+                            )}
                             <button
-                              onClick={() => {
-                                const prompt = `Seed agent ${agent.agent_name} with 1 HBAR`;
-                                if (onPreparePrompt) onPreparePrompt(prompt);
-                                else if (onAskPrompt) onAskPrompt(prompt);
-                                onClose();
-                              }}
-                              className="flex items-center gap-1 rounded-full border border-[var(--accent)]/40 bg-[var(--accent-soft)] px-2.5 py-1 text-[11px] font-semibold text-[var(--accent)] transition hover:bg-[var(--accent)] hover:text-[var(--accent-ink)]"
+                              onClick={() => handleArchiveAgent(agent.agent_name)}
+                              disabled={deletingAgentName === agent.agent_name}
+                              className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium text-amber-400/90 border border-amber-500/20 bg-amber-500/10 hover:bg-amber-500/20 hover:text-amber-300 transition disabled:opacity-50"
+                              title="Archive Agent (Hide in Archive)"
                             >
-                              <Sparkles className="h-3 w-3" /> Provision & Seed
+                              <Archive className="h-3 w-3" />
+                              {deletingAgentName === agent.agent_name ? "Archiving..." : "Archive"}
                             </button>
-                          )}
-                          <button
-                            onClick={() => handleArchiveAgent(agent.agent_name)}
-                            disabled={deletingAgentName === agent.agent_name}
-                            className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-red-400/80 hover:bg-red-500/10 hover:text-red-400 transition disabled:opacity-50"
-                            title="Archive / Remove Agent"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                            {deletingAgentName === agent.agent_name ? "Archiving..." : "Archive"}
-                          </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    ))}
+
+                    {/* Archived Agents Section */}
+                    {archivedAgents.length > 0 && (
+                      <div className="mt-6 border-t border-white/10 pt-5">
+                        <div className="flex items-center gap-2 mb-3 px-1 text-xs font-bold uppercase tracking-wider text-[var(--ink-dim)]">
+                          <Archive className="h-3.5 w-3.5 text-zinc-400" />
+                          <span>Archived Agents ({archivedAgents.length})</span>
+                        </div>
+                        <div className="flex flex-col gap-3">
+                          {archivedAgents.map((agent) => (
+                            <div
+                              key={agent.agent_name}
+                              className="rounded-2xl border border-white/5 bg-[#090d0b]/70 p-4 shadow-md transition opacity-80 hover:opacity-100"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-sm text-zinc-300 flex items-center gap-2">
+                                  <Bot className="h-4 w-4 text-zinc-500" /> {agent.agent_name}
+                                </span>
+                                <span className="rounded-full border border-zinc-700 bg-zinc-800/80 px-2.5 py-0.5 text-[10px] uppercase tracking-wider font-semibold text-zinc-400">
+                                  ARCHIVED
+                                </span>
+                              </div>
+
+                              <div className="mt-2.5 flex flex-col gap-1 text-xs text-zinc-400">
+                                <div className="flex items-center justify-between">
+                                  <span>Hedera Account:</span>
+                                  <span className="font-mono text-zinc-300 font-medium">
+                                    {agent.account_id || "Pending creation"}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span>EVM Alias:</span>
+                                  <span className="font-mono text-[11px] text-zinc-300">
+                                    {agent.evm_address ? `${agent.evm_address.slice(0, 8)}...${agent.evm_address.slice(-6)}` : "N/A"}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="mt-3 border-t border-white/5 pt-2.5 flex items-center justify-between">
+                                <div className="text-[10px] text-zinc-500">
+                                  Created: {new Date(agent.created_at).toLocaleString()}
+                                </div>
+                                <button
+                                  onClick={() => handleUnarchiveAgent(agent.agent_name)}
+                                  disabled={restoringAgentName === agent.agent_name}
+                                  className="flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold text-emerald-400 transition hover:bg-emerald-500/20 disabled:opacity-50"
+                                >
+                                  <RotateCcw className="h-3 w-3" />
+                                  {restoringAgentName === agent.agent_name ? "Restoring..." : "Restore"}
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {agents.length > 0 && (

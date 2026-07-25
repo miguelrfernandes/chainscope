@@ -3,6 +3,7 @@ import {
   confirmAgent,
   deleteScheduledJob,
   deleteUserAgent,
+  unarchiveUserAgent,
   fetchScheduledJobs,
   fetchUserAgents,
   streamChat,
@@ -221,7 +222,7 @@ describe("agent and scheduler API helpers", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("deletes user agent", async () => {
+  it("archives and unarchives user agent", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ status: "success", agent_name: "yield-bot" }), {
         status: 200,
@@ -235,8 +236,15 @@ describe("agent and scheduler API helpers", () => {
       expect.stringContaining("/api/agents/yield-bot?owner_address=0xowner"),
       { method: "DELETE" }
     );
+
+    await unarchiveUserAgent("0xowner", "yield-bot");
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/agents/yield-bot/unarchive?owner_address=0xowner"),
+      { method: "POST" }
+    );
   });
 });
+
 
 
 

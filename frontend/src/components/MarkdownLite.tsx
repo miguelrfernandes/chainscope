@@ -5,7 +5,17 @@ export type Block =
   | { type: "heading"; level: number; text: string }
   | { type: "code"; language: string; code: string }
   | { type: "list"; ordered: boolean; items: string[] }
-  | { type: "blockquote"; text: string };
+  | { type: "blockquote"; text: string }
+  | { type: "table"; header: string[]; rows: string[][] };
+
+function splitTableRow(line: string): string[] {
+  let trimmed = line.trim();
+  if (trimmed.startsWith("|")) trimmed = trimmed.slice(1);
+  if (trimmed.endsWith("|")) trimmed = trimmed.slice(0, -1);
+  return trimmed.split("|").map((cell) => cell.trim());
+}
+
+const TABLE_SEPARATOR_RE = /^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?$/;
 
 /**
  * Parses raw markdown text into structured blocks (paragraphs, headings, code, lists, blockquotes).
@@ -58,6 +68,25 @@ export function parseBlocks(rawText: string): Block[] {
     // Empty line separates blocks
     if (line.trim() === "") {
       flushParagraph();
+      continue;
+    }
+
+    // Table (header row, separator row `|---|---|`, then data rows)
+    if (
+      line.trim().startsWith("|") &&
+      i + 1 < lines.length &&
+      TABLE_SEPARATOR_RE.test(lines[i + 1].trim())
+    ) {
+      flushParagraph();
+      const header = splitTableRow(line);
+      let j = i + 2;
+      const rows: string[][] = [];
+      while (j < lines.length && lines[j].trim().startsWith("|")) {
+        rows.push(splitTableRow(lines[j]));
+        j++;
+      }
+      blocks.push({ type: "table", header, rows });
+      i = j - 1;
       continue;
     }
 
@@ -288,11 +317,43 @@ export function MarkdownLite({ text }: { text: string }) {
           );
         }
 
+        if (block.type === "table") {
+          return (
+            <div
+              key={idx}
+              className="my-1 overflow-x-auto custom-scrollbar rounded border border-[var(--border)] bg-[var(--bg-raised)]/50"
+            >
+              <table className="w-full text-left text-[13px]">
+                <thead>
+                  <tr className="text-[var(--ink-faint)]">
+                    {block.header.map((cell, cellIdx) => (
+                      <th key={cellIdx} className="px-3 py-2 font-medium uppercase tracking-wide">
+                        {renderInline(cell)}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {block.rows.map((row, rowIdx) => (
+                    <tr key={rowIdx} className="border-t border-[var(--border-soft)] text-[var(--ink)]">
+                      {row.map((cell, cellIdx) => (
+                        <td key={cellIdx} className="px-3 py-2 tabular-nums">
+                          {renderInline(cell)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        }
+
         if (block.type === "code") {
           return (
             <pre
               key={idx}
-              className="my-1.5 overflow-x-auto rounded border border-[var(--border)] bg-[var(--bg-raised)] p-3 font-mono text-xs text-[var(--ink)]"
+              className="my-1.5 overflow-x-auto custom-scrollbar rounded border border-[var(--border)] bg-[var(--bg-raised)] p-3 font-mono text-xs text-[var(--ink)]"
             >
               <code>{block.code}</code>
             </pre>

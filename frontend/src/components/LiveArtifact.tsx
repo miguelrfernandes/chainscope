@@ -4,6 +4,8 @@ import { HederaActionCard, type HederaTxBytesPayload } from "./HederaActionCard"
 import { SeedAgentCard, type SeedAgentPayload } from "./SeedAgentCard";
 import { HederaEvmActionCard, type HederaEvmActionPayload } from "./HederaEvmActionCard";
 import { EvmActionCard, type EvmActionPayload } from "./EvmActionCard";
+import { PlotlyArtifact } from "./charts/PlotlyArtifact";
+
 
 type HederaExecutedPayload = {
   human_message: string;
@@ -126,17 +128,9 @@ export function LiveArtifact({
   }
 
   if (artifact.type === "application/vnd.plotly.v1+json") {
-    return (
-      <details className="border border-[var(--border)] bg-[var(--bg-raised)]/50 px-4 py-2.5 text-[13px] text-[var(--ink-dim)]">
-        <summary className="cursor-pointer text-xs font-medium uppercase tracking-wide text-[var(--ink-dim)]">
-          interactive chart (plotly) — raw figure data
-        </summary>
-        <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap text-[11px] text-[var(--ink-faint)]">
-          {artifact.data}
-        </pre>
-      </details>
-    );
+    return <PlotlyArtifact data={artifact.data} />;
   }
+
 
   return null;
 }

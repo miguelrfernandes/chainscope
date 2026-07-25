@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
-import { Logomark } from "./Logomark";
+import { motion } from "framer-motion";
+import { AppHeader } from "./AppHeader";
 
 const STEPS = [
   {
@@ -81,33 +84,56 @@ const GRAPH_SURFACE = [
   },
 ];
 
+const slowEase: [number, number, number, number] = [0.16, 1, 0.3, 1];
+
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.12,
+      delayChildren: 0.08,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20, scale: 0.98 },
+  show: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.85,
+      ease: slowEase,
+    },
+  },
+};
+
 export function Landing() {
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-4xl flex-col px-6">
-      <nav className="flex items-center justify-between py-6">
-        <div className="flex items-center gap-2">
-          <Logomark className="h-6 w-6 text-[var(--accent)]" />
-          <span className="text-lg leading-none">
-            <span className="font-[family-name:var(--font-display)] italic text-[var(--ink)]">
-              Chain
-            </span>
-            <span className="font-medium tracking-wide text-[var(--accent)]">
-              Scope
-            </span>
-          </span>
-        </div>
-        <Link
-          href="/app"
-          className="border border-[var(--accent)] bg-[var(--accent)] px-3.5 py-1.5 text-[13px] font-medium text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/85"
-        >
-          open app →
-        </Link>
-      </nav>
+    <div className="relative mx-auto flex min-h-dvh w-full max-w-4xl flex-col px-6 overflow-hidden">
+      {/* Ambient background glow layers */}
+      <div className="pointer-events-none absolute -top-40 left-1/4 h-96 w-96 rounded-full bg-[var(--accent)]/10 blur-[120px] animate-ambient-glow" />
+      <div className="pointer-events-none absolute top-1/3 -right-20 h-96 w-96 rounded-full bg-[var(--success)]/8 blur-[120px] animate-ambient-glow" style={{ animationDelay: "-8s" }} />
 
-      <header className="animate-fade-up py-16 sm:py-24">
-        <p className="text-xs uppercase tracking-[0.24em] text-[var(--accent)]">
+      <AppHeader activePage="landing" />
+
+      <motion.header
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.95, ease: slowEase }}
+        className="py-16 sm:py-24"
+      >
+        <motion.p
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.7, delay: 0.2, ease: slowEase }}
+          className="text-xs uppercase tracking-[0.24em] text-[var(--accent)] font-semibold"
+        >
           Live web3 research copilot
-        </p>
+        </motion.p>
         <h1 className="mt-3 max-w-2xl font-[family-name:var(--font-display)] text-4xl italic leading-[1.15] text-[var(--ink)] sm:text-5xl">
           Ask a question. Get live answers. Trigger the next step.
         </h1>
@@ -117,67 +143,111 @@ export function Landing() {
           one-click actions when the answer should become a transaction.
         </p>
         <div className="mt-8 flex items-center gap-4">
-          <Link
-            href="/app"
-            className="border border-[var(--accent)] bg-[var(--accent)] px-5 py-2.5 text-sm font-medium text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/85"
+          <motion.div
+            whileHover={{ scale: 1.04, y: -2 }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ duration: 0.25, ease: slowEase }}
           >
-            launch app →
-          </Link>
+            <Link
+              href="/app"
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--accent)] bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-[var(--accent-ink)] shadow-[0_0_20px_rgba(255,180,84,0.3)] transition-all hover:shadow-[0_0_30px_rgba(255,180,84,0.5)]"
+            >
+              launch app <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
+            </Link>
+          </motion.div>
           <span className="text-xs text-[var(--ink-faint)]">
             no wallet needed to look around — connect one when you want saved
             threads and action cards
           </span>
         </div>
-      </header>
+      </motion.header>
 
-      <section className="border-t border-[var(--border)] py-12">
+      <motion.section
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: true, margin: "-80px" }}
+        className="border-t border-[var(--border)] py-12"
+      >
         <div className="grid gap-4 sm:grid-cols-3">
-          {HIGHLIGHTS.map((item, i) => (
-            <div
+          {HIGHLIGHTS.map((item) => (
+            <motion.div
               key={item.title}
-              className="animate-fade-up opacity-0 border border-[var(--border)] bg-[var(--bg-raised)]/50 p-5"
-              style={{ animationDelay: `${i * 90}ms` }}
+              variants={itemVariants}
+              whileHover={{
+                y: -6,
+                scale: 1.02,
+                boxShadow: "0 16px 32px -8px rgba(0, 0, 0, 0.5), 0 0 20px -2px rgba(255, 180, 84, 0.12)",
+                borderColor: "rgba(255, 180, 84, 0.35)",
+              }}
+              transition={{ duration: 0.35, ease: slowEase }}
+              className="rounded-xl border border-[var(--border)] bg-[var(--bg-raised)]/60 p-5 backdrop-blur-md transition-all cursor-default"
             >
               <h2 className="font-medium text-[var(--ink)]">{item.title}</h2>
               <p className="mt-2 text-sm leading-relaxed text-[var(--ink-dim)]">
                 {item.body}
               </p>
-            </div>
+            </motion.div>
           ))}
         </div>
-      </section>
+      </motion.section>
 
-      <section className="border-t border-[var(--border)] py-16">
-        <h2 className="mb-8 text-xs uppercase tracking-wider text-[var(--ink-faint)]">
+      <motion.section
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: true, margin: "-80px" }}
+        className="border-t border-[var(--border)] py-16"
+      >
+        <h2 className="mb-8 text-xs uppercase tracking-wider text-[var(--ink-faint)] font-semibold">
           How it works
         </h2>
         <div className="grid gap-6 sm:grid-cols-2">
-          {STEPS.map((s, i) => (
-            <div
+          {STEPS.map((s) => (
+            <motion.div
               key={s.n}
-              className="animate-fade-up opacity-0 border border-[var(--border)] bg-[var(--bg-raised)]/40 p-5"
-              style={{ animationDelay: `${i * 90}ms` }}
+              variants={itemVariants}
+              whileHover={{
+                y: -6,
+                scale: 1.02,
+                boxShadow: "0 16px 32px -8px rgba(0, 0, 0, 0.5), 0 0 20px -2px rgba(255, 180, 84, 0.12)",
+                borderColor: "rgba(255, 180, 84, 0.35)",
+              }}
+              transition={{ duration: 0.35, ease: slowEase }}
+              className="rounded-xl border border-[var(--border)] bg-[var(--bg-raised)]/50 p-5 backdrop-blur-md transition-all cursor-default"
             >
-              <span className="text-xs text-[var(--accent)]">{s.n}</span>
+              <span className="text-xs font-mono font-semibold text-[var(--accent)]">{s.n}</span>
               <h3 className="mt-1 font-medium text-[var(--ink)]">{s.title}</h3>
               <p className="mt-1.5 text-sm leading-relaxed text-[var(--ink-dim)]">
                 {s.body}
               </p>
-            </div>
+            </motion.div>
           ))}
         </div>
-      </section>
+      </motion.section>
 
-      <section className="border-t border-[var(--border)] py-16">
-        <h2 className="mb-8 text-xs uppercase tracking-wider text-[var(--ink-faint)]">
+      <motion.section
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: true, margin: "-80px" }}
+        className="border-t border-[var(--border)] py-16"
+      >
+        <h2 className="mb-8 text-xs uppercase tracking-wider text-[var(--ink-faint)] font-semibold">
           The specialists
         </h2>
-        <div className="flex flex-col gap-0">
-          {AGENTS.map((a, i) => (
-            <div
+        <div className="flex flex-col gap-1">
+          {AGENTS.map((a) => (
+            <motion.div
               key={a.name}
-              className="animate-fade-up opacity-0 flex flex-col gap-1 border-b border-[var(--border-soft)] py-4 sm:flex-row sm:items-baseline sm:gap-6"
-              style={{ animationDelay: `${i * 70}ms` }}
+              variants={itemVariants}
+              whileHover={{
+                x: 6,
+                backgroundColor: "rgba(255, 180, 84, 0.05)",
+                borderColor: "rgba(255, 180, 84, 0.25)",
+              }}
+              transition={{ duration: 0.3, ease: slowEase }}
+              className="flex flex-col gap-1 rounded-lg border-b border-[var(--border-soft)] px-3 py-4 sm:flex-row sm:items-baseline sm:gap-6 transition-colors cursor-default"
             >
               <span className="w-44 shrink-0 text-sm font-medium text-[var(--accent)]">
                 {a.name}
@@ -185,13 +255,19 @@ export function Landing() {
               <p className="text-sm leading-relaxed text-[var(--ink-dim)]">
                 {a.body}
               </p>
-            </div>
+            </motion.div>
           ))}
         </div>
-      </section>
+      </motion.section>
 
-      <section className="border-t border-[var(--border)] py-16">
-        <h2 className="mb-2 text-xs uppercase tracking-wider text-[var(--ink-faint)]">
+      <motion.section
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: true, margin: "-80px" }}
+        className="border-t border-[var(--border)] py-16"
+      >
+        <h2 className="mb-2 text-xs uppercase tracking-wider text-[var(--ink-faint)] font-semibold">
           Powered by The Graph
         </h2>
         <p className="mb-8 max-w-xl text-sm text-[var(--ink-dim)]">
@@ -199,29 +275,36 @@ export function Landing() {
           fixture. This is the surface agents actually call.
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
-          {GRAPH_SURFACE.map((g, i) => (
-            <div
+          {GRAPH_SURFACE.map((g) => (
+            <motion.div
               key={g.name}
-              className="animate-fade-up opacity-0 border border-[var(--border)] p-4"
-              style={{ animationDelay: `${i * 80}ms` }}
+              variants={itemVariants}
+              whileHover={{
+                y: -5,
+                scale: 1.02,
+                boxShadow: "0 16px 32px -8px rgba(0, 0, 0, 0.5), 0 0 20px -2px rgba(111, 227, 161, 0.15)",
+                borderColor: "rgba(111, 227, 161, 0.35)",
+              }}
+              transition={{ duration: 0.35, ease: slowEase }}
+              className="rounded-xl border border-[var(--border)] bg-[var(--bg-raised)]/40 p-4 backdrop-blur-md transition-all cursor-default"
             >
               <p className="text-sm font-medium text-[var(--ink)]">{g.name}</p>
               <p className="mt-1 text-[13px] leading-relaxed text-[var(--ink-dim)]">
                 {g.body}
               </p>
-            </div>
+            </motion.div>
           ))}
         </div>
-      </section>
+      </motion.section>
 
       <footer className="mt-auto flex flex-col gap-2 border-t border-[var(--border)] py-8 text-xs text-[var(--ink-faint)] sm:flex-row sm:items-center sm:justify-between">
-        <span>
-          ChainScope — built for ETHLisbon 2026&apos;s Best AI Use Case of The
-          Graph bounty.
-        </span>
-        <Link href="/app" className="text-[var(--accent)] hover:underline">
-          open the app →
-        </Link>
+        <span>ChainScope</span>
+
+        <motion.div whileHover={{ x: 3 }} transition={{ duration: 0.2 }}>
+          <Link href="/app" className="text-[var(--accent)] hover:underline font-medium">
+            open the app →
+          </Link>
+        </motion.div>
       </footer>
     </div>
   );

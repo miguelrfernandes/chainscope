@@ -97,7 +97,7 @@ export function ChatShell() {
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed)) {
-          const count = parsed.length;
+          const count = parsed.filter((a: { status?: string }) => a.status !== "ARCHIVED").length;
           queueMicrotask(() => {
             if (!ignore) setAgentCount(count);
           });
@@ -107,7 +107,10 @@ export function ChatShell() {
 
     fetchUserAgents(wallet.address)
       .then((agents) => {
-        if (!ignore) setAgentCount(agents.length);
+        if (!ignore) {
+          const count = agents.filter((a) => a.status !== "ARCHIVED").length;
+          setAgentCount(count);
+        }
       })
       .catch(() => {});
     return () => {

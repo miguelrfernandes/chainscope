@@ -543,6 +543,167 @@ export const SCENARIOS: Scenario[] = [
       },
     ],
   },
+  {
+    id: "uniswap-best-yield",
+    question: "What's the highest-yield pool on Uniswap right now?",
+    agent: "Trading agent",
+    steps: [
+      { agent: "Orchestrator", text: "Routing to Trading agent..." },
+      {
+        agent: "Trading agent",
+        text: "Querying Uniswap v3 Ethereum subgraph on The Graph via Subgraph MCP for TVL, volume, and fees across top pools...",
+      },
+      {
+        agent: "Analyst agent",
+        text: "Computing trailing 24h fee APR (fees ÷ TVL × 365) per pool with pandas...",
+      },
+    ],
+    answer:
+      "The highest raw fee-APR right now is the **PEPE/WETH 1%** pool at ~142% (annualized from 24h fees ÷ TVL) — but that's on a thin **$3.1M** TVL, so it comes with real impermanent-loss risk given PEPE's volatility. Among blue-chip pairs, **WBTC/WETH 0.3%** is the best risk-adjusted pick at ~24.6% APR on **$58.4M** TVL. Fee APR moves with trading volume day to day, so it's worth rechecking before sizing a position.",
+    sources: [
+      {
+        label: "Uniswap v3 Ethereum — top pools by fees/TVL",
+        id: "uniswap/uniswap-v3-ethereum-pools",
+        query:
+          "{ pools(first: 20, orderBy: feesUSD, orderDirection: desc) { token0 { symbol } token1 { symbol } feeTier totalValueLockedUSD volumeUSD feesUSD } }",
+      },
+    ],
+    table: {
+      title: "Top Uniswap v3 pools by fee APR (24h annualized)",
+      columns: ["Pool", "Fee Tier", "TVL", "24h Volume", "Fee APR"],
+      rows: [
+        { Pool: "PEPE/WETH", "Fee Tier": "1.00%", TVL: "$3.1M", "24h Volume": "$2.6M", "Fee APR": "142%" },
+        { Pool: "WBTC/WETH", "Fee Tier": "0.30%", TVL: "$58.4M", "24h Volume": "$22.1M", "Fee APR": "24.6%" },
+        { Pool: "USDC/WETH", "Fee Tier": "0.05%", TVL: "$41.2M", "24h Volume": "$9.8M", "Fee APR": "8.7%" },
+        { Pool: "DAI/USDC", "Fee Tier": "0.01%", TVL: "$19.6M", "24h Volume": "$3.2M", "Fee APR": "5.9%" },
+      ],
+    },
+  },
+  {
+    id: "whale-tracker",
+    question: "Who are the biggest whales right now, and what are they doing?",
+    agent: "Analyst agent",
+    steps: [
+      { agent: "Orchestrator", text: "Routing to Analyst agent..." },
+      {
+        agent: "Analyst agent",
+        text: "Pulling large transfers (>$1M) across Ethereum, Arbitrum, and Base over the last 24h via The Graph Token API...",
+      },
+      {
+        agent: "Analyst agent",
+        text: "Clustering wallets by net accumulation/distribution and cross-referencing known labels...",
+      },
+    ],
+    answer:
+      "Three wallets stand out over the last 24h. **`0x9f3e…4a21`** (unlabeled, ~$210M tracked net worth) added **$18.4M** in WETH and wstETH — its fourth accumulation day in a row. A Jump-linked address (**`0x2b7c…e910`**) rotated **$11.2M** out of ETH into stables, and **`0x51ad…7f36`** built a fresh **$7.9M** LINK position from a wallet that had been dormant for 6 months. Net, whales are modestly accumulating ETH liquid-staking tokens and DeFi blue chips this week — want me to set up an agent to copy one of these wallets?",
+    sources: [
+      {
+        label: "The Graph Token API — large transfers (>$1M, 24h)",
+        id: "graph-token-api/large-transfers-24h",
+        query: "GET /transfers?min_usd=1000000&window=24h&chains=ethereum,arbitrum,base",
+      },
+    ],
+    table: {
+      title: "Top wallets by net flow (24h)",
+      columns: ["Wallet", "Label", "Net Flow (24h)", "Move"],
+      rows: [
+        { Wallet: "0x9f3e…4a21", Label: "Unlabeled fund", "Net Flow (24h)": "+$18.4M", Move: "Accumulating WETH & wstETH" },
+        { Wallet: "0x2b7c…e910", Label: "Jump-linked", "Net Flow (24h)": "-$11.2M", Move: "Rotating ETH → stables" },
+        { Wallet: "0x51ad…7f36", Label: "Unlabeled whale", "Net Flow (24h)": "+$7.9M", Move: "Building LINK position" },
+        { Wallet: "0xd4e2…1c08", Label: "Unlabeled whale", "Net Flow (24h)": "+$6.1M", Move: "Adding to AAVE + COMP" },
+      ],
+    },
+  },
+  {
+    id: "whale-copy-agent",
+    question: "Create an agent to copy what that whale is doing",
+    agent: "Hedera agent",
+    steps: [
+      { agent: "Orchestrator", text: "Routing to Hedera agent..." },
+      {
+        agent: "Hedera agent",
+        text: "Generating ED25519 keypair and provisioning account on Hedera testnet...",
+      },
+      {
+        agent: "Hedera agent",
+        text: "Registering agent 'WhaleCopy' with a copy-trading policy tracking wallet 0x9f3e…4a21 (max 2% of portfolio per trade, WETH/wstETH/LINK only)...",
+      },
+      {
+        agent: "Hedera agent",
+        text: "Building seed transfer transaction for 1 HBAR...",
+      },
+    ],
+    answer:
+      "Created sub-agent **WhaleCopy** (`0.0.78511`, EVM Alias: `0x78511…c2f0`) configured to mirror wallet `0x9f3e…4a21`'s trades — capped at **2% of portfolio per trade**, restricted to WETH, wstETH, and LINK. It polls the tracked wallet hourly via the Token API and proposes matching trades for your approval by default; flip to auto-mode once you trust its calls. Confirm the 1 HBAR seed funding below to activate it.",
+    sources: [
+      {
+        label: "Hedera Testnet Account Provisioner",
+        id: "hedera/account-create-whalecopy",
+        query: "AccountCreateTransaction(name=\"WhaleCopy\", initialBalance=0, key=ED25519)",
+      },
+      {
+        label: "The Graph Token API — tracked wallet activity (0x9f3e…4a21)",
+        id: "graph-token-api/wallet-activity-0x9f3e",
+        query: "GET /transfers?wallet=0x9f3e...4a21&window=1h",
+      },
+    ],
+    actions: [
+      {
+        id: "seed-whalecopy-agent",
+        label: "Seed WhaleCopy (0.0.78511) with 1 HBAR",
+        description: "Fund your newly created agent account WhaleCopy (0.0.78511) with 1 HBAR from your connected wallet.",
+        protocol: "Hedera Testnet",
+        value: "1 HBAR",
+        cta: "Seed 1 HBAR",
+      },
+    ],
+  },
+  {
+    id: "twitter-trigger-bot",
+    question:
+      "Set up a bot that watches Elon Musk and Trump's tweets and trades Uniswap's tokenized stocks when they post",
+    agent: "Hedera agent",
+    steps: [
+      { agent: "Orchestrator", text: "Routing to Hedera agent..." },
+      {
+        agent: "Hedera agent",
+        text: "Provisioning autonomous account and registering agent 'SocialSignal' to Vault...",
+      },
+      {
+        agent: "Hedera agent",
+        text: "Wiring a filtered X/Twitter stream for @elonmusk and @realDonaldTrump...",
+      },
+      {
+        agent: "Trading agent",
+        text: "Configuring trade policy against Uniswap's tokenized-equity (xStocks) pools...",
+      },
+    ],
+    answer:
+      "Created sub-agent **SocialSignal** (`0.0.78523`, EVM Alias: `0x78523…d91a`) wired to a live X/Twitter stream for **@elonmusk** and **@realDonaldTrump**. On a new post it runs ticker + sentiment extraction, then — on a match — proposes a capped trade (default: **1% of portfolio, $500 max**) against Uniswap's tokenized stock pools, e.g. **TSLA-U/USDC** or **CRCL-U/USDC**. Every trade requires your approval by default; flip to auto-mode once you're comfortable with its calls. Confirm the 1 HBAR seed funding below to activate it.",
+    sources: [
+      {
+        label: "X/Twitter API — filtered stream (@elonmusk, @realDonaldTrump)",
+        id: "x/filtered-stream-elon-trump",
+        query: "GET /2/tweets/search/stream?rules=from:elonmusk OR from:realDonaldTrump",
+      },
+      {
+        label: "Uniswap v3 — tokenized equities (xStocks) pools",
+        id: "uniswap/xstocks-pools",
+        query:
+          "{ pools(where: { token0_in: [\"TSLA-U\", \"CRCL-U\"] }) { id token0 { symbol } token1 { symbol } } }",
+      },
+    ],
+    actions: [
+      {
+        id: "seed-socialsignal-agent",
+        label: "Seed SocialSignal (0.0.78523) with 1 HBAR",
+        description: "Fund your newly created agent account SocialSignal (0.0.78523) with 1 HBAR from your connected wallet.",
+        protocol: "Hedera Testnet",
+        value: "1 HBAR",
+        cta: "Seed 1 HBAR",
+      },
+    ],
+  },
 ];
 
 const HISTORY_AGO = ["2h ago", "yesterday", "2d ago", "3d ago", "4d ago", "6d ago"];

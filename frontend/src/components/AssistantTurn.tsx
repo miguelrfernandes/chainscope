@@ -6,8 +6,9 @@ import { FALLBACK_ANSWER } from "@/lib/scenarios";
 import { AgentStatusList } from "./AgentStatusList";
 import { StreamingAnswer } from "./StreamingAnswer";
 import { MarkdownLite } from "./MarkdownLite";
-import { BarChartArtifact } from "./BarChartArtifact";
-import { LineChartArtifact } from "./LineChartArtifact";
+import { BarChartArtifact } from "./charts/BarChartArtifact";
+import { LineChartArtifact } from "./charts/LineChartArtifact";
+
 import { DataTableArtifact } from "./DataTableArtifact";
 import { HealthFactorGauge } from "./HealthFactorGauge";
 import { SuggestedActions } from "./SuggestedActions";

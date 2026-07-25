@@ -54,6 +54,22 @@ describe("MarkdownLite parser", () => {
       ]);
     });
 
+    it("parses a GFM pipe table", () => {
+      const raw =
+        "| Chain | Token | USD Value |\n| --- | --- | --- |\n| Sepolia | ETH | $116.28 |\n| Sepolia | USDC | $104.78 |";
+      const blocks = parseBlocks(raw);
+      expect(blocks).toEqual([
+        {
+          type: "table",
+          header: ["Chain", "Token", "USD Value"],
+          rows: [
+            ["Sepolia", "ETH", "$116.28"],
+            ["Sepolia", "USDC", "$104.78"],
+          ],
+        },
+      ]);
+    });
+
     it("parses multiline code blocks", () => {
       const raw = "Here is code:\n```json\n{\n  \"status\": \"ok\"\n}\n```";
       const blocks = parseBlocks(raw);

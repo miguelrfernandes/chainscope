@@ -35,16 +35,10 @@ body {
   background:
     radial-gradient(ellipse 900px 500px at 12% -10%, rgba(255, 180, 84, 0.09), transparent 60%),
     radial-gradient(ellipse 700px 500px at 100% 0%, rgba(111, 227, 161, 0.06), transparent 55%),
-    repeating-linear-gradient(
-      0deg,
-      var(--border-soft) 0px,
-      var(--border-soft) 1px,
-      transparent 1px,
-      transparent 32px
-    ),
     var(--bg);
   color: var(--ink);
   font-family: var(--font-jetbrains), ui-monospace, monospace;
+  overflow-x: hidden;
 }
 
 ::selection {
@@ -52,48 +46,148 @@ body {
   color: var(--accent-ink);
 }
 
+/* Sleek custom scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(238, 244, 240, 0.18) transparent;
+}
+
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 0;
+  background: rgba(238, 244, 240, 0.18);
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--ink-faint);
+  background: var(--accent);
 }
 
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 180, 84, 0.25);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Slower, ultra-smooth Uniswap/Apple style motion curves */
 @keyframes fade-up {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(18px) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
 .animate-fade-up {
-  animation: fade-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: fade-up 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.75s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes caret-blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
 .animate-caret {
   animation: caret-blink 0.9s steps(1) infinite;
+}
+
+@keyframes ambient-glow {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate(30px, -20px) scale(1.08);
+    opacity: 1;
+  }
+}
+
+.animate-ambient-glow {
+  animation: ambient-glow 16s ease-in-out infinite alternate;
+}
+
+@keyframes float-subtle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-float {
+  animation: float-subtle 6s ease-in-out infinite;
+}
+
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s ease-in-out infinite;
+}
+
+/* Smooth interactive hover transitions */
+.hover-card {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hover-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.6), 0 0 20px -4px rgba(255, 180, 84, 0.15);
+  border-color: rgba(255, 180, 84, 0.35);
+}
+
+.hover-lift {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
 }
 
 @keyframes scan {

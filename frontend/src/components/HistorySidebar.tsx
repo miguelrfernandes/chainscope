@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { HISTORY } from "@/lib/scenarios";
 import { formatRelativeTime, type StoredThread } from "@/lib/history";
 
@@ -20,19 +23,22 @@ export function HistorySidebar({
   walletConnected: boolean;
 }) {
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r border-[var(--border)] py-4 sm:flex">
+    <aside className="hidden w-60 shrink-0 flex-col overflow-x-hidden border-r border-[var(--border)] py-4 sm:flex">
       <div className="px-4 pb-3">
-        <button
+        <motion.button
           onClick={onNewChat}
-          className="flex w-full items-center gap-2 border border-[var(--border)] px-3 py-2 text-xs text-[var(--ink-dim)] transition hover:border-[var(--accent)]/50 hover:text-[var(--ink)]"
+          whileHover={{ scale: 1.02, y: -1 }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg-raised)]/50 px-3 py-2 text-xs font-medium text-[var(--ink-dim)] transition-all hover:border-[var(--accent)]/50 hover:bg-[var(--accent-soft)] hover:text-[var(--ink)] shadow-sm"
         >
-          <span className="text-[var(--accent)]">+</span>
+          <span className="text-[var(--accent)] font-bold">+</span>
           new conversation
-        </button>
+        </motion.button>
       </div>
 
-      <div className="flex flex-1 flex-col overflow-y-auto px-2">
-        <p className="px-2 pb-0.5 text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">
+      <div className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden custom-scrollbar px-2">
+        <p className="px-2 pb-1 text-[10px] uppercase tracking-wider text-[var(--ink-faint)] font-mono font-medium">
           your history
         </p>
         {!walletConnected ? (
@@ -44,16 +50,18 @@ export function HistorySidebar({
             Real questions you ask the live agents will show up here.
           </p>
         ) : (
-          <nav className="flex flex-col gap-0.5 pb-4">
+          <nav className="flex flex-col gap-1 pb-4">
             {threads.map((t) => {
               const active = activeId === t.id;
               return (
-                <div
+                <motion.div
                   key={t.id}
-                  className={`group relative flex items-center border-l-2 transition ${
+                  whileHover={{ x: 3 }}
+                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                  className={`group relative flex items-center rounded-lg border-l-2 transition-all ${
                     active
-                      ? "border-[var(--accent)] bg-[var(--accent-soft)]"
-                      : "border-transparent hover:border-[var(--border)] hover:bg-[var(--bg-raised)]/60"
+                      ? "border-[var(--accent)] bg-[var(--accent-soft)] shadow-[0_0_12px_rgba(255,180,84,0.1)]"
+                      : "border-transparent hover:border-[var(--border)] hover:bg-[var(--bg-raised)]/70"
                   }`}
                 >
                   <button
@@ -62,12 +70,12 @@ export function HistorySidebar({
                   >
                     <span
                       className={`line-clamp-2 text-[12.5px] leading-snug ${
-                        active ? "text-[var(--ink)]" : "text-[var(--ink-dim)]"
+                        active ? "text-[var(--ink)] font-medium" : "text-[var(--ink-dim)]"
                       }`}
                     >
                       {t.title}
                     </span>
-                    <span className="text-[10px] text-[var(--ink-faint)]">
+                    <span className="text-[10px] text-[var(--ink-faint)] font-mono">
                       {formatRelativeTime(t.updatedAt)}
                     </span>
                   </button>
@@ -77,7 +85,7 @@ export function HistorySidebar({
                       onDeleteThread(t.id);
                     }}
                     title="Delete conversation"
-                    className="absolute right-1.5 p-1 text-[var(--ink-faint)] opacity-0 transition hover:text-[var(--danger)] group-hover:opacity-100"
+                    className="absolute right-1.5 p-1 text-[var(--ink-faint)] opacity-0 transition-opacity hover:text-[var(--danger)] group-hover:opacity-100"
                   >
                     <svg
                       className="h-3.5 w-3.5"
@@ -93,61 +101,66 @@ export function HistorySidebar({
                       />
                     </svg>
                   </button>
-                </div>
+                </motion.div>
               );
             })}
           </nav>
         )}
 
-        <p className="px-2 pb-0.5 text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">
+        <p className="px-2 pb-1 text-[10px] uppercase tracking-wider text-[var(--ink-faint)] font-mono font-medium">
           demo scenarios
         </p>
         <p className="px-2.5 pb-2 text-[10.5px] leading-relaxed text-[var(--ink-faint)]">
           Mock walkthroughs with scripted answers — not live data, no wallet needed.
         </p>
-        <nav className="flex flex-col gap-0.5 pb-2">
+        <nav className="flex flex-col gap-1 pb-2">
           {HISTORY.map(({ scenario, agoLabel }) => {
             const active = activeId === scenario.id;
             return (
-              <button
+              <motion.button
                 key={scenario.id}
                 onClick={() => onSelectExample(scenario.id)}
-                className={`flex flex-col items-start gap-0.5 border-l-2 px-2.5 py-2 text-left transition ${
+                whileHover={{ x: 3 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                className={`flex flex-col items-start gap-0.5 rounded-lg border-l-2 px-2.5 py-2 text-left transition-all ${
                   active
-                    ? "border-[var(--accent)] bg-[var(--accent-soft)]"
-                    : "border-transparent hover:border-[var(--border)] hover:bg-[var(--bg-raised)]/60"
+                    ? "border-[var(--accent)] bg-[var(--accent-soft)] shadow-[0_0_12px_rgba(255,180,84,0.1)]"
+                    : "border-transparent hover:border-[var(--border)] hover:bg-[var(--bg-raised)]/70"
                 }`}
               >
                 <span
                   className={`line-clamp-2 text-[12.5px] leading-snug ${
-                    active ? "text-[var(--ink)]" : "text-[var(--ink-dim)]"
+                    active ? "text-[var(--ink)] font-medium" : "text-[var(--ink-dim)]"
                   }`}
                 >
                   {scenario.question}
                 </span>
-                <span className="flex items-center gap-1.5 text-[10px] text-[var(--ink-faint)]">
-                  <span className="border border-[var(--ink-faint)]/40 px-1 uppercase tracking-wide text-[var(--ink-faint)]">
+                <span className="flex items-center gap-1.5 text-[10px] text-[var(--ink-faint)] font-mono">
+                  <span className="rounded border border-[var(--ink-faint)]/40 px-1 uppercase tracking-wide text-[var(--ink-faint)]">
                     mock
                   </span>
-                  <span className="uppercase tracking-wide text-[var(--accent)]/70">
+                  <span className="uppercase tracking-wide text-[var(--accent)]/80 font-medium">
                     {scenario.agent.replace(" agent", "")}
                   </span>
                   ·{agoLabel}
                 </span>
-              </button>
+              </motion.button>
             );
           })}
         </nav>
       </div>
 
       <div className="px-4 pt-3">
-        <Link
-          href="/"
-          className="text-[11px] text-[var(--ink-faint)] transition hover:text-[var(--accent)]"
-        >
-          ← back to chainscope.ai
-        </Link>
+        <motion.div whileHover={{ x: -2 }} transition={{ duration: 0.2 }}>
+          <Link
+            href="/"
+            className="text-[11px] text-[var(--ink-faint)] transition hover:text-[var(--accent)] font-medium"
+          >
+            ← back to chainscope.ai
+          </Link>
+        </motion.div>
       </div>
     </aside>
   );
 }
+
