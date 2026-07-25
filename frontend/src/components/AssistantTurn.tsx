@@ -39,9 +39,9 @@ export function AssistantTurn({
   if (instant) {
     return (
       <div className="flex flex-col gap-3">
-        <p className="text-[15px] leading-relaxed text-[var(--ink)]">
+        <div className="text-[15px] leading-relaxed text-[var(--ink)]">
           <MarkdownLite text={scenario ? scenario.answer : FALLBACK_ANSWER} />
-        </p>
+        </div>
         {scenario && (
           <div className="flex flex-col gap-3">
             {scenario.bar && <BarChartArtifact bar={scenario.bar} />}

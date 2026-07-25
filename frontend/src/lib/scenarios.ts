@@ -135,6 +135,46 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "yield-advisor",
+    question: "Do I have any idle assets that could be earning yield right now?",
+    agent: "Yield advisor agent",
+    steps: [
+      { agent: "Orchestrator", text: "Routing to Yield advisor agent..." },
+      {
+        agent: "Yield advisor agent",
+        text: "Checking wallet balances vs Aave aToken balances for USDC, DAI, LINK, WETH...",
+      },
+      {
+        agent: "Yield advisor agent",
+        text: "Querying Aave v3 Sepolia subgraph via Subgraph MCP for current supply APY...",
+      },
+      {
+        agent: "Yield advisor agent",
+        text: "Ranking idle reserves by USD-equivalent balance...",
+      },
+    ],
+    answer:
+      "You've got **500 USDC** sitting in your wallet earning nothing — it's never been supplied to Aave. Aave v3's Sepolia market is currently paying **4.8% supply APY** on USDC, so that's roughly **$24/year** left on the table at current rates, with minimal added risk since you'd be supplying (not borrowing against) it. Your DAI, LINK, and WETH balances are either already supplied or below the dust threshold to bother with.",
+    sources: [
+      {
+        label: "Aave v3 Sepolia — USDC reserve",
+        id: "aave/protocol-v3-sepolia",
+        query: "{ reserve(id: \"0x94a9...usdc\") { liquidityRate } } (converted from ray to APY)",
+      },
+    ],
+    actions: [
+      {
+        id: "supply-usdc-aave",
+        label: "Supply 500 USDC to Aave v3",
+        description:
+          "Currently idle in your wallet. Aave v3 Sepolia is paying 4.8% supply APY on USDC right now.",
+        protocol: "Aave v3 · Sepolia",
+        value: "500 USDC",
+        cta: "Supply to Aave",
+      },
+    ],
+  },
+  {
     id: "sprawl",
     question: "Do I have any idle or forgotten positions across DeFi?",
     agent: "Discovery agent",

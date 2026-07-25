@@ -31,11 +31,11 @@ export function StreamingAnswer({
   const streaming = count < words.length;
 
   return (
-    <p className="text-[15px] leading-relaxed text-[var(--ink)]">
+    <div className="relative text-[15px] leading-relaxed text-[var(--ink)]">
       <MarkdownLite text={visible} />
       {streaming && (
-        <span className="ml-0.5 inline-block h-4 w-2 translate-y-0.5 animate-caret bg-[var(--accent)]" />
+        <span className="ml-1 inline-block h-4 w-2 translate-y-0.5 animate-caret bg-[var(--accent)]" />
       )}
-    </p>
+    </div>
   );
 }
