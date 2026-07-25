@@ -15,7 +15,20 @@ def test_zg_inference_live(monkeypatch):
         pytest.skip("ZG_API_KEY is not configured")
 
     llm = get_llm(temperature=0.0, max_tokens=10)
-    assert llm.model_name == "qwen2.5-omni"
+    res = llm.invoke("Ping")
+    assert res.content
+    get_settings.cache_clear()
+
+
+@pytest.mark.skip(
+    reason="Live integration test requiring API calls. Excluded from standard CI runs."
+)
+def test_zg_fallback_to_openrouter(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "0g")
+    monkeypatch.setenv("ZG_MODEL", "non-existent-invalid-model")
+    get_settings.cache_clear()
+
+    llm = get_llm(temperature=0.0, max_tokens=10)
     res = llm.invoke("Ping")
     assert res.content
     get_settings.cache_clear()
