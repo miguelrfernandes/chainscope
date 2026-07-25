@@ -26,7 +26,7 @@ export function HederaActionCard({ payload }: { payload: HederaTxBytesPayload })
   async function run() {
     if (state !== "idle" && state !== "error") return;
     if (!wallet.connected || !wallet.accountId) {
-      setError("Connect a Hedera wallet first.");
+      setError("Connect a Hedera wallet via WalletConnect first.");
       setState("error");
       return;
     }
@@ -79,7 +79,7 @@ export function HederaActionCard({ payload }: { payload: HederaTxBytesPayload })
             disabled={wallet.status === "connecting"}
             className="shrink-0 border border-[var(--accent)] bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/85 disabled:cursor-wait disabled:opacity-70"
           >
-            {wallet.status === "connecting" ? "connecting…" : "connect Hedera wallet"}
+            {wallet.status === "connecting" ? "connecting…" : "connect Hedera (WalletConnect)"}
           </button>
         ) : (
           <button

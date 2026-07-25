@@ -124,7 +124,7 @@ export function SeedAgentCard({
   async function runHederaTransfer() {
     if (state !== "idle" && state !== "error") return;
     if (!hederaWallet.connected || !hederaWallet.accountId) {
-      setError("Connect a Hedera wallet first.");
+      setError("Connect a Hedera wallet via WalletConnect first.");
       setState("error");
       return;
     }
@@ -241,7 +241,7 @@ export function SeedAgentCard({
                 >
                   {hederaWallet.status === "connecting"
                     ? "connecting Hedera…"
-                    : "connect Hedera wallet"}
+                    : "connect Hedera (WalletConnect)"}
                 </button>
               </>
             ) : null}

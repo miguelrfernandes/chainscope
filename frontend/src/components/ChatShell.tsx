@@ -292,10 +292,10 @@ export function ChatShell() {
               <button
                 onClick={hederaWallet.connect}
                 disabled={hederaWallet.status === "connecting"}
-                title="Connect a Hedera wallet (HashPack) for Hedera actions"
+                title="Connect Hedera wallet via WalletConnect (HashPack, Kabila, etc.) for Hedera actions"
                 className="flex items-center gap-2 border border-[var(--border)] px-3 py-1.5 text-[11px] text-[var(--ink-dim)] transition hover:border-[var(--accent)]/50 disabled:cursor-wait disabled:opacity-70"
               >
-                {hederaWallet.status === "connecting" ? "connecting…" : "connect Hedera wallet"}
+                {hederaWallet.status === "connecting" ? "connecting…" : "connect Hedera (WalletConnect)"}
               </button>
             )}
           </div>
