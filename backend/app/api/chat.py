@@ -49,8 +49,9 @@ async def chat(req: ChatRequest):
         try:
             async for update in graph.astream(inputs, config=config, stream_mode="updates"):
                 for _node_name, delta in update.items():
-                    for step in delta.get("steps", []):
-                        yield _sse("step", step)
+                    if "steps" in delta:
+                        for step in delta.get("steps", []):
+                            yield _sse("step", step)
                     sources.extend(delta.get("sources", []))
                     artifacts.extend(delta.get("artifacts", []))
                     if delta.get("final_answer"):

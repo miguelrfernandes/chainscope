@@ -65,24 +65,23 @@ export function ChatShell() {
     };
   }
 
-  // Sidebar list: saved threads from local storage, with the in-progress
-  // active thread pinned to the top (its real timestamp is written by the
-  // persistence effect below; render itself must stay pure).
+  // Sidebar list: saved threads from local storage, sorted by updatedAt
   const threads = useMemo(() => {
     const base = wallet.address ? loadThreads(wallet.address) : [];
     const saved = base.find((t) => t.id === activeThreadId);
     const timestamp = saved ? saved.updatedAt : 0;
     const live = activeThreadSnapshot(timestamp);
     if (!live) return base;
-    return [live, ...base.filter((t) => t.id !== live.id)];
+    return base.map((t) => (t.id === live.id ? live : t));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wallet.address, activeThreadId, messages]);
 
   // Persist the active conversation to this wallet's local history whenever it changes.
-  // Write-only: the sidebar reads live state via the `threads` memo above.
   useEffect(() => {
     if (!wallet.address) return;
-    const snapshot = activeThreadSnapshot(Date.now());
+    const base = loadThreads(wallet.address);
+    const saved = base.find((t) => t.id === activeThreadId);
+    const snapshot = activeThreadSnapshot(saved ? saved.updatedAt : Date.now());
     if (!snapshot) return;
     saveThread(wallet.address, snapshot);
     // eslint-disable-next-line react-hooks/exhaustive-deps

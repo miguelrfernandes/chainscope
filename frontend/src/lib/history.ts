@@ -51,7 +51,8 @@ export function deleteThread(address: string, threadId: string): StoredThread[] 
 
 export function saveThread(address: string, thread: StoredThread): StoredThread[] {
   const threads = loadThreads(address).filter((t) => t.id !== thread.id);
-  threads.unshift(thread);
+  threads.push(thread);
+  threads.sort((a, b) => b.updatedAt - a.updatedAt);
   const trimmed = threads.slice(0, MAX_THREADS);
   try {
     localStorage.setItem(storageKey(address), JSON.stringify(trimmed));
