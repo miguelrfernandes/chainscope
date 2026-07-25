@@ -98,49 +98,6 @@ export const SCENARIOS: Scenario[] = [
     },
   },
   {
-    id: "defi-research",
-    question: "What's the current utilization and supply APY on Aave v3 USDC?",
-    agent: "DeFi research agent",
-    steps: [
-      { agent: "Orchestrator", text: "Routing to DeFi research agent..." },
-      {
-        agent: "DeFi research agent",
-        text: "Querying Aave v3 Ethereum subgraph via Subgraph MCP (reserve: USDC)...",
-      },
-      {
-        agent: "DeFi research agent",
-        text: "Fetching 7-day historical utilization snapshots...",
-      },
-      {
-        agent: "Analyst agent",
-        text: "Plotting utilization trend with pandas...",
-      },
-    ],
-    answer:
-      "Aave v3 USDC on Ethereum is currently at **86.4% utilization**, with a supply APY of **4.9%** and variable borrow APY of **6.7%**. Utilization has climbed steadily over the past week, up from 79% — worth watching if you're supplying, since APY tends to spike further as utilization approaches the reserve's optimal threshold (90%).",
-    sources: [
-      {
-        label: "Aave v3 Ethereum — reserves",
-        id: "aave/protocol-v3-ethereum",
-        query:
-          "{ reserve(id: \"USDC-0x7d2768...\") { utilizationRate liquidityRate variableBorrowRate } }",
-      },
-    ],
-    line: {
-      title: "USDC reserve utilization, last 7 days",
-      unit: "%",
-      data: [
-        { label: "Mon", value: 79 },
-        { label: "Tue", value: 80.5 },
-        { label: "Wed", value: 81 },
-        { label: "Thu", value: 83 },
-        { label: "Fri", value: 84.2 },
-        { label: "Sat", value: 85 },
-        { label: "Sun", value: 86.4 },
-      ],
-    },
-  },
-  {
     id: "risk-monitor",
     question: "Am I close to liquidation on my Aave position?",
     agent: "Risk monitor agent",
@@ -257,40 +214,6 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
-    id: "governance",
-    question: "Summarize the active Uniswap governance proposals.",
-    agent: "Governance agent",
-    steps: [
-      { agent: "Orchestrator", text: "Routing to Governance agent..." },
-      {
-        agent: "Governance agent",
-        text: "Querying Uniswap governance subgraph via Subgraph MCP...",
-      },
-      {
-        agent: "Governance agent",
-        text: "Fetching proposal descriptions and current vote tallies...",
-      },
-    ],
-    answer:
-      "There are **2 active proposals**. UGP-42 (\"Deploy fee switch on 5 additional pools\") is passing with 68% For and quorum already met, voting closes in 3 days. UGP-43 (\"Grant $400k from the treasury to the v4 hooks incubator\") is closer, at 54% For with quorum not yet reached — it needs about 1.1M more UNI in turnout to be binding by the time voting ends in 5 days.",
-    sources: [
-      {
-        label: "Uniswap governance — proposals & votes",
-        id: "uniswap/governance-v2",
-        query:
-          "{ proposals(where: { status: ACTIVE }) { id title forVotes againstVotes quorumVotes endBlock } }",
-      },
-    ],
-    table: {
-      title: "Active proposals",
-      columns: ["Proposal", "Status", "For", "Quorum", "Ends"],
-      rows: [
-        { Proposal: "UGP-42 — Fee switch, 5 pools", Status: "Passing", For: "68%", Quorum: "met", Ends: "3d" },
-        { Proposal: "UGP-43 — v4 hooks incubator grant", Status: "At risk", For: "54%", Quorum: "not met", Ends: "5d" },
-      ],
-    },
-  },
-  {
     id: "trading",
     question: "Is there enough USDC/ETH liquidity on Uniswap to swap $250k without much slippage?",
     agent: "Trading agent",
@@ -329,6 +252,178 @@ export const SCENARIOS: Scenario[] = [
         { label: "1.00%", value: 2_100_000, color: "#6fe3a1" },
       ],
     },
+  },
+  {
+    id: "hedera-transfer",
+    question: "Transfer 1 HBAR on Hedera testnet to account 0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB",
+    agent: "Hedera agent",
+    steps: [
+      { agent: "Orchestrator", text: "Routing to Hedera agent..." },
+      {
+        agent: "Hedera agent",
+        text: "Checking sender account balance via Hedera Mirror Node...",
+      },
+      {
+        agent: "Hedera agent",
+        text: "Constructing HBAR transfer transaction for account 0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB...",
+      },
+      {
+        agent: "Hedera agent",
+        text: "Executing transfer via Hedera SDK / Agent Kit...",
+      },
+    ],
+    answer:
+      "Successfully transferred **1 HBAR** to account `0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB` on Hedera testnet. Transaction fee: **0.001 HBAR**. Remaining account balance: **499 HBAR**.",
+    sources: [
+      {
+        label: "Hedera Mirror Node — Account 0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB",
+        id: "hedera/testnet-mirror-node",
+        query: "GET /api/v1/accounts/0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB",
+      },
+    ],
+    actions: [
+      {
+        id: "transfer-hbar",
+        label: "Transfer 1 HBAR",
+        description: "Send 1 HBAR to recipient account 0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB on Hedera testnet.",
+        protocol: "Hedera Testnet",
+        value: "1 HBAR",
+        cta: "Confirm Transfer",
+      },
+    ],
+  },
+  {
+    id: "hedera-create-agent",
+    question: "Create a Hedera agent named YieldSentinel tied to my wallet and seed it with 1 HBAR",
+    agent: "Hedera agent",
+    steps: [
+      { agent: "Orchestrator", text: "Routing to Hedera agent..." },
+      {
+        agent: "Hedera agent",
+        text: "Generating ED25519 keypair and provisioning account on Hedera testnet...",
+      },
+      {
+        agent: "Hedera agent",
+        text: "Encrypting private key with AES-256-GCM and registering agent 'YieldSentinel' to Vault...",
+      },
+      {
+        agent: "Hedera agent",
+        text: "Building seed transfer transaction for 1 HBAR...",
+      },
+    ],
+    answer:
+      "Successfully created new Hedera sub-agent **YieldSentinel** (`0.0.78492`, EVM Alias: `0x78492...b4a1`) tied to your wallet. Private key has been encrypted and stored in the backend vault. To activate autonomous execution, confirm the 1 HBAR initial seed funding below.",
+    sources: [
+      {
+        label: "Hedera Testnet Account Provisioner",
+        id: "hedera/account-create",
+        query: "AccountCreateTransaction(name=\"YieldSentinel\", initialBalance=0, key=ED25519)",
+      },
+    ],
+    actions: [
+      {
+        id: "seed-agent-hbar",
+        label: "Seed YieldSentinel (0.0.78492) with 1 HBAR",
+        description: "Fund your newly created agent account YieldSentinel (0.0.78492) with 1 HBAR from your connected wallet.",
+        protocol: "Hedera Testnet",
+        value: "1 HBAR",
+        cta: "Seed 1 HBAR",
+      },
+    ],
+  },
+  {
+    id: "hedera-schedule-loop",
+    question: "Schedule an autonomous loop for YieldSentinel to scan its token holdings daily and rebalance allocations if drift exceeds 5%",
+    agent: "Hedera agent",
+    steps: [
+      { agent: "Orchestrator", text: "Routing to Hedera agent..." },
+      {
+        agent: "Hedera agent",
+        text: "Resolving agent 'YieldSentinel' (0.0.78492) from Vault...",
+      },
+      {
+        agent: "Hedera agent",
+        text: "Parsing allocation review condition (Frequency: Daily, Drift Threshold: > 5%)...",
+      },
+      {
+        agent: "Hedera agent",
+        text: "Registering in-process APScheduler job in Embedded Task Vault...",
+      },
+      {
+        agent: "Hedera agent",
+        text: "Configuring Hedera Mirror Node token scanner for YieldSentinel...",
+      },
+    ],
+    answer:
+      "Recurring portfolio review loop registered successfully for **YieldSentinel** (`0.0.78492`)! **Schedule**: `0 0 * * *` (Daily at midnight). **Action**: Scans agent account `0.0.78492` HTS token holdings via Mirror Node API; computes target asset allocation and executes rebalancing swaps if drift exceeds `5%`. Runs securely in-process.",
+    sources: [
+      {
+        label: "Embedded ACP Task Scheduler",
+        id: "chainscope/embedded-apscheduler",
+        query: "APScheduler.add_job(id=\"cron-YieldSentinel-0.0.78492-rebalance\", trigger=\"cron\", hour=0)",
+      },
+    ],
+  },
+  {
+    id: "saucerswap-apr",
+    question: "What's the best APR I can get farming on SaucerSwap right now?",
+    agent: "SaucerSwap agent",
+    steps: [
+      { agent: "Orchestrator", text: "Routing to SaucerSwap agent..." },
+      {
+        agent: "SaucerSwap agent",
+        text: "Fetching SaucerSwap farms/pools/token prices to compute pool APRs...",
+      },
+    ],
+    answer:
+      "The top farm on SaucerSwap right now is the **SAUCE/XSAUCE pool at ~18.4% APR** (~$1.1M TVL staked), followed by **HBAR/SAUCE at ~12.7% APR**. APRs are computed live from current SAUCE + HBAR emission rates against USD-priced TVL, so they move with token prices and staked amounts — worth rechecking before committing size.",
+    sources: [
+      {
+        label: "SaucerSwap REST API — farms/pools/tokens",
+        id: "saucerswap/rest-api/farms-pools-tokens",
+        query: "GET /farms, GET /pools, GET /tokens (api.saucerswap.finance)",
+      },
+    ],
+    table: {
+      title: "Top SaucerSwap farms by APR",
+      columns: ["Pair", "APR", "TVL Staked"],
+      rows: [
+        { Pair: "SAUCE/XSAUCE", APR: "18.4%", "TVL Staked": "$1.1M" },
+        { Pair: "HBAR/SAUCE", APR: "12.7%", "TVL Staked": "$2.4M" },
+        { Pair: "USDC/HBAR", APR: "9.1%", "TVL Staked": "$3.8M" },
+      ],
+    },
+  },
+  {
+    id: "saucerswap-swap",
+    question: "Connected wallet: 0x8f2a19b4d3f0c9a17e6b2d4c8a5f31e0b6c7c91b — Swap 10 SAUCE for WHBAR on SaucerSwap",
+    agent: "SaucerSwap agent",
+    steps: [
+      { agent: "Orchestrator", text: "Routing to SaucerSwap agent..." },
+      {
+        agent: "SaucerSwap agent",
+        text: "Building SaucerSwap V2 swap: 10 SAUCE -> WHBAR...",
+      },
+    ],
+    answer:
+      "Built a SaucerSwap V2 swap: **10 SAUCE → WHBAR** via SwapRouter's `exactInput` (0.30% fee tier). It's a two-step transaction — an ERC20 approve followed by the swap itself — ready for your connected wallet to sign below. Nothing has executed yet.",
+    sources: [
+      {
+        label: "SaucerSwap V2 SwapRouter — Hedera Testnet",
+        id: "saucerswap/swaprouter-v2-testnet",
+        query: "exactInput((bytes,address,uint256,uint256,uint256)) on 0.0.1414040",
+      },
+    ],
+    actions: [
+      {
+        id: "saucerswap-swap-tx",
+        label: "Swap 10 SAUCE for WHBAR",
+        description: "Approve + swap 10 SAUCE for WHBAR on SaucerSwap V2 (Hedera testnet).",
+        protocol: "SaucerSwap V2 · Hedera Testnet",
+        value: "10 SAUCE",
+        cta: "Execute Swap",
+      },
+    ],
   },
 ];
 

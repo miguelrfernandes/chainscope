@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { streamChat } from "./api";
+import { confirmAgent, streamChat } from "./api";
 
 function sseResponse(frames: string[], { chunkSize = Infinity } = {}) {
   const body = frames.join("");
@@ -121,3 +121,37 @@ describe("streamChat", () => {
     expect(error).toBe("Couldn't reach the ChainScope backend.");
   });
 });
+
+describe("confirmAgent", () => {
+  it("posts to /api/actions/confirm-agent and returns parsed response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ status: "ACTIVE", agent: { agent_name: "test-bot" } }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+    );
+
+    const result = await confirmAgent("0xowner", "test-bot", "0.0.1001@123.456");
+    expect(result).toEqual({ status: "ACTIVE", agent: { agent_name: "test-bot" } });
+  });
+
+  it("throws error with detail message on non-2xx response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ detail: "Transaction failed" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+    );
+
+    await expect(confirmAgent("0xowner", "test-bot", "0.0.1001@123.456")).rejects.toThrow(
+      "Transaction failed"
+    );
+  });
+});
+

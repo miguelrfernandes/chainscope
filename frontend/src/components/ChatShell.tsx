@@ -5,6 +5,7 @@ import { SCENARIOS, HISTORY, type Scenario } from "@/lib/scenarios";
 import { streamChat } from "@/lib/api";
 import { deleteThread, loadThreads, saveThread, type StoredThread } from "@/lib/history";
 import { useWallet } from "@/hooks/useWallet";
+import { useHederaWallet } from "@/hooks/useHederaWallet";
 import { AssistantTurn } from "./AssistantTurn";
 import { LiveAssistantTurn, type LiveState } from "./LiveAssistantTurn";
 import { Logomark } from "./Logomark";
@@ -27,6 +28,7 @@ const EXAMPLE_IDS = new Set(SCENARIOS.map((s) => s.id));
 
 export function ChatShell() {
   const wallet = useWallet();
+  const hederaWallet = useHederaWallet();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -118,9 +120,12 @@ export function ChatShell() {
     ]);
     setInput("");
 
-    const promptWithWallet = wallet.address && !q.toLowerCase().includes(wallet.address.toLowerCase())
+    let promptWithWallet = wallet.address && !q.toLowerCase().includes(wallet.address.toLowerCase())
       ? `${q}\n(Connected wallet: ${wallet.address})`
       : q;
+    if (hederaWallet.accountId && !promptWithWallet.includes(hederaWallet.accountId)) {
+      promptWithWallet += `\n(Connected Hedera wallet: ${hederaWallet.accountId})`;
+    }
 
     streamChat(threadId, promptWithWallet, {
       onStep: (step) =>
@@ -266,6 +271,26 @@ export function ChatShell() {
                 {connectLabel}
               </button>
             )}
+
+            {hederaWallet.connected ? (
+              <button
+                onClick={hederaWallet.disconnect}
+                title="Disconnect Hedera wallet"
+                className="group flex items-center gap-2 border border-[var(--border)] px-2.5 py-1.5 text-[11px] transition hover:border-[var(--danger)]/50"
+              >
+                <span className="text-[var(--ink)] group-hover:hidden">{hederaWallet.accountId}</span>
+                <span className="hidden text-[var(--danger)] group-hover:inline">disconnect</span>
+              </button>
+            ) : (
+              <button
+                onClick={hederaWallet.connect}
+                disabled={hederaWallet.status === "connecting"}
+                title="Connect a Hedera wallet (HashPack) for Hedera actions"
+                className="flex items-center gap-2 border border-[var(--border)] px-3 py-1.5 text-[11px] text-[var(--ink-dim)] transition hover:border-[var(--accent)]/50 disabled:cursor-wait disabled:opacity-70"
+              >
+                {hederaWallet.status === "connecting" ? "connecting…" : "connect Hedera wallet"}
+              </button>
+            )}
           </div>
         </header>
 
@@ -295,7 +320,11 @@ export function ChatShell() {
               ) : (
                 <div key={m.id} className="animate-fade-up flex justify-start">
                   <div className="max-w-[85%] w-full">
-                    <LiveAssistantTurn live={m.live} instant={loadedFromHistory} />
+                    <LiveAssistantTurn
+                      live={m.live}
+                      instant={loadedFromHistory}
+                      ownerAddress={wallet.address || "0xdefault_owner"}
+                    />
                   </div>
                 </div>
               )

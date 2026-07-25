@@ -24,6 +24,9 @@ GRAPH_MCP_URL=...               # Subgraph MCP server endpoint
 GRAPH_API_KEY=...               # if the MCP endpoint requires one
 PINAX_API_TOKEN=...             # Pinax Token API, used by the portfolio agent
 SEPOLIA_RPC_URL=...             # public Sepolia RPC, used by the yield advisor's idle-balance checks
+# Planned (MetaMask/EVM-relay Hedera actions — see agents.md):
+HEDERA_SCHEDULE_FACTORY_ADDRESS=...            # deployed ScheduledVaultFactory, Hedera testnet
+HEDERA_NATIVE_TRANSFER_STRATEGY_ADDRESS=...    # deployed NativeTransferStrategy, Hedera testnet
 ```
 
 See `backend/.env.example` for the full list. Swapping `LLM_PROVIDER` to
@@ -35,6 +38,7 @@ Frontend (`.env.local` in the Next.js app):
 
 ```
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=...  # HashConnect (Hedera wallet) pairing — free at https://cloud.reown.com
 ```
 
 ## Local development

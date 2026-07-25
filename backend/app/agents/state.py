@@ -8,7 +8,16 @@ def merge_dicts(left: dict, right: dict) -> dict:
     return {**left, **right}
 
 SpecialistName = Literal[
-    "portfolio", "defi_research", "risk_monitor", "governance", "yield_advisor"
+    "portfolio",
+    "defi_research",
+    "risk_monitor",
+    "governance",
+    "yield_advisor",
+    "hedera",
+    "hedera_action",
+    "hedera_wallet_action",
+    "saucerswap",
+    "uniswap",
 ]
 
 SPECIALISTS: tuple[SpecialistName, ...] = (
@@ -17,6 +26,11 @@ SPECIALISTS: tuple[SpecialistName, ...] = (
     "risk_monitor",
     "governance",
     "yield_advisor",
+    "hedera",
+    "hedera_action",
+    "hedera_wallet_action",
+    "saucerswap",
+    "uniswap",
 )
 
 

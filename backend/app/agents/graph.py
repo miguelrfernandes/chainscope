@@ -5,8 +5,13 @@ from app.agents.orchestrator import route_node, synthesize_node
 from app.agents.specialists.analyst import analyst_node
 from app.agents.specialists.defi_research import defi_research_node
 from app.agents.specialists.governance import governance_node
+from app.agents.specialists.hedera import hedera_node
+from app.agents.specialists.hedera_action import hedera_action_node
+from app.agents.specialists.hedera_wallet_action import hedera_wallet_action_node
 from app.agents.specialists.portfolio import portfolio_node
 from app.agents.specialists.risk_monitor import risk_monitor_node
+from app.agents.specialists.saucerswap import saucerswap_node
+from app.agents.specialists.uniswap import uniswap_node
 from app.agents.specialists.yield_advisor import yield_advisor_node
 from app.agents.state import GraphState
 
@@ -16,6 +21,11 @@ SPECIALIST_NODES = {
     "risk_monitor": risk_monitor_node,
     "governance": governance_node,
     "yield_advisor": yield_advisor_node,
+    "hedera": hedera_node,
+    "hedera_action": hedera_action_node,
+    "hedera_wallet_action": hedera_wallet_action_node,
+    "saucerswap": saucerswap_node,
+    "uniswap": uniswap_node,
 }
 
 

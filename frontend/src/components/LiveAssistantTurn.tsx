@@ -17,9 +17,11 @@ export type LiveState = {
 export function LiveAssistantTurn({
   live,
   instant = false,
+  ownerAddress = "0xdefault_owner",
 }: {
   live: LiveState;
   instant?: boolean;
+  ownerAddress?: string;
 }) {
   if (live.error) {
     return (
@@ -28,6 +30,7 @@ export function LiveAssistantTurn({
       </p>
     );
   }
+
 
   // Group steps by agent label for nested sub-item display
   const groupedSteps: { agent: string; mainText: string; subItems: string[] }[] = [];
@@ -111,7 +114,7 @@ export function LiveAssistantTurn({
           {live.artifacts.length > 0 && (
             <div className="flex flex-col gap-3">
               {live.artifacts.map((a, i) => (
-                <LiveArtifact key={i} artifact={a} />
+                <LiveArtifact key={i} artifact={a} ownerAddress={ownerAddress} />
               ))}
             </div>
           )}

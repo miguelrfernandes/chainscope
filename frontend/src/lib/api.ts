@@ -93,3 +93,33 @@ export async function streamChat(
     }
   }
 }
+
+export async function confirmAgent(
+  ownerAddress: string,
+  agentName: string,
+  txId: string
+): Promise<{ status: string; agent: Record<string, unknown> }> {
+  const res = await fetch(`${API_BASE}/api/actions/confirm-agent`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      owner_address: ownerAddress,
+      agent_name: agentName,
+      tx_id: txId,
+    }),
+  });
+
+  if (!res.ok) {
+    let errMessage = `Confirmation failed (${res.status})`;
+    try {
+      const data = await res.json();
+      if (data.detail) errMessage = data.detail;
+    } catch {
+      // fallback
+    }
+    throw new Error(errMessage);
+  }
+
+  return res.json();
+}
+

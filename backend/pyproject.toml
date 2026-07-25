@@ -17,6 +17,9 @@ dependencies = [
     "numpy>=1.26",
     "matplotlib>=3.9",
     "plotly>=5.24",
+    "hedera-agent-kit>=3.4.2",
+    "apscheduler>=3.11.3",
+    "sqlalchemy>=2.0.51",
 ]
 
 [tool.uv]

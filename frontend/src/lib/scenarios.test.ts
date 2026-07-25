@@ -3,7 +3,7 @@ import { SCENARIOS, HISTORY, FALLBACK_ANSWER } from "./scenarios";
 
 describe("SCENARIOS end-to-end question verification", () => {
   it("contains all production demo scenarios with unique IDs and valid questions", () => {
-    expect(SCENARIOS.length).toBeGreaterThanOrEqual(5);
+    expect(SCENARIOS.length).toBeGreaterThanOrEqual(3);
 
     const ids = new Set<string>();
     for (const scenario of SCENARIOS) {
