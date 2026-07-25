@@ -65,13 +65,16 @@ the `lib/scenarios.ts` mockup:
 - **Answers should be actionable, not just informational** — some
   answers should offer a concrete next step (claim rewards, add
   collateral, withdraw idle funds) with a button that actually executes
-  a transaction, not just prose telling the user what to do. Mocked via
-  `ScenarioAction`/`SuggestedActions`: a per-scenario `actions` list
-  rendered as cards with a CTA button. In the mockup the button drives a
-  simulated wallet-confirm → broadcast → confirmed flow (fake tx hash)
-  and is labeled "simulated — no funds move"; a real build would wire
-  this to an actual wallet (wagmi/viem `sendTransaction`, or a
-  session/smart-account signer) rather than fabricate a hash.
+  a transaction, not just prose telling the user what to do. The scripted
+  demo scenarios still mock this via `ScenarioAction`/`SuggestedActions`
+  (fake tx hash, labeled "simulated — no funds move"), but the live path
+  is real: the **yield advisor** specialist (see
+  [agents.md](./agents.md#yield-advisor--acting-not-just-reporting))
+  returns an `action/yield-supply` artifact, which `LiveArtifact.tsx`
+  renders as `LiveActionCard.tsx` — clicking it switches the wallet to
+  Sepolia (`ensureSepolia` in `lib/wallet.ts`) and sends the real
+  `approve()` + `supply()` transactions via `eth_sendTransaction`, linking
+  to the live tx on Sepolia Etherscan once broadcast.
 
 ## Deployment
 

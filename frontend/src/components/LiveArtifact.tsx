@@ -1,6 +1,18 @@
 import type { BackendArtifact } from "@/lib/api";
+import { LiveActionCard, type YieldActionPayload } from "./LiveActionCard";
 
 export function LiveArtifact({ artifact }: { artifact: BackendArtifact }) {
+  if (artifact.type === "action/yield-supply") {
+    let payload: YieldActionPayload | { error: string };
+    try {
+      payload = JSON.parse(artifact.data);
+    } catch {
+      return null;
+    }
+    if ("error" in payload) return null;
+    return <LiveActionCard action={payload} />;
+  }
+
   if (artifact.type === "image/png") {
     return (
       <div className="overflow-hidden border border-[var(--border)] bg-[var(--bg-raised)]/50 p-2">
