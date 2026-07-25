@@ -10,7 +10,7 @@ import { ensureHederaTestnet, getEthereumProvider, sendTransaction } from "@/lib
 export type SeedAgentPayload = {
   status: string;
   name: string;
-  account_id: string;
+  account_id: string | null;
   evm_address?: string;
   public_key?: string;
   vault_registered?: boolean;
@@ -34,7 +34,7 @@ function getTargetEvmAddress(payload: SeedAgentPayload): string {
   if (payload.evm_address && payload.evm_address.startsWith("0x")) {
     return payload.evm_address;
   }
-  const parts = payload.account_id.split(".");
+  const parts = (payload.account_id ?? "").split(".");
   const num = parseInt(parts[parts.length - 1], 10);
   if (!isNaN(num)) {
     return `0x${num.toString(16).padStart(40, "0")}`;
@@ -128,6 +128,11 @@ export function SeedAgentCard({
       setState("error");
       return;
     }
+    if (!payload.account_id) {
+      setError("Missing agent account ID.");
+      setState("error");
+      return;
+    }
     setError(null);
     try {
       setState("confirming");
@@ -176,7 +181,7 @@ export function SeedAgentCard({
 
       <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
         <div className="min-w-0 flex-1 max-w-md">
-          <p className="text-sm text-[var(--ink)]">
+          <p className="text-sm text-[var(--ink)] break-words">
             {payload.action?.description || payload.message}
           </p>
           {activated && (

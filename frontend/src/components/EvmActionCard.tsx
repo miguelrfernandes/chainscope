@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useWallet } from "@/hooks/useWallet";
-import { chainName, ensureChain, explorerTxUrl, getEthereumProvider, sendTransaction } from "@/lib/wallet";
+import { chainName, ensureChain, explorerTxUrl, getEthereumProvider, sendTransaction, shortenAddressInText } from "@/lib/wallet";
 
 export type EvmStep = {
   label?: string;
@@ -97,9 +97,9 @@ export function EvmActionCard({ payload }: { payload: EvmActionPayload }) {
         </p>
       </div>
 
-      <div className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-0.5">
-          <p className="text-sm text-[var(--ink)]">{payload.human_message}</p>
+      <div className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <p className="text-sm text-[var(--ink)] break-words">{payload.human_message}</p>
           {steps.length > 1 && (
             <p className="text-xs text-[var(--ink-faint)]">
               {steps.length} sequential transactions to execute
@@ -108,16 +108,16 @@ export function EvmActionCard({ payload }: { payload: EvmActionPayload }) {
         </div>
 
         {state === "done" ? (
-          <div className="flex shrink-0 flex-col items-end gap-1">
+          <div className="flex shrink-0 flex-col items-end gap-1 max-w-full min-w-0">
             {hashes.map((h, i) => (
               <a
                 key={h}
                 href={explorerTxUrl(chainId, h)}
                 target="_blank"
                 rel="noreferrer"
-                className="border border-[var(--success)]/40 px-3 py-1.5 text-xs text-[var(--success)] transition hover:border-[var(--success)]"
+                className="max-w-full truncate border border-[var(--success)]/40 px-3 py-1.5 text-xs text-[var(--success)] transition hover:border-[var(--success)]"
               >
-                ✓ {steps[i]?.label ?? `step ${i + 1}`} · {h.slice(0, 10)}…
+                ✓ {shortenAddressInText(steps[i]?.label ?? `step ${i + 1}`)} · {h.slice(0, 10)}…
               </a>
             ))}
           </div>

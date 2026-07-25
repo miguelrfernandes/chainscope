@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useWallet } from "@/hooks/useWallet";
-import { getEthereumProvider, sendTransaction, type EthereumProvider } from "@/lib/wallet";
+import { getEthereumProvider, sendTransaction, shortenAddressInText, type EthereumProvider } from "@/lib/wallet";
 
 const SEPOLIA_CHAIN_ID_HEX = "0xaa36a7";
 
@@ -99,8 +99,8 @@ export function LiveActionCard({ action }: { action: YieldActionPayload }) {
         </p>
       </div>
 
-      <div className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <div className="flex items-center gap-2">
             <span className="text-sm text-[var(--ink)]">
               Supply {action.amount} {action.asset_symbol}
@@ -109,20 +109,20 @@ export function LiveActionCard({ action }: { action: YieldActionPayload }) {
               {action.apy_pct.toFixed(2)}% APY
             </span>
           </div>
-          <p className="max-w-md text-xs text-[var(--ink-faint)]">{action.rationale}</p>
+          <p className="max-w-md text-xs text-[var(--ink-faint)] break-words">{action.rationale}</p>
         </div>
 
         {state === "done" ? (
-          <div className="flex shrink-0 flex-col items-end gap-1">
+          <div className="flex shrink-0 flex-col items-end gap-1 max-w-full min-w-0">
             {hashes.map((h, i) => (
               <a
                 key={h}
                 href={`https://sepolia.etherscan.io/tx/${h}`}
                 target="_blank"
                 rel="noreferrer"
-                className="border border-[var(--success)]/40 px-3 py-1.5 text-xs text-[var(--success)] transition hover:border-[var(--success)]"
+                className="max-w-full truncate border border-[var(--success)]/40 px-3 py-1.5 text-xs text-[var(--success)] transition hover:border-[var(--success)]"
               >
-                ✓ {action.steps[i]?.label ?? `step ${i + 1}`} · {h.slice(0, 10)}…
+                ✓ {shortenAddressInText(action.steps[i]?.label ?? `step ${i + 1}`)} · {h.slice(0, 10)}…
               </a>
             ))}
           </div>

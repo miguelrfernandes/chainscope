@@ -62,7 +62,7 @@ export function HederaActionCard({ payload }: { payload: HederaTxBytesPayload })
       </div>
 
       <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
-        <p className="min-w-0 flex-1 max-w-md text-sm text-[var(--ink)]">{payload.human_message}</p>
+        <p className="min-w-0 flex-1 max-w-md text-sm text-[var(--ink)] break-words">{payload.human_message}</p>
 
         {state === "done" && hashscanHref ? (
           <a

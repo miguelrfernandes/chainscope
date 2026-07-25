@@ -22,7 +22,13 @@ export function getEthereumProvider(): EthereumProvider | null {
 }
 
 export function shortenAddress(address: string): string {
+  if (!address || address.length <= 10) return address;
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
+}
+
+export function shortenAddressInText(text: string): string {
+  if (!text) return "";
+  return text.replace(/0x[a-fA-F0-9]{40}/g, (match) => shortenAddress(match));
 }
 
 const CHAIN_NAMES: Record<number, string> = {
@@ -177,9 +183,10 @@ export async function sendTransaction(
 ): Promise<string> {
   const isPlainTransfer = !tx.data || tx.data === "0x" || tx.data === "";
   // Hedera testnet JSON-RPC relay caps max gas limit per tx at 15,000,000 (0xe4e1c0).
-  // Default to 21,000 (0x5208) for native HBAR/ETH transfers, or 2,000,000 (0x1e8480) for contract calls,
+  // Default to 100,000 (0x186a0) for native HBAR/ETH transfers (as Hedera EVM transfers require ~25k-50k gas),
+  // or 500,000 (0x7a120) for contract calls,
   // preventing wallets (e.g. MetaMask) from defaulting to 52.5M gas limit which Hedera rejects.
-  const defaultGas = isPlainTransfer ? "0x5208" : "0x1e8480";
+  const defaultGas = isPlainTransfer ? "0x186a0" : "0x7a120";
   const gas = tx.gas || defaultGas;
 
   const hash = (await provider.request({
