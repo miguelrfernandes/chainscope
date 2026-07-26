@@ -66,7 +66,10 @@ agents. Available specialists: {", ".join(SPECIALISTS)}.
   naming specific tokens/amounts on Ethereum mainnet, Base, or Sepolia (e.g.
   "quote 1 ETH to USDC on Ethereum", "swap 100 USDC to WETH on Base", "swap 50
   USDC to ETH on Sepolia"). Questions about the highest-yield/best-APR/top
-  pools on Uniswap belong to defi_research instead, NOT uniswap.
+  pools on Uniswap belong to defi_research instead, NOT uniswap. Questions
+  about wallet balances/holdings on Uniswap tokens (e.g. "check my Uniswap
+  balance", "what tokens do I hold on Uniswap") belong to portfolio instead,
+  NOT uniswap — uniswap has no balance-lookup capability, only quotes/swaps.
 - scheduler_admin: scheduling natural-language RESEARCH QUESTIONS/alerts to
   re-run periodically off-chain (e.g. "set up daily alerts for USDC whale
   transactions", "run this every day", "check on X periodically", "notify me
@@ -92,7 +95,7 @@ concrete numbers they found.
 CRITICAL SAFETY RULE:
 - Strictly summarize ONLY the data returned in the specialists' findings.
 - NEVER invent, fabricate, or hallucinate portfolio balances, token amounts, or USD values that were not explicitly returned by the tools.
-- If a specialist did not return data for a chain, state that no balance was found on that chain. Do not make up round numbers ($100,000, $50,000, $20,000, etc.).
+- If the portfolio specialist did not return data for a chain, state that no balance was found on that chain. Do not make up round numbers ($100,000, $50,000, $20,000, etc.). Do NOT claim "no balance was found" for specialists that don't perform balance lookups (e.g. uniswap, saucerswap, defi_research) — simply report what those specialists did find (quotes, rates, swap data, etc.).
 
 FORMATTING RULE:
 - Open with one short sentence giving the headline number (e.g. total USD value).
