@@ -47,6 +47,18 @@ body {
   color: var(--accent-ink);
 }
 
+/* Reticle cursor: echoes the logomark's crosshair ring */
+.cursor-reticle {
+  cursor: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSI2LjUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmYjQ1NCIgc3Ryb2tlLXdpZHRoPSIxLjYiIHN0cm9rZS1vcGFjaXR5PSIwLjkiLz48bGluZSB4MT0iMTYiIHkxPSIyLjUiIHgyPSIxNiIgeTI9IjciIHN0cm9rZT0iI2ZmYjQ1NCIgc3Ryb2tlLXdpZHRoPSIxLjQiLz48bGluZSB4MT0iMTYiIHkxPSIyNSIgeDI9IjE2IiB5Mj0iMjkuNSIgc3Ryb2tlPSIjZmZiNDU0IiBzdHJva2Utd2lkdGg9IjEuNCIvPjxsaW5lIHgxPSIyLjUiIHkxPSIxNiIgeDI9IjciIHkyPSIxNiIgc3Ryb2tlPSIjZmZiNDU0IiBzdHJva2Utd2lkdGg9IjEuNCIvPjxsaW5lIHgxPSIyNSIgeTE9IjE2IiB4Mj0iMjkuNSIgeTI9IjE2IiBzdHJva2U9IiNmZmI0NTQiIHN0cm9rZS13aWR0aD0iMS40Ii8+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMS44IiBmaWxsPSIjZmZiNDU0Ii8+PC9zdmc+")
+    16 16, crosshair;
+}
+
+.cursor-reticle a,
+.cursor-reticle button,
+.cursor-reticle [role="button"] {
+  cursor: pointer;
+}
+
 /* Sleek custom scrollbars */
 * {
   scrollbar-width: thin;

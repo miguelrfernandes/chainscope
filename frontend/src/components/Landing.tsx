@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { createPortal } from "react-dom";
+import { useEffect, useRef, useState } from "react";
+import { motion, useAnimationFrame, useMotionValue } from "framer-motion";
 import { AppHeader } from "./AppHeader";
 import { AaveMark, GraphMark, HederaMark, UniswapMark } from "./IntegrationIcons";
 
@@ -135,9 +137,77 @@ const itemVariants = {
   },
 };
 
-export function Landing() {
+const GRAVITY = 1500; // px/s^2
+
+type Ball = { id: number; x: number; y: number; vx: number };
+
+function GravityBall({ ball, onDone }: { ball: Ball; onDone: (id: number) => void }) {
+  const y = useMotionValue(ball.y);
+  const x = useMotionValue(ball.x);
+  const rotate = useMotionValue(0);
+  const vy = useRef(-560 - Math.random() * 260);
+
+  useAnimationFrame((_, delta) => {
+    const dt = Math.min(delta, 32) / 1000;
+    vy.current += GRAVITY * dt;
+    y.set(y.get() + vy.current * dt);
+    x.set(x.get() + ball.vx * dt);
+    rotate.set(rotate.get() + ball.vx * dt * 0.6);
+
+    if (y.get() > window.innerHeight + 40) {
+      onDone(ball.id);
+    }
+  });
+
   return (
-    <div className="relative mx-auto flex min-h-dvh w-full max-w-4xl flex-col px-6 overflow-hidden">
+    <motion.div
+      style={{ position: "fixed", top: 0, left: 0, x, y, rotate }}
+      initial={{ opacity: 1, scale: 0.4 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.15 }}
+      className="pointer-events-none z-[100] -ml-[6px] -mt-[6px] h-3 w-3 rounded-full bg-[var(--accent)] shadow-[0_0_10px_2px_rgba(255,180,84,0.55)]"
+    />
+  );
+}
+
+function GravityLayer({ balls, onDone }: { balls: Ball[]; onDone: (id: number) => void }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+
+  return createPortal(
+    <>
+      {balls.map((ball) => (
+        <GravityBall key={ball.id} ball={ball} onDone={onDone} />
+      ))}
+    </>,
+    document.body,
+  );
+}
+
+export function Landing() {
+  const [balls, setBalls] = useState<Ball[]>([]);
+  const nextBallId = useRef(0);
+
+  const launchBall = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest("a, button")) return;
+    const id = nextBallId.current++;
+    setBalls((prev) => [
+      ...prev,
+      { id, x: e.clientX, y: e.clientY, vx: (Math.random() - 0.5) * 320 },
+    ]);
+  };
+
+  const removeBall = (id: number) => {
+    setBalls((prev) => prev.filter((b) => b.id !== id));
+  };
+
+  return (
+    <div
+      onClick={launchBall}
+      className="cursor-reticle relative mx-auto flex min-h-dvh w-full max-w-4xl flex-col px-6 overflow-hidden"
+    >
+      <GravityLayer balls={balls} onDone={removeBall} />
       <AppHeader activePage="landing" />
 
       <motion.header
@@ -180,7 +250,7 @@ export function Landing() {
           Live web3 research copilot
         </motion.p>
         <h1 className="mt-3 max-w-2xl font-[family-name:var(--font-display)] text-4xl italic leading-[1.15] text-[var(--ink)] sm:text-5xl">
-          Ask a question. Get live answers. Trigger the next step.
+          Turn questions into on-chain actions.
         </h1>
         <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-[var(--ink-dim)]">
           ChainScope routes questions to specialist agents, queries live Graph
@@ -229,7 +299,7 @@ export function Landing() {
                 borderColor: "rgba(255, 180, 84, 0.35)",
               }}
               transition={{ duration: 0.35, ease: slowEase }}
-              className="flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-raised)]/60 p-5 backdrop-blur-md transition-all cursor-default"
+              className="flex flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg-raised)]/60 p-5 backdrop-blur-md transition-all"
             >
               <item.Icon className="h-10 w-10" />
               <h3 className="font-medium text-[var(--ink)]">{item.name}</h3>
@@ -260,7 +330,7 @@ export function Landing() {
                 borderColor: "rgba(255, 180, 84, 0.35)",
               }}
               transition={{ duration: 0.35, ease: slowEase }}
-              className="rounded-xl border border-[var(--border)] bg-[var(--bg-raised)]/60 p-5 backdrop-blur-md transition-all cursor-default"
+              className="rounded-xl border border-[var(--border)] bg-[var(--bg-raised)]/60 p-5 backdrop-blur-md transition-all"
             >
               <h2 className="font-medium text-[var(--ink)]">{item.title}</h2>
               <p className="mt-2 text-sm leading-relaxed text-[var(--ink-dim)]">
@@ -364,7 +434,7 @@ export function Landing() {
                 borderColor: "rgba(255, 180, 84, 0.25)",
               }}
               transition={{ duration: 0.3, ease: slowEase }}
-              className="flex flex-col gap-1 rounded-lg border-b border-[var(--border-soft)] px-3 py-4 sm:flex-row sm:items-baseline sm:gap-6 transition-colors cursor-default"
+              className="flex flex-col gap-1 rounded-lg border-b border-[var(--border-soft)] px-3 py-4 sm:flex-row sm:items-baseline sm:gap-6 transition-colors"
             >
               <span className="w-44 shrink-0 text-sm font-medium text-[var(--accent)]">
                 {a.name}
@@ -406,7 +476,7 @@ export function Landing() {
                 borderColor: "rgba(111, 227, 161, 0.35)",
               }}
               transition={{ duration: 0.35, ease: slowEase }}
-              className="rounded-xl border border-[var(--border)] bg-[var(--bg-raised)]/40 p-4 backdrop-blur-md transition-all cursor-default"
+              className="rounded-xl border border-[var(--border)] bg-[var(--bg-raised)]/40 p-4 backdrop-blur-md transition-all"
             >
               <p className="text-sm font-medium text-[var(--ink)]">{g.name}</p>
               <p className="mt-1 text-[13px] leading-relaxed text-[var(--ink-dim)]">
