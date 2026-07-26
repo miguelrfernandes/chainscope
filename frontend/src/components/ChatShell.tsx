@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 
 import { SCENARIOS, HISTORY, type Scenario } from "@/lib/scenarios";
-import { fetchUserAgents, streamChat } from "@/lib/api";
+import { streamChat } from "@/lib/api";
 import type { ConversationTurn, SuggestionItem } from "@/lib/api";
 import {
   deleteThread,
@@ -16,6 +16,7 @@ import {
 import { useWallet } from "@/hooks/useWallet";
 import { useHederaWallet } from "@/hooks/useHederaWallet";
 import { useSuggestions } from "@/hooks/useSuggestions";
+import { useAgentCount } from "@/hooks/useAgentCount";
 import { AssistantTurn } from "./AssistantTurn";
 import { LiveAssistantTurn, type LiveState } from "./LiveAssistantTurn";
 import { HistorySidebar } from "./HistorySidebar";
@@ -69,54 +70,10 @@ export function ChatShell() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTab, setDrawerTab] = useState<"wallet" | "agents" | "schedules">("wallet");
 
-  const [agentCount, setAgentCount] = useState<number>(() => {
-    if (typeof window === "undefined" || !wallet.address) return 0;
-    try {
-      const cached = localStorage.getItem(
-        `chainscope_cached_agents_${wallet.address.toLowerCase()}`
-      );
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed)) return parsed.length;
-      }
-    } catch {}
-    return 0;
-  });
+  const agentCount = useAgentCount(wallet.address, [drawerOpen, messages]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const suppressScrollRef = useRef(false);
   const lastSyncedRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    let ignore = false;
-    if (!wallet.address) return;
-
-    try {
-      const cached = localStorage.getItem(
-        `chainscope_cached_agents_${wallet.address.toLowerCase()}`
-      );
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed)) {
-          const count = parsed.filter((a: { status?: string }) => a.status !== "ARCHIVED").length;
-          queueMicrotask(() => {
-            if (!ignore) setAgentCount(count);
-          });
-        }
-      }
-    } catch {}
-
-    fetchUserAgents(wallet.address)
-      .then((agents) => {
-        if (!ignore) {
-          const count = agents.filter((a) => a.status !== "ARCHIVED").length;
-          setAgentCount(count);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      ignore = true;
-    };
-  }, [wallet.address, drawerOpen, messages]);
 
   const visiblePrompts = useMemo(() => {
     const total = SCENARIOS.length;
