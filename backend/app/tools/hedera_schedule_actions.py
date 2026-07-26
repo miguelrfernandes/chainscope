@@ -115,20 +115,27 @@ async def build_recurring_hbar_transfer_actions(
         hours = delay // 3600
         time_desc = f"{hours}h" if hours >= 1 else f"{delay}s"
         gas_limit = 100000
+        # scheduleCall's `value` arg is HBAR in tinybars (1e8/HBAR), not wei (1e18/HBAR).
+        amount_tinybar = int(round(amount_hbar * 1e8))
         SCHEDULE_CALL_SELECTOR = "6f5bfde8"
+        # scheduleCall(address,uint256,uint256,uint64,bytes) has a trailing dynamic
+        # `bytes callData` param, so its head slot must hold an offset (5 head words *
+        # 32 bytes = 0xa0) pointing past the head, not the bytes payload inlined —
+        # otherwise the EVM reads the `address` word above as the bytes length and reverts.
         calldata = (
             "0x"
             + SCHEDULE_CALL_SELECTOR
             + _encode_address(resolved_recipient)
             + _encode_uint(expiry_second)
             + _encode_uint(gas_limit)
-            + _encode_uint(amount_wei)
+            + _encode_uint(amount_tinybar)
+            + _encode_uint(0xA0)
             + _encode_bytes_payload(b"")
         )
         payload = {
             "human_message": f"Schedule transfer of {amount_hbar} HBAR to {resolved_recipient} (executes in {time_desc} via Hedera Schedule Service 0x16b)",
             "to": hss_precompile,
-            "value": hex_value,
+            "value": "0x0",
             "data": calldata,
         }
         return json.dumps(payload)

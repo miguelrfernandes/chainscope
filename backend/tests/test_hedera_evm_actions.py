@@ -83,8 +83,20 @@ async def test_build_recurring_hbar_transfer_actions():
     payload = json.loads(res_json)
     assert "Schedule transfer" in payload["human_message"]
     assert payload["to"] == "0x000000000000000000000000000000000000016b"
-    assert payload["value"] == "0x1bc16d674ec80000"
+    assert payload["value"] == "0x0"
     assert payload["data"].startswith("0x6f5bfde8")
+
+    # Full ABI-encoding check for scheduleCall(address,uint256,uint256,uint64,bytes):
+    # 5 static head words (address, expiry, gasLimit, value, offset-to-bytes) + the
+    # dynamic bytes tail (length, here 0) — not just a substring match, since a
+    # missing/misplaced offset word silently produces calldata that reverts on-chain.
+    args_hex = payload["data"][len("0x6f5bfde8") :]
+    words = [args_hex[i : i + 64] for i in range(0, len(args_hex), 64)]
+    assert len(words) == 6
+    assert words[0].endswith("2" * 40)  # recipient address, right-aligned
+    assert words[3] == format(int(round(2.0 * 1e8)), "064x")  # amount, tinybars, not wei
+    assert words[4] == format(0xA0, "064x")  # offset to the dynamic bytes payload
+    assert words[5] == format(0, "064x")  # bytes length (empty callData)
 
 
 @pytest.mark.asyncio

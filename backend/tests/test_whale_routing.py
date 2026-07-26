@@ -33,6 +33,14 @@ def test_portfolio_prompt_conditional_wallet():
     assert "do not fetch balances for the connected wallet" in PORTFOLIO_PROMPT
 
 
+def test_router_prompt_wallet_suffix_wins_over_hedera_action_keywords():
+    assert (
+        "If a wallet\n  suffix IS present, this is the WRONG specialist even for simple requests"
+        in ROUTER_SYSTEM_PROMPT
+    )
+    assert "the\n  presence of a wallet suffix always wins over keyword matching" in ROUTER_SYSTEM_PROMPT
+
+
 def test_defi_research_prompt_whale_recipe():
     assert "whale/top-holder rankings" in DEFI_RESEARCH_PROMPT
     assert "search_subgraphs_by_keyword" in DEFI_RESEARCH_PROMPT

@@ -32,11 +32,13 @@ agents. Available specialists: {", ".join(SPECIALISTS)}.
   query sub-agents/agents registered in the Vault (e.g. "Check current agents registered in my vault", "Which agents do I have").
   This is a separate network from the EVM specialists above.
 - hedera_action: executing a real Hedera testnet transaction FROM A BACKEND-
-  HELD DEMO ACCOUNT (not the user's wallet) — transferring HBAR, creating an
-  HCS topic or submitting a topic message, creating/minting an HTS fungible
-  token, associating a token. Route here for action requests on Hedera ONLY
-  when no connected wallet suffix (Hedera or EVM) is present in the message
-  at all.
+  HELD DEMO ACCOUNT (not the user's wallet). Route here ONLY when NO connected
+  wallet suffix (Hedera or EVM) is present in the message at all. If a wallet
+  suffix IS present, this is the WRONG specialist even for simple requests
+  like "transfer 1 HBAR to X" — use hedera_wallet_action instead; the
+  presence of a wallet suffix always wins over keyword matching. Covers:
+  transferring HBAR, creating an HCS topic or submitting a topic message,
+  creating/minting an HTS fungible token, associating a token.
 - hedera_wallet_action: building the same kinds of Hedera transactions, but
   FOR THE USER'S OWN CONNECTED HEDERA WALLET to sign (nothing executes on
   the backend). Route here instead of hedera_action whenever a connected
@@ -116,7 +118,7 @@ FORMATTING RULE:
 
 class RouteDecision(BaseModel):
     specialists: list[SpecialistName] = Field(
-        description="Specialist agents whose domain this question touches, in the order they should run."
+        description="Specialist agents whose domain this question touches."
     )
 
 
