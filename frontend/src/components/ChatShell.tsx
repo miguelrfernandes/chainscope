@@ -17,25 +17,21 @@ import { useWallet } from "@/hooks/useWallet";
 import { useHederaWallet } from "@/hooks/useHederaWallet";
 import { useSuggestions } from "@/hooks/useSuggestions";
 import { useAgentCount } from "@/hooks/useAgentCount";
+import { useAlertCount } from "@/hooks/useAlertCount";
 import { AssistantTurn } from "./AssistantTurn";
 import { LiveAssistantTurn, type LiveState } from "./LiveAssistantTurn";
 import { HistorySidebar } from "./HistorySidebar";
 import { AgentsDrawer } from "./AgentsDrawer";
 import { AppHeader } from "./AppHeader";
-import { Cpu, Bot } from "lucide-react";
+import { Cpu, Bot, Bell } from "lucide-react";
 
 
 
 
 type Message =
-  | { id: number; role: "user"; text: string }
-  | {
-      id: number;
-      role: "assistant";
-      kind: "history";
-      scenario: Scenario | null;
-    }
-  | { id: number; role: "assistant"; kind: "live"; live: LiveState };
+  | { id: string; role: "user"; text: string }
+  | { id: string; role: "assistant"; kind: "scenario"; scenario: Scenario }
+  | { id: string; role: "assistant"; kind: "live"; live: LiveState };
 
 type ModelChoice = "chainscope" | "0g";
 
@@ -68,9 +64,10 @@ export function ChatShell() {
   const [promptOffset, setPromptOffset] = useState(0);
   const [selectedModel, setSelectedModel] = useState<ModelChoice>("chainscope");
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerTab, setDrawerTab] = useState<"wallet" | "agents" | "schedules">("wallet");
+  const [drawerTab, setDrawerTab] = useState<"wallet" | "agents" | "schedules" | "alerts">("wallet");
 
   const agentCount = useAgentCount(wallet.address, [drawerOpen, messages]);
+  const alertCount = useAlertCount(wallet.address, [drawerOpen, messages]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const suppressScrollRef = useRef(false);
   const lastSyncedRef = useRef<string | null>(null);
@@ -192,7 +189,11 @@ export function ChatShell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [threadParam, wallet.address]);
 
-  function updateLive(id: number, updater: (live: LiveState) => LiveState) {
+  function genId(): string {
+    return String(nextId++);
+  }
+
+  function updateLive(id: string, updater: (live: LiveState) => LiveState) {
     setMessages((msgs) =>
       msgs.map((m) =>
         m.id === id && m.role === "assistant" && m.kind === "live"
@@ -209,7 +210,7 @@ export function ChatShell() {
       activeThreadId && !EXAMPLE_IDS.has(activeThreadId)
         ? activeThreadId
         : newThreadId();
-    const assistantId = nextId++;
+    const assistantId = genId();
 
     lastSyncedRef.current = threadId;
     setActiveThreadId(threadId);
@@ -218,7 +219,7 @@ export function ChatShell() {
     setBusy(true);
     setMessages((m) => [
       ...m,
-      { id: nextId++, role: "user", text: q },
+      { id: genId(), role: "user", text: q },
       {
         id: assistantId,
         role: "assistant",
@@ -275,11 +276,11 @@ export function ChatShell() {
     router.replace(`/app?thread=${encodeURIComponent(id)}`);
     suppressScrollRef.current = true;
     setMessages([
-      { id: nextId++, role: "user", text: entry.scenario.question },
+      { id: genId(), role: "user", text: entry.scenario.question },
       {
-        id: nextId++,
+        id: genId(),
         role: "assistant",
-        kind: "history",
+        kind: "scenario",
         scenario: entry.scenario,
       },
     ]);
@@ -298,8 +299,8 @@ export function ChatShell() {
     setMessages(
       thread.messages.map((m) =>
         m.role === "user"
-          ? { id: nextId++, role: "user", text: m.text }
-          : { id: nextId++, role: "assistant", kind: "live", live: m.live },
+          ? { id: genId(), role: "user", text: m.text }
+          : { id: genId(), role: "assistant", kind: "live", live: m.live },
       ),
     );
   }
@@ -356,21 +357,39 @@ export function ChatShell() {
               {/* Sub-Agents Badge Icon Button */}
 
               {wallet.connected && (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    setDrawerTab("agents");
-                    setDrawerOpen(true);
-                  }}
-                  title="View sub-agents & autonomous schedules"
-                  className="flex items-center gap-1.5 rounded-full border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent)] transition hover:border-[var(--accent)] hover:bg-[var(--accent)]/20"
-                >
-                  <Bot className="h-3.5 w-3.5 text-[var(--accent)]" />
-                  <span className="rounded-full bg-[var(--accent)] px-1.5 py-0.2 text-[10px] font-bold text-[var(--accent-ink)]">
-                    {wallet.address ? agentCount : 0}
-                  </span>
-                </motion.button>
+                <>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      setDrawerTab("alerts");
+                      setDrawerOpen(true);
+                    }}
+                    title="View scheduled question alerts & inbox"
+                    className="flex items-center gap-1.5 rounded-full border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent)] transition hover:border-[var(--accent)] hover:bg-[var(--accent)]/20"
+                  >
+                    <Bell className="h-3.5 w-3.5 text-[var(--accent)]" />
+                    <span className="rounded-full bg-[var(--accent)] px-1.5 py-0.2 text-[10px] font-bold text-[var(--accent-ink)]">
+                      {wallet.address ? alertCount : 0}
+                    </span>
+                  </motion.button>
+
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      setDrawerTab("agents");
+                      setDrawerOpen(true);
+                    }}
+                    title="View sub-agents & autonomous schedules"
+                    className="flex items-center gap-1.5 rounded-full border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent)] transition hover:border-[var(--accent)] hover:bg-[var(--accent)]/20"
+                  >
+                    <Bot className="h-3.5 w-3.5 text-[var(--accent)]" />
+                    <span className="rounded-full bg-[var(--accent)] px-1.5 py-0.2 text-[10px] font-bold text-[var(--accent-ink)]">
+                      {wallet.address ? agentCount : 0}
+                    </span>
+                  </motion.button>
+                </>
               )}
 
               {/* Unified Wallet Connection Pill Cluster */}
@@ -431,7 +450,7 @@ export function ChatShell() {
                     {m.text}
                   </div>
                 </motion.div>
-              ) : m.kind === "history" ? (
+              ) : m.kind === "scenario" ? (
                 <motion.div
                   key={m.id}
                   initial={{ opacity: 0, y: 16, scale: 0.98 }}

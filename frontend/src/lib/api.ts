@@ -205,6 +205,89 @@ export async function unarchiveUserAgent(ownerAddress: string, agentName: string
     throw new Error(`Failed to restore agent (${res.status})`);
   }
 }
+
+export type ScheduledQueryRun = {
+  id: number;
+  query_id: number;
+  run_at: string;
+  answer: string;
+  sources?: Array<{ label?: string; id?: string; query?: string }>;
+  is_read: number;
+  query_name?: string;
+  prompt?: string;
+};
+
+export type ScheduledQuery = {
+  id: number;
+  owner_address: string;
+  name: string;
+  prompt: string;
+  cron_expression: string;
+  status: string;
+  created_at: string;
+  job_id?: string;
+};
+
+export type InboxSummary = {
+  unread_count: number;
+  latest_unread: ScheduledQueryRun[];
+};
+
+export async function fetchScheduledQueries(ownerAddress: string): Promise<ScheduledQuery[]> {
+  const res = await fetch(
+    `${API_BASE}/api/scheduled-queries?owner_address=${encodeURIComponent(ownerAddress)}`
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to fetch scheduled queries (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function deleteScheduledQuery(id: number, ownerAddress: string): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/scheduled-queries/${id}?owner_address=${encodeURIComponent(ownerAddress)}`,
+    {
+      method: "DELETE",
+    }
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to delete scheduled query (${res.status})`);
+  }
+}
+
+export async function fetchScheduledQueryRuns(
+  id: number,
+  ownerAddress: string
+): Promise<ScheduledQueryRun[]> {
+  const res = await fetch(
+    `${API_BASE}/api/scheduled-queries/${id}/runs?owner_address=${encodeURIComponent(ownerAddress)}`
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to fetch query runs (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function markRunRead(runId: number, ownerAddress?: string): Promise<void> {
+  const url = ownerAddress
+    ? `${API_BASE}/api/scheduled-queries/runs/${runId}/read?owner_address=${encodeURIComponent(ownerAddress)}`
+    : `${API_BASE}/api/scheduled-queries/runs/${runId}/read`;
+  const res = await fetch(url, { method: "POST" });
+  if (!res.ok) {
+    throw new Error(`Failed to mark run read (${res.status})`);
+  }
+}
+
+export async function fetchInboxSummary(ownerAddress: string): Promise<InboxSummary> {
+  const res = await fetch(
+    `${API_BASE}/api/inbox?owner_address=${encodeURIComponent(ownerAddress)}`
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to fetch inbox summary (${res.status})`);
+  }
+  return res.json();
+}
+
 export type ConversationTurn = { role: "user" | "assistant"; text: string };
 
 export type SuggestionItem = {

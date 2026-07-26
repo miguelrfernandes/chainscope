@@ -1,9 +1,12 @@
 import re
 
-from app.agents.specialists._shared import HEDERA_ACTION_TOOL_NAMES, run_specialist
+from app.agents.specialists._shared import HEDERA_ACTION_TOOL_NAME_STRINGS, run_specialist
 from app.agents.state import GraphState
 from app.tools.hedera_actions import get_hedera_return_bytes_tools
-from app.tools.hedera_evm_actions import build_hbar_transfer_evm_tx
+from app.tools.hedera_evm_actions import (
+    build_hbar_transfer_evm_tx,
+    build_hts_create_token_evm_tx,
+)
 from app.tools.hedera_mirror import (
     get_connected_user_wallet,
     get_hedera_account,
@@ -54,12 +57,15 @@ already executed. NEVER include the raw transaction bytes, hex data, or any
 byte-string dump in your response text: the tool's `bytes_data` field is for
 the wallet UI to consume directly, not for you to repeat back to the user."""
 
-SYSTEM_PROMPT_EVM_PLAIN = """You are the Hedera wallet action agent for ChainScope. Domain: building plain HBAR transfers and provisioning managed Hedera sub-agent accounts for the user's connected EVM wallet ({owner_address}) on Hedera testnet via JSON-RPC relay.
+SYSTEM_PROMPT_EVM_PLAIN = """You are the Hedera wallet action agent for ChainScope. Domain: building plain HBAR transfers, creating HTS tokens via system contract precompile, and provisioning managed Hedera sub-agent accounts for the user's connected EVM wallet ({owner_address}) on Hedera testnet via JSON-RPC relay.
 
 If the user asks to create or provision a Hedera agent (e.g. "Create a Hedera agent named X..."), call provision_hedera_agent with the requested name. When calling provision_hedera_agent, after the tool returns, state that the agent has been created and is ready for seed funding — do NOT call build_hbar_transfer_evm_tx or ask whether to prepare or confirm the seed funding transaction, as the seed-funding interface renders automatically from provision_hedera_agent.
 
-For direct HBAR wallet transfer requests (not agent creation), call build_hbar_transfer_evm_tx to generate the transfer payload. Required parameters: to_evm_address, amount_hbar.
-After calling the tool, tell the user in one short sentence what the transaction does and that it's ready for them to sign in their EVM wallet. Do NOT repeat raw hex or calldata."""
+For HTS fungible token creation requests (e.g. "Create a token named MegaCoin (MGC) with 1,000,000 supply and 2 decimals"), call build_hts_create_token_evm_tx. Required parameters: user_evm_address (use {owner_address}), name, symbol. Optional parameters: initial_supply, decimals, memo.
+
+For direct HBAR wallet transfer requests (not agent creation or token creation), call build_hbar_transfer_evm_tx to generate the transfer payload. Required parameters: to_evm_address, amount_hbar.
+
+After calling the action tool, tell the user in one short sentence what the transaction does and that it's ready for them to sign in their EVM wallet. Do NOT repeat raw hex or calldata."""
 
 SYSTEM_PROMPT_EVM_RECURRING = """You are the Hedera wallet action agent for ChainScope. Domain: building recurring HBAR transfers using Hedera Schedule Service precompiles for the user's connected EVM wallet ({owner_address}).
 
@@ -114,6 +120,7 @@ async def hedera_wallet_action_node(state: GraphState) -> dict:
         provision_tool = make_provision_hedera_agent_tool(evm_address)
         tools = [
             build_hbar_transfer_evm_tx,
+            build_hts_create_token_evm_tx,
             get_connected_user_wallet,
             get_hedera_account,
             get_hedera_account_transactions,
@@ -125,7 +132,10 @@ async def hedera_wallet_action_node(state: GraphState) -> dict:
             label=LABEL,
             system_prompt=SYSTEM_PROMPT_EVM_PLAIN.format(owner_address=evm_address),
             tools=tools,
-            action_artifact_types={"build_hbar_transfer_evm_tx": "action/hedera-evm-tx"},
+            action_artifact_types={
+                "build_hbar_transfer_evm_tx": "action/hedera-evm-tx",
+                "build_hts_create_token_evm_tx": "action/hedera-evm-tx",
+            },
         )
 
     # Native Hedera / HashPack flow
@@ -150,7 +160,11 @@ async def hedera_wallet_action_node(state: GraphState) -> dict:
         except Exception:
             pass
 
-    owner_address = evm_address if evm_address else "0xdefault_owner"
+    # No paired EVM address (native HashPack-only wallet) — key the Vault
+    # namespace by the already-resolved native account_id instead of a
+    # shared literal, which would otherwise pool every EVM-less user's
+    # provisioned agents into one namespace.
+    owner_address = evm_address or account_id
     provision_tool = make_provision_hedera_agent_tool(owner_address)
     tools = get_hedera_return_bytes_tools(account_id) + [
         get_connected_user_wallet,
@@ -164,5 +178,7 @@ async def hedera_wallet_action_node(state: GraphState) -> dict:
         label=LABEL,
         system_prompt=SYSTEM_PROMPT.format(account_id=account_id),
         tools=tools,
-        action_artifact_types={name: "action/hedera-tx-bytes" for name in HEDERA_ACTION_TOOL_NAMES},
+        action_artifact_types={
+            name: "action/hedera-tx-bytes" for name in HEDERA_ACTION_TOOL_NAME_STRINGS
+        },
     )
