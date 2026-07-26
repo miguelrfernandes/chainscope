@@ -222,15 +222,21 @@ export function SeedAgentCard({
           )}
         </div>
 
-        {state === "done" && hashscanHref ? (
-          <a
-            href={hashscanHref}
-            target="_blank"
-            rel="noreferrer"
-            className="shrink-0 max-w-full text-center border border-[var(--success)]/40 px-3 py-1.5 text-xs text-[var(--success)] transition hover:border-[var(--success)]"
-          >
-            ✓ view on HashScan
-          </a>
+        {state === "done" ? (
+          hashscanHref ? (
+            <a
+              href={hashscanHref}
+              target="_blank"
+              rel="noreferrer"
+              className="shrink-0 max-w-full text-center border border-[var(--success)]/40 px-3 py-1.5 text-xs text-[var(--success)] transition hover:border-[var(--success)]"
+            >
+              ✓ view on HashScan
+            </a>
+          ) : (
+            <span className="shrink-0 max-w-full text-center border border-[var(--success)]/40 px-3 py-1.5 text-xs text-[var(--success)]">
+              ✓ activated
+            </span>
+          )
         ) : (
           <div className="flex flex-wrap items-center gap-2 max-w-full shrink-0">
             {evmWallet.connected ? (

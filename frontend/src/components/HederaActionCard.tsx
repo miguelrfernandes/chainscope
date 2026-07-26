@@ -80,15 +80,21 @@ export function HederaActionCard({
       <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between min-w-0">
         <p className="min-w-0 flex-1 max-w-md text-sm text-[var(--ink)] break-words">{payload.human_message}</p>
 
-        {state === "done" && hashscanHref ? (
-          <a
-            href={hashscanHref}
-            target="_blank"
-            rel="noreferrer"
-            className="shrink-0 max-w-full text-center border border-[var(--success)]/40 px-3 py-1.5 text-xs text-[var(--success)] transition hover:border-[var(--success)]"
-          >
-            ✓ view on HashScan
-          </a>
+        {state === "done" ? (
+          hashscanHref ? (
+            <a
+              href={hashscanHref}
+              target="_blank"
+              rel="noreferrer"
+              className="shrink-0 max-w-full text-center border border-[var(--success)]/40 px-3 py-1.5 text-xs text-[var(--success)] transition hover:border-[var(--success)]"
+            >
+              ✓ view on HashScan
+            </a>
+          ) : (
+            <span className="shrink-0 max-w-full text-center border border-[var(--success)]/40 px-3 py-1.5 text-xs text-[var(--success)]">
+              ✓ executed
+            </span>
+          )
         ) : !wallet.connected ? (
           <button
             onClick={wallet.connect}
