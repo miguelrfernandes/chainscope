@@ -13,7 +13,7 @@ async def test_run_specialist_recursion_limit():
 
     # Simulate an LLM that perpetually calls a tool with identical arguments
     mock_agent = MagicMock()
-    mock_agent.ainvoke = AsyncMock(side_effect=GraphRecursionError("Recursion limit of 15 reached"))
+    mock_agent.ainvoke = AsyncMock(side_effect=GraphRecursionError("Recursion limit of 30 reached"))
 
     with patch("app.agents.specialists._shared.create_react_agent", return_value=mock_agent):
         with pytest.raises(GraphRecursionError):
@@ -28,4 +28,4 @@ async def test_run_specialist_recursion_limit():
         # Confirm recursion_limit was passed in config
         mock_agent.ainvoke.assert_called_once()
         _, kwargs = mock_agent.ainvoke.call_args
-        assert kwargs.get("config", {}).get("recursion_limit") == 15
+        assert kwargs.get("config", {}).get("recursion_limit") == 30

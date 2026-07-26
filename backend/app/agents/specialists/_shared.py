@@ -225,7 +225,7 @@ async def run_specialist(
     system_prompt: str,
     tools: list[BaseTool],
     action_artifact_types: dict[str, str] | None = None,
-    recursion_limit: int = 15,
+    recursion_limit: int = 30,
 ) -> dict:
     """`action_artifact_types` lets a specialist override the artifact type for
     its own action tool calls, on top of ACTION_ARTIFACT_TYPES — needed
