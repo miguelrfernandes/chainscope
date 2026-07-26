@@ -3,20 +3,24 @@ import { fetchSuggestions, type ConversationTurn, type SuggestionItem } from "@/
 
 /**
  * Fetches 3 AI-generated follow-up suggestions (questions or actions) after
- * the conversation updates. Results are cached keyed by the number of turns
- * so we don't make redundant inference calls when switching conversations.
+ * the conversation updates. Results are cached keyed by conversation id + the
+ * number of turns so we don't make redundant inference calls when switching
+ * back to a conversation we've already fetched suggestions for.
  *
  * - Returns `null` while a fetch is in-flight (caller shows a skeleton)
  * - Returns `[]` on error so callers degrade gracefully
  * - Skips the fetch when there are no turns or the last turn isn't a completed assistant reply
  */
-export function useSuggestions(turns: ConversationTurn[]): SuggestionItem[] | null {
+export function useSuggestions(
+  turns: ConversationTurn[],
+  conversationId: string | null,
+): SuggestionItem[] | null {
   const [suggestions, setSuggestions] = useState<SuggestionItem[] | null>(null);
 
-  // Cache: key = turns.length → suggestions
-  const cache = useRef<Map<number, SuggestionItem[]>>(new Map());
+  // Cache: key = `${conversationId}:${turns.length}` → suggestions
+  const cache = useRef<Map<string, SuggestionItem[]>>(new Map());
   // Track the key we last requested so we don't stack concurrent fetches
-  const inflightKey = useRef<number | null>(null);
+  const inflightKey = useRef<string | null>(null);
 
   const turnsLength = turns.length;
   const lastRole = turns[turnsLength - 1]?.role ?? null;
@@ -24,12 +28,15 @@ export function useSuggestions(turns: ConversationTurn[]): SuggestionItem[] | nu
 
   useEffect(() => {
     // No turns: nothing to suggest
-    if (turnsLength === 0) return;
+    if (turnsLength === 0) {
+      setSuggestions(null);
+      return;
+    }
 
     // Only trigger once a completed assistant turn is the last message
     if (lastRole !== "assistant" || !hasAnswer) return;
 
-    const key = turnsLength;
+    const key = `${conversationId ?? "none"}:${turnsLength}`;
 
     if (cache.current.has(key)) {
       setSuggestions(cache.current.get(key)!);
@@ -58,7 +65,7 @@ export function useSuggestions(turns: ConversationTurn[]): SuggestionItem[] | nu
       inflightKey.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [turnsLength, lastRole, hasAnswer]);
+  }, [turnsLength, lastRole, hasAnswer, conversationId]);
 
   return suggestions;
 }

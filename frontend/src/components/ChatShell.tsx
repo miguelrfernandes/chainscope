@@ -3,6 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+} from "@heroui/react";
+import { Cpu, Bot, Bell, ChevronDown } from "lucide-react";
 
 import { SCENARIOS, HISTORY, type Scenario } from "@/lib/scenarios";
 import { streamChat } from "@/lib/api";
@@ -23,10 +30,6 @@ import { LiveAssistantTurn, type LiveState } from "./LiveAssistantTurn";
 import { HistorySidebar } from "./HistorySidebar";
 import { AgentsDrawer } from "./AgentsDrawer";
 import { AppHeader } from "./AppHeader";
-import { Cpu, Bot, Bell } from "lucide-react";
-
-
-
 
 type Message =
   | { id: string; role: "user"; text: string }
@@ -35,11 +38,21 @@ type Message =
 
 type ModelChoice = "chainscope" | "0g";
 
-const MODEL_OPTIONS: Array<{ value: ModelChoice; label: string }> = [
-  { value: "chainscope", label: "ChainScope" },
-  { value: "0g", label: "0G Compute" },
+const MODEL_OPTIONS: Array<{
+  value: string;
+  label: string;
+  disabled?: boolean;
+}> = [
+  { value: "chainscope", label: "ChainScope (gpt-4o-mini)" },
+  { value: "0g", label: "0G Compute (qwen2.5-omni)" },
+  {
+    value: "claude-opus-5",
+    label: "ChainScope (Claude Opus 5)",
+    disabled: true,
+  },
+  { value: "kimi-k3", label: "ChainScope (Kimi K3)", disabled: true },
+  { value: "gpt-5.6-sol", label: "ChainScope (GTP-5.6 Sol)", disabled: true },
 ];
-
 
 let nextId = 1;
 
@@ -64,13 +77,17 @@ export function ChatShell() {
   const [promptOffset, setPromptOffset] = useState(0);
   const [selectedModel, setSelectedModel] = useState<ModelChoice>("chainscope");
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerTab, setDrawerTab] = useState<"wallet" | "agents" | "schedules" | "alerts">("wallet");
+  const [drawerTab, setDrawerTab] = useState<
+    "wallet" | "agents" | "schedules" | "alerts"
+  >("wallet");
 
-  const agentCount = useAgentCount(wallet.address, [drawerOpen, messages]);
+  const ownerAddress = wallet.address || hederaWallet.accountId || null;
+  const agentCount = useAgentCount(ownerAddress, [drawerOpen, messages]);
   const alertCount = useAlertCount(wallet.address, [drawerOpen, messages]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const suppressScrollRef = useRef(false);
   const lastSyncedRef = useRef<string | null>(null);
+  const prevHistoryAddressRef = useRef<string | null | undefined>(undefined);
 
   const visiblePrompts = useMemo(() => {
     const total = SCENARIOS.length;
@@ -100,8 +117,7 @@ export function ChatShell() {
     return result.slice(-6);
   }, [messages]);
 
-
-  const dynamicSuggestions = useSuggestions(suggestionTurns);
+  const dynamicSuggestions = useSuggestions(suggestionTurns, activeThreadId);
 
   useEffect(() => {
     if (suppressScrollRef.current) {
@@ -138,7 +154,7 @@ export function ChatShell() {
     };
   }
 
-  const historyAddress = wallet.address || hederaWallet.accountId || null;
+  const historyAddress = ownerAddress;
 
   // Sidebar list: saved threads from local storage, sorted by updatedAt
   const threads = useMemo(() => {
@@ -152,7 +168,26 @@ export function ChatShell() {
   }, [historyAddress, activeThreadId, messages]);
 
   // Persist the active conversation to this wallet's local history whenever it changes.
+  // Also guards against a wallet switch: if the connected address changed since the
+  // last run, the in-memory conversation belongs to the *previous* wallet, so we clear
+  // it instead of leaking it into (or reading it from) the new wallet's history.
   useEffect(() => {
+    const addressChanged =
+      prevHistoryAddressRef.current !== undefined &&
+      prevHistoryAddressRef.current !== historyAddress;
+    prevHistoryAddressRef.current = historyAddress;
+
+    if (addressChanged) {
+      lastSyncedRef.current = null;
+      setMessages([]);
+      setActiveThreadId(null);
+      setLoadedFromHistory(false);
+      setBusy(false);
+      setInput("");
+      router.replace("/app");
+      return;
+    }
+
     if (!historyAddress) return;
     const base = loadThreads(historyAddress);
     const saved = base.find((t) => t.id === activeThreadId);
@@ -237,14 +272,10 @@ export function ChatShell() {
     ]);
     setInput("");
 
-    let promptWithWallet =
-      wallet.address && !q.toLowerCase().includes(wallet.address.toLowerCase())
-        ? `${q}\n(Note: if this question is about "my"/"me", the user's connected wallet is ${wallet.address})`
-        : q;
-    if (
-      hederaWallet.accountId &&
-      !promptWithWallet.includes(hederaWallet.accountId)
-    ) {
+    let promptWithWallet = wallet.address
+      ? `${q}\n(Note: if this question is about "my"/"me", the user's connected wallet is ${wallet.address})`
+      : q;
+    if (hederaWallet.accountId) {
       promptWithWallet += `\n(Note: if this question is about "my"/"me", the user's connected Hedera wallet is ${hederaWallet.accountId})`;
     }
 
@@ -290,7 +321,8 @@ export function ChatShell() {
 
   function openThread(id: string) {
     const base = historyAddress ? loadThreads(historyAddress) : [];
-    const thread = base.find((t) => t.id === id) || threads.find((t) => t.id === id);
+    const thread =
+      base.find((t) => t.id === id) || threads.find((t) => t.id === id);
     if (!thread) return;
     lastSyncedRef.current = id;
     setBusy(false);
@@ -348,7 +380,7 @@ export function ChatShell() {
         onDeleteThread={handleDeleteThread}
         onNewChat={newConversation}
         threads={threads}
-        walletConnected={wallet.connected}
+        walletConnected={wallet.connected || hederaWallet.connected}
       />
 
       <div className="flex h-dvh flex-1 flex-col overflow-x-hidden">
@@ -373,79 +405,142 @@ export function ChatShell() {
                       {wallet.address ? alertCount : 0}
                     </span>
                   </motion.button>
-
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => {
-                      setDrawerTab("agents");
-                      setDrawerOpen(true);
-                    }}
-                    title="View sub-agents & autonomous schedules"
-                    className="flex items-center gap-1.5 rounded-full border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent)] transition hover:border-[var(--accent)] hover:bg-[var(--accent)]/20"
-                  >
-                    <Bot className="h-3.5 w-3.5 text-[var(--accent)]" />
-                    <span className="rounded-full bg-[var(--accent)] px-1.5 py-0.2 text-[10px] font-bold text-[var(--accent-ink)]">
-                      {wallet.address ? agentCount : 0}
-                    </span>
-                  </motion.button>
                 </>
               )}
 
-              <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 p-1 backdrop-blur-md">
-                {wallet.connected ? (
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={wallet.disconnect}
-                    title="Click to disconnect EVM wallet"
-                    className="flex items-center gap-1.5 rounded-full border border-[var(--success)]/40 bg-[var(--success)]/10 px-3 py-1 text-xs font-medium text-[var(--success)] font-mono transition hover:border-[var(--danger)]/50 hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)] animate-pulse" />
-                    {wallet.address ? `${wallet.address.slice(0, 6)}…${wallet.address.slice(-4)}` : "EVM connected"}
-                  </motion.button>
-                ) : (
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
+              {ownerAddress && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    setDrawerTab("agents");
+                    setDrawerOpen(true);
+                  }}
+                  title="View sub-agents & autonomous schedules"
+                  className="flex items-center gap-1.5 rounded-full border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent)] transition hover:border-[var(--accent)] hover:bg-[var(--accent)]/20"
+                >
+                  <Bot className="h-3.5 w-3.5 text-[var(--accent)]" />
+                  <span className="rounded-full bg-[var(--accent)] px-1.5 py-0.2 text-[10px] font-bold text-[var(--accent-ink)]">
+                    {agentCount}
+                  </span>
+                </motion.button>
+              )}
+
+              {wallet.connected || hederaWallet.connected ? (
+                <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 p-1 backdrop-blur-md">
+                  {wallet.connected && (
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={wallet.disconnect}
+                      title="Click to disconnect EVM wallet"
+                      className="flex items-center gap-1.5 rounded-full border border-[var(--success)]/40 bg-[var(--success)]/10 px-3 py-1 text-xs font-medium text-[var(--success)] font-mono transition hover:border-[var(--danger)]/50 hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)] animate-pulse" />
+                      {wallet.address
+                        ? `${wallet.address.slice(0, 6)}…${wallet.address.slice(-4)}`
+                        : "EVM connected"}
+                    </motion.button>
+                  )}
+
+                  {hederaWallet.connected && (
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={hederaWallet.disconnect}
+                      title="Click to disconnect Hedera wallet"
+                      className="flex items-center gap-1.5 rounded-full border border-[#00ea90]/40 bg-[#00ea90]/10 px-3 py-1 text-xs font-medium text-[#00ea90] font-mono transition hover:border-[var(--danger)]/50 hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#00ea90] animate-pulse" />
+                      {hederaWallet.accountId
+                        ? `ħ ${hederaWallet.accountId}`
+                        : "ħ Hedera connected"}
+                    </motion.button>
+                  )}
+                </div>
+              ) : (
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="flex items-center overflow-hidden rounded-full border border-transparent bg-[var(--accent)] shadow-[0_0_12px_rgba(255,180,84,0.2)] transition hover:border-[var(--accent-ink)]/40"
+                >
+                  <button
                     onClick={wallet.connect}
-                    disabled={wallet.status === "connecting" || wallet.status === "signing"}
-                    className="rounded-full border border-[var(--accent)] bg-[var(--accent)] px-3.5 py-1 text-xs font-semibold text-[var(--accent-ink)] shadow-[0_0_12px_rgba(255,180,84,0.25)] transition hover:bg-[var(--accent)]/90 disabled:opacity-60"
+                    disabled={
+                      wallet.status === "connecting" ||
+                      wallet.status === "signing"
+                    }
+                    className="bg-[var(--accent)] py-1.5 pl-3.5 pr-2 text-xs font-semibold text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/90 disabled:opacity-60"
                   >
                     {connectLabel}
-                  </motion.button>
-                )}
+                  </button>
 
-                {hederaWallet.connected ? (
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={hederaWallet.disconnect}
-                    title="Click to disconnect Hedera wallet"
-                    className="flex items-center gap-1.5 rounded-full border border-[#00ea90]/40 bg-[#00ea90]/10 px-3 py-1 text-xs font-medium text-[#00ea90] font-mono transition hover:border-[var(--danger)]/50 hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
+                  <Dropdown
+                    placement="bottom-end"
+                    classNames={{
+                      content:
+                        "min-w-[220px] rounded-xl border border-white/10 bg-[var(--bg-raised)] p-1 shadow-xl",
+                    }}
                   >
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#00ea90] animate-pulse" />
-                    {hederaWallet.accountId ? `ħ ${hederaWallet.accountId}` : "ħ Hedera connected"}
-                  </motion.button>
-                ) : (
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={hederaWallet.connect}
-                    disabled={hederaWallet.status === "connecting"}
-                    title="Connect Hedera WalletConnect (HashPack)"
-                    className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-[var(--ink)] transition hover:border-[#00ea90]/50 hover:bg-[#00ea90]/15 hover:text-[#00ea90] disabled:opacity-60"
-                  >
-                    {hederaWallet.status === "connecting" ? "ħ connecting..." : "ħ connect Hedera"}
-                  </motion.button>
-                )}
-              </div>
+                    <DropdownTrigger>
+                      <button
+                        type="button"
+                        title="Other wallet options"
+                        className="flex items-center self-stretch border-l border-[var(--accent-ink)]/25 bg-[var(--accent)] px-2 text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/80"
+                      >
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      </button>
+                    </DropdownTrigger>
+                    <DropdownMenu
+                      aria-label="Wallet options"
+                      onAction={(key) => {
+                        if (key === "evm") wallet.connect();
+                        if (key === "hedera") hederaWallet.connect();
+                      }}
+                      itemClasses={{
+                        base: "rounded-lg text-[var(--ink)] data-[hover=true]:bg-white/10 data-[hover=true]:text-[var(--ink)]",
+                        description: "text-[var(--ink-dim)]",
+                      }}
+                    >
+                      <DropdownItem
+                        key="evm"
+                        isDisabled={
+                          wallet.status === "connecting" ||
+                          wallet.status === "signing"
+                        }
+                        description="Connect via MetaMask or another injected wallet"
+                      >
+                        {wallet.status === "connecting"
+                          ? "connecting..."
+                          : wallet.status === "signing"
+                            ? "confirm in wallet..."
+                            : "Connect EVM Wallet (default)"}
+                      </DropdownItem>
+                      <DropdownItem
+                        key="hedera"
+                        isDisabled={hederaWallet.status === "connecting"}
+                        description="Connect via WalletConnect (HashPack)"
+                      >
+                        {hederaWallet.status === "connecting"
+                          ? "ħ connecting..."
+                          : "ħ Connect Hedera"}
+                      </DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
+                </motion.div>
+              )}
             </div>
           }
         />
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar px-5 py-6">
-          {messages.length === 0 && <EmptyState onPick={ask} wallet={wallet} />}
+          {messages.length === 0 && (
+            <EmptyState
+              onPick={ask}
+              wallet={wallet}
+              hederaWallet={hederaWallet}
+            />
+          )}
 
           <div className="flex flex-col gap-6">
             {messages.map((m) =>
@@ -509,63 +604,68 @@ export function ChatShell() {
         <div className="border-t border-[var(--border)] px-5 py-4">
           {messages.length > 0 && (
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              {suggestionTurns.length > 0 ? (
-                // Dynamic AI-generated follow-up suggestions (questions or actions)
-                dynamicSuggestions === null ? (
-                  // Loading skeleton
-                  [0, 1, 2].map((i) => (
-                    <div
-                      key={i}
-                      className="h-7 w-32 animate-pulse rounded-xl border border-[var(--border)] bg-[var(--bg-raised)]/60"
-                    />
-                  ))
-                ) : dynamicSuggestions.length > 0 ? (
-                  dynamicSuggestions.map((item: SuggestionItem, i: number) =>
-                    item.type === "action" ? (
-                      <motion.button
+              {suggestionTurns.length > 0
+                ? // Dynamic AI-generated follow-up suggestions (questions or actions)
+                  dynamicSuggestions === null
+                  ? // Loading skeleton
+                    [0, 1, 2].map((i) => (
+                      <div
                         key={i}
-                        onClick={() => ask(item.prompt)}
-                        disabled={locked}
-                        whileHover={{ scale: locked ? 1 : 1.04, y: -2 }}
-                        whileTap={{ scale: locked ? 1 : 0.96 }}
-                        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                        className="flex items-center gap-1.5 rounded-xl border border-[var(--accent)]/50 bg-[var(--accent-soft)] px-3.5 py-1.5 text-xs font-semibold text-[var(--accent)] shadow-[0_0_12px_rgba(255,180,84,0.12)] transition-all hover:border-[var(--accent)] hover:bg-[var(--accent)]/20 hover:shadow-[0_0_20px_rgba(255,180,84,0.25)] disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        <span className="text-[10px]">⚡</span>
-                        {item.label}
-                        <span className="text-[var(--accent)]/70">→</span>
-                      </motion.button>
-                    ) : (
-                      <motion.button
-                        key={i}
-                        onClick={() => ask(item.prompt)}
-                        disabled={locked}
-                        whileHover={{ scale: locked ? 1 : 1.03, y: -2 }}
-                        whileTap={{ scale: locked ? 1 : 0.97 }}
-                        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                        className="rounded-xl border border-[var(--border)] bg-[var(--bg-raised)]/60 px-3.5 py-1.5 text-xs text-[var(--ink-dim)] transition-all hover:border-[var(--accent)]/50 hover:bg-[var(--accent-soft)] hover:text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        {item.label}
-                      </motion.button>
-                    )
-                  )
-                ) : null
-              ) : (
-                // Static template prompts when viewing a demo / no live answer yet
-                visiblePrompts.map((s) => (
-                  <motion.button
-                    key={s.id}
-                    onClick={() => ask(s.question)}
-                    disabled={locked}
-                    whileHover={{ scale: locked ? 1 : 1.03, y: -2 }}
-                    whileTap={{ scale: locked ? 1 : 0.97 }}
-                    transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                    className="rounded-xl border border-[var(--border)] bg-[var(--bg-raised)]/60 px-3.5 py-1.5 text-xs text-[var(--ink-dim)] transition-all hover:border-[var(--accent)]/50 hover:bg-[var(--accent-soft)] hover:text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {s.question}
-                  </motion.button>
-                ))
-              )}
+                        className="h-7 w-32 animate-pulse rounded-xl border border-[var(--border)] bg-[var(--bg-raised)]/60"
+                      />
+                    ))
+                  : dynamicSuggestions.length > 0
+                    ? dynamicSuggestions.map(
+                        (item: SuggestionItem, i: number) =>
+                          item.type === "action" ? (
+                            <motion.button
+                              key={i}
+                              onClick={() => ask(item.prompt)}
+                              disabled={locked}
+                              whileHover={{ scale: locked ? 1 : 1.04, y: -2 }}
+                              whileTap={{ scale: locked ? 1 : 0.96 }}
+                              transition={{
+                                duration: 0.25,
+                                ease: [0.16, 1, 0.3, 1],
+                              }}
+                              className="flex items-center gap-1.5 rounded-xl border border-[var(--accent)]/50 bg-[var(--accent-soft)] px-3.5 py-1.5 text-xs font-semibold text-[var(--accent)] shadow-[0_0_12px_rgba(255,180,84,0.12)] transition-all hover:border-[var(--accent)] hover:bg-[var(--accent)]/20 hover:shadow-[0_0_20px_rgba(255,180,84,0.25)] disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              <span className="text-[10px]">⚡</span>
+                              {item.label}
+                              <span className="text-[var(--accent)]/70">→</span>
+                            </motion.button>
+                          ) : (
+                            <motion.button
+                              key={i}
+                              onClick={() => ask(item.prompt)}
+                              disabled={locked}
+                              whileHover={{ scale: locked ? 1 : 1.03, y: -2 }}
+                              whileTap={{ scale: locked ? 1 : 0.97 }}
+                              transition={{
+                                duration: 0.25,
+                                ease: [0.16, 1, 0.3, 1],
+                              }}
+                              className="rounded-xl border border-[var(--border)] bg-[var(--bg-raised)]/60 px-3.5 py-1.5 text-xs text-[var(--ink-dim)] transition-all hover:border-[var(--accent)]/50 hover:bg-[var(--accent-soft)] hover:text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              {item.label}
+                            </motion.button>
+                          ),
+                      )
+                    : null
+                : // Static template prompts when viewing a demo / no live answer yet
+                  visiblePrompts.map((s) => (
+                    <motion.button
+                      key={s.id}
+                      onClick={() => ask(s.question)}
+                      disabled={locked}
+                      whileHover={{ scale: locked ? 1 : 1.03, y: -2 }}
+                      whileTap={{ scale: locked ? 1 : 0.97 }}
+                      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                      className="rounded-xl border border-[var(--border)] bg-[var(--bg-raised)]/60 px-3.5 py-1.5 text-xs text-[var(--ink-dim)] transition-all hover:border-[var(--accent)]/50 hover:bg-[var(--accent-soft)] hover:text-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {s.question}
+                    </motion.button>
+                  ))}
               {suggestionTurns.length === 0 && (
                 <motion.button
                   type="button"
@@ -588,7 +688,9 @@ export function ChatShell() {
             }}
             className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#0d1210]/90 backdrop-blur-xl p-2.5 shadow-2xl transition-all duration-300 focus-within:border-[var(--accent)]/60 focus-within:shadow-[0_0_30px_rgba(255,180,84,0.18)]"
           >
-            <span className="ml-2 font-mono text-sm font-semibold text-[var(--accent)]">&gt;</span>
+            <span className="ml-2 font-mono text-sm font-semibold text-[var(--accent)]">
+              &gt;
+            </span>
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -619,7 +721,12 @@ export function ChatShell() {
                 aria-label="Select model"
               >
                 {MODEL_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value} className="bg-[#131313] text-[var(--ink)]">
+                  <option
+                    key={option.value}
+                    value={option.value}
+                    disabled={option.disabled}
+                    className={`bg-[#131313] ${option.disabled ? "text-neutral-500 font-normal opacity-50" : "text-[var(--ink)]"}`}
+                  >
                     {option.label}
                   </option>
                 ))}
@@ -635,21 +742,17 @@ export function ChatShell() {
               Run →
             </motion.button>
           </form>
-
         </div>
       </div>
-
 
       <AgentsDrawer
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        ownerAddress={wallet.address || ""}
+        ownerAddress={ownerAddress || ""}
         onAskPrompt={ask}
         onPreparePrompt={(p) => setInput(p)}
         initialTab={drawerTab}
       />
-
-
     </div>
   );
 }
@@ -661,7 +764,6 @@ const CATEGORIES = [
   { id: "whales", label: "Whale Tracking" },
   { id: "agents", label: "Agents" },
   { id: "hedera", label: "Hedera & Automation" },
-  { id: "all", label: "All Questions" },
 ] as const;
 
 type CategoryId = (typeof CATEGORIES)[number]["id"];
@@ -704,18 +806,17 @@ function getScenarioCategory(
 function EmptyState({
   onPick,
   wallet,
+  hederaWallet,
 }: {
   onPick: (q: string) => void;
   wallet: ReturnType<typeof useWallet>;
+  hederaWallet: ReturnType<typeof useHederaWallet>;
 }) {
   const [activeCategory, setActiveCategory] = useState<CategoryId>("featured");
 
   const visibleScenarios = useMemo(() => {
     if (activeCategory === "featured") {
       return SCENARIOS.filter((s) => FEATURED_IDS.includes(s.id));
-    }
-    if (activeCategory === "all") {
-      return SCENARIOS;
     }
     return SCENARIOS.filter(
       (s) => getScenarioCategory(s.id) === activeCategory,
@@ -740,22 +841,78 @@ function EmptyState({
             time, on this device.
           </p>
         </motion.div>
-        <motion.button
-          onClick={wallet.connect}
-          disabled={
-            wallet.status === "connecting" || wallet.status === "signing"
-          }
-          whileHover={{ scale: 1.04, y: -2 }}
-          whileTap={{ scale: 0.96 }}
+        <motion.div
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="rounded-full border border-[var(--accent)] bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-[var(--accent-ink)] shadow-[0_0_20px_rgba(255,180,84,0.3)] transition hover:bg-[var(--accent)]/90 hover:shadow-[0_0_30px_rgba(255,180,84,0.5)] disabled:cursor-wait disabled:opacity-70"
+          className="flex items-center overflow-hidden rounded-full border border-[var(--accent)] shadow-[0_0_20px_rgba(255,180,84,0.3)]"
         >
-          {wallet.status === "connecting"
-            ? "connecting..."
-            : wallet.status === "signing"
-              ? "confirm in wallet..."
-              : "connect wallet"}
-        </motion.button>
+          <button
+            onClick={wallet.connect}
+            disabled={
+              wallet.status === "connecting" || wallet.status === "signing"
+            }
+            className="bg-[var(--accent)] px-6 py-2.5 text-sm font-semibold text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/90 disabled:cursor-wait disabled:opacity-70"
+          >
+            {wallet.status === "connecting"
+              ? "connecting..."
+              : wallet.status === "signing"
+                ? "confirm in wallet..."
+                : "connect wallet"}
+          </button>
+
+          <Dropdown
+            placement="bottom-end"
+            classNames={{
+              content:
+                "min-w-[220px] rounded-xl border border-white/10 bg-[var(--bg-raised)] p-1 shadow-xl",
+            }}
+          >
+            <DropdownTrigger>
+              <button
+                type="button"
+                title="Other wallet options"
+                className="flex h-full items-center self-stretch border-l border-[var(--accent-ink)]/20 bg-[var(--accent)] px-2 py-2.5 text-[var(--accent-ink)] transition hover:bg-[var(--accent)]/90"
+              >
+                <ChevronDown className="h-4 w-4" />
+              </button>
+            </DropdownTrigger>
+            <DropdownMenu
+              aria-label="Wallet options"
+              onAction={(key) => {
+                if (key === "evm") wallet.connect();
+                if (key === "hedera") hederaWallet.connect();
+              }}
+              itemClasses={{
+                base: "rounded-lg text-[var(--ink)] data-[hover=true]:bg-white/10 data-[hover=true]:text-[var(--ink)]",
+                description: "text-[var(--ink-dim)]",
+              }}
+            >
+              <DropdownItem
+                key="evm"
+                isDisabled={
+                  wallet.status === "connecting" || wallet.status === "signing"
+                }
+                description="Connect via MetaMask or another injected wallet"
+              >
+                {wallet.status === "connecting"
+                  ? "connecting..."
+                  : wallet.status === "signing"
+                    ? "confirm in wallet..."
+                    : "Connect EVM Wallet (default)"}
+              </DropdownItem>
+              <DropdownItem
+                key="hedera"
+                isDisabled={hederaWallet.status === "connecting"}
+                description="Connect via WalletConnect (HashPack)"
+              >
+                {hederaWallet.status === "connecting"
+                  ? "ħ connecting..."
+                  : "ħ Connect Hedera"}
+              </DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        </motion.div>
         {wallet.status === "unavailable" && (
           <p className="max-w-sm text-xs text-[var(--ink-faint)]">
             No injected wallet was found. Install{" "}
@@ -834,7 +991,8 @@ function EmptyState({
               y: -3,
               scale: 1.015,
               borderColor: "rgba(255, 180, 84, 0.4)",
-              boxShadow: "0 12px 28px -6px rgba(0, 0, 0, 0.5), 0 0 16px -2px rgba(255, 180, 84, 0.15)",
+              boxShadow:
+                "0 12px 28px -6px rgba(0, 0, 0, 0.5), 0 0 16px -2px rgba(255, 180, 84, 0.15)",
               backgroundColor: "rgba(13, 18, 16, 0.95)",
             }}
             whileTap={{ scale: 0.98 }}
