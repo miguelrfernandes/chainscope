@@ -3,15 +3,37 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import type { ScenarioAction } from "@/lib/scenarios";
+import { AaveMark, HederaMark, UniswapMark } from "@/components/IntegrationIcons";
 
 type TxState = "idle" | "confirming" | "pending" | "done";
 
 const HEX = "0123456789abcdef";
 
-function fakeTxHash() {
+function fakeEvmTxHash() {
   let hash = "0x";
   for (let i = 0; i < 64; i++) hash += HEX[Math.floor(Math.random() * 16)];
   return hash;
+}
+
+function fakeHederaTxId(protocol: string) {
+  const accountMatch = protocol.match(/0\.0\.\d+/);
+  const account = accountMatch ? accountMatch[0] : `0.0.${1000 + Math.floor(Math.random() * 900000)}`;
+  const seconds = Math.floor(Date.now() / 1000);
+  const nanos = Math.floor(Math.random() * 999999999)
+    .toString()
+    .padStart(9, "0");
+  return `${account}-${seconds}-${nanos}`;
+}
+
+function isHedera(protocol: string) {
+  return /hedera/i.test(protocol);
+}
+
+function ProtocolMark({ protocol }: { protocol: string }) {
+  if (/hedera/i.test(protocol)) return <HederaMark className="h-full w-full object-contain" />;
+  if (/uniswap/i.test(protocol)) return <UniswapMark className="h-full w-full object-contain" />;
+  if (/aave/i.test(protocol)) return <AaveMark className="h-full w-full object-contain" />;
+  return null;
 }
 
 export function SuggestedActions({ actions }: { actions: ScenarioAction[] }) {
@@ -42,6 +64,7 @@ export function SuggestedActions({ actions }: { actions: ScenarioAction[] }) {
 function ActionRow({ action }: { action: ScenarioAction }) {
   const [state, setState] = useState<TxState>("idle");
   const [hash, setHash] = useState("");
+  const hedera = isHedera(action.protocol);
 
   function run() {
     if (state !== "idle") return;
@@ -49,39 +72,51 @@ function ActionRow({ action }: { action: ScenarioAction }) {
     setTimeout(() => {
       setState("pending");
       setTimeout(() => {
-        setHash(fakeTxHash());
+        setHash(hedera ? fakeHederaTxId(action.protocol) : fakeEvmTxHash());
         setState("done");
       }, 1100);
     }, 900);
   }
 
+  const explorerHref = hedera
+    ? `https://hashscan.io/testnet/transaction/${encodeURIComponent(hash)}`
+    : `https://etherscan.io/tx/${hash}`;
+  const explorerLabel = hedera ? `${hash.split("-")[0]}…` : `${hash.slice(0, 10)}…`;
+
   return (
     <div className="flex flex-col gap-3 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between min-w-0 transition-colors hover:bg-white/[0.02]">
-      <div className="min-w-0 flex-1 flex flex-col gap-0.5">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium text-[var(--ink)]">{action.label}</span>
-          {action.value && (
-            <span className="text-xs font-mono font-semibold text-[var(--success)]">
-              {action.value}
-            </span>
-          )}
+      <div className="flex min-w-0 flex-1 items-start gap-3">
+        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border-soft)] bg-white/5 p-1.5">
+          <ProtocolMark protocol={action.protocol} />
         </div>
-        <p className="max-w-md text-xs leading-relaxed text-[var(--ink-dim)]">{action.description}</p>
-        <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--ink-faint)]">
-          {action.protocol}
-        </span>
+        <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-[var(--ink)]">{action.label}</span>
+            {action.value && (
+              <span className="text-xs font-mono font-semibold text-[var(--success)]">
+                {action.value}
+              </span>
+            )}
+          </div>
+          <p className="max-w-md text-xs leading-relaxed text-[var(--ink-dim)]">{action.description}</p>
+          <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--ink-faint)]">
+            {action.protocol}
+          </span>
+        </div>
       </div>
 
       {state === "done" ? (
         <motion.a
-          href={`https://etherscan.io/tx/${hash}`}
+          href={explorerHref}
           target="_blank"
           rel="noreferrer"
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
           className="shrink-0 max-w-full text-center rounded-xl border border-[var(--success)]/40 bg-[var(--success)]/10 px-3.5 py-1.5 text-xs font-medium text-[var(--success)] transition-all hover:border-[var(--success)] hover:bg-[var(--success)]/20"
         >
-          ✓ confirmed · {hash.slice(0, 10)}…
+          ✓ confirmed · {explorerLabel}
         </motion.a>
       ) : (
         <motion.button
