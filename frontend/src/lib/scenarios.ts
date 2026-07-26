@@ -302,7 +302,7 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: "hedera-transfer",
-    question: "Transfer 1 HBAR on Hedera testnet to account 0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB",
+    question: "Transfer 1 HBAR on Hedera testnet to account 0x67E6bB3400da3Af23F1B54623ff5972494B8E132",
     agent: "Hedera agent",
     steps: [
       { agent: "Orchestrator", text: "Routing to Hedera agent..." },
@@ -312,7 +312,7 @@ export const SCENARIOS: Scenario[] = [
       },
       {
         agent: "Hedera agent",
-        text: "Constructing HBAR transfer transaction for account 0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB...",
+        text: "Constructing HBAR transfer transaction for account 0x67E6bB3400da3Af23F1B54623ff5972494B8E132...",
       },
       {
         agent: "Hedera agent",
@@ -320,19 +320,19 @@ export const SCENARIOS: Scenario[] = [
       },
     ],
     answer:
-      "Successfully transferred **1 HBAR** to account `0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB` on Hedera testnet. Transaction fee: **0.001 HBAR**. Remaining account balance: **499 HBAR**.",
+      "Successfully transferred **1 HBAR** to account `0x67E6bB3400da3Af23F1B54623ff5972494B8E132` on Hedera testnet. Transaction fee: **0.001 HBAR**. Remaining account balance: **499 HBAR**.",
     sources: [
       {
-        label: "Hedera Mirror Node — Account 0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB",
+        label: "Hedera Mirror Node — Account 0x67E6bB3400da3Af23F1B54623ff5972494B8E132",
         id: "hedera/testnet-mirror-node",
-        query: "GET /api/v1/accounts/0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB",
+        query: "GET /api/v1/accounts/0x67E6bB3400da3Af23F1B54623ff5972494B8E132",
       },
     ],
     actions: [
       {
         id: "transfer-hbar",
         label: "Transfer 1 HBAR",
-        description: "Send 1 HBAR to recipient account 0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB on Hedera testnet.",
+        description: "Send 1 HBAR to recipient account 0x67E6bB3400da3Af23F1B54623ff5972494B8E132 on Hedera testnet.",
         protocol: "Hedera Testnet",
         value: "1 HBAR",
         cta: "Confirm Transfer",
@@ -456,13 +456,13 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: "hedera-scheduled-transfer",
-    question: "Schedule a transfer of 1 HBAR to 0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB using Hedera Schedule Service",
+    question: "Schedule a transfer of 1 HBAR to 0x67E6bB3400da3Af23F1B54623ff5972494B8E132 using Hedera Schedule Service",
     agent: "Hedera agent",
     steps: [
       { agent: "Orchestrator", text: "Routing to Hedera wallet action agent..." },
       {
         agent: "Hedera wallet action agent",
-        text: "Resolving recipient 0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB and checking connected EVM wallet on Hedera testnet...",
+        text: "Resolving recipient 0x67E6bB3400da3Af23F1B54623ff5972494B8E132 and checking connected EVM wallet on Hedera testnet...",
       },
       {
         agent: "Hedera wallet action agent",
@@ -470,7 +470,7 @@ export const SCENARIOS: Scenario[] = [
       },
     ],
     answer:
-      "Successfully prepared a scheduled transfer of **1 HBAR** to `0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB` using Hedera's Schedule Service (HSS) precompile (`0x16b`). The transaction is ready for your connected EVM wallet to sign.",
+      "Successfully prepared a scheduled transfer of **1 HBAR** to `0x67E6bB3400da3Af23F1B54623ff5972494B8E132` using Hedera's Schedule Service (HSS) precompile (`0x16b`). The transaction is ready for your connected EVM wallet to sign.",
     sources: [
       {
         label: "Hedera Schedule Service (HSS) Precompile",
@@ -482,7 +482,7 @@ export const SCENARIOS: Scenario[] = [
       {
         id: "schedule-hbar-transfer",
         label: "Schedule 1 HBAR transfer via HSS (0x16b)",
-        description: "Schedule a 1 HBAR transfer to account 0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB using Hedera Schedule Service precompile.",
+        description: "Schedule a 1 HBAR transfer to account 0x67E6bB3400da3Af23F1B54623ff5972494B8E132 using Hedera Schedule Service precompile.",
         protocol: "Hedera Schedule Service · Testnet",
         value: "1 HBAR",
         cta: "Sign Scheduled Transfer",
