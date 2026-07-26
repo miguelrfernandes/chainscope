@@ -65,7 +65,9 @@ def test_execute_autonomous_hedera_action_from_vault(tmp_path):
     assert res["agent_name"] == agent_name
     assert res["account_id"] == account_id
     assert res["action_type"] == "rebalance"
-    assert res["status"] in ("success", "simulated")
+    # No HEDERA_OPERATOR_* configured in the test environment -> honestly
+    # reported as simulated, never a fabricated "success".
+    assert res["status"] == "simulated"
     assert "transaction_id" in res
     assert "timestamp" in res
 
@@ -73,6 +75,40 @@ def test_execute_autonomous_hedera_action_from_vault(tmp_path):
 def test_execute_autonomous_action_missing_agent():
     with pytest.raises(ValueError, match="not found in Vault"):
         execute_autonomous_hedera_action("0xmissing", "NonExistentAgent")
+
+
+def test_execute_autonomous_hedera_action_failed_on_exception(monkeypatch):
+    owner = "0x1234567890123456789012345678901234567890"
+    agent_name = "YieldSentinel"
+    account_id = "0.0.78492"
+
+    raw_key = PrivateKey.generate_ecdsa().to_string_der()
+    encrypted_key = encrypt_private_key(raw_key)
+    Vault.register_agent(
+        name=agent_name,
+        evm_address="0xb081bd3b7845046d3019128968144ca13a13bcd2",
+        encrypted_private_key=encrypted_key,
+        owner_address=owner,
+    )
+    set_agent_account_and_status(owner, agent_name, account_id, "ACTIVE")
+
+    monkeypatch.setenv("HEDERA_OPERATOR_ACCOUNT_ID", "0.0.2")
+    monkeypatch.setenv(
+        "HEDERA_OPERATOR_PRIVATE_KEY",
+        "302e020100300506032b657004220420" + "00" * 32,
+    )
+    get_settings.cache_clear()
+
+    with patch("app.core.scheduler.TransferTransaction") as mock_tx_cls:
+        mock_tx_cls.return_value.execute.side_effect = RuntimeError("network unreachable")
+        res = execute_autonomous_hedera_action(
+            owner, agent_name, target_account_id="0.0.999", amount_hbar=1.0
+        )
+
+    assert res["status"] == "failed"
+    assert "network unreachable" in res["message"]
+
+    get_settings.cache_clear()
 
 
 @pytest.mark.asyncio
@@ -110,6 +146,42 @@ async def test_schedule_and_list_remove_jobs(tmp_path):
     removed = remove_scheduled_job(job_id)
     assert removed is True
     assert len(list_scheduled_jobs()) == 0
+
+
+@pytest.mark.asyncio
+async def test_schedule_rebalance_job_threads_transfer_params(tmp_path):
+    db_file = str(tmp_path / "sched_jobs_transfer.db")
+    init_scheduler(db_file)
+
+    owner = "0x1234567890123456789012345678901234567890"
+    agent_name = "YieldSentinel"
+    account_id = "0.0.78492"
+
+    raw_key = PrivateKey.generate_ecdsa().to_string_der()
+    encrypted_key = encrypt_private_key(raw_key)
+    Vault.register_agent(
+        name=agent_name,
+        evm_address="0xb081bd3b7845046d3019128968144ca13a13bcd2",
+        encrypted_private_key=encrypted_key,
+        owner_address=owner,
+    )
+    set_agent_account_and_status(owner, agent_name, account_id, "ACTIVE")
+
+    job_id = schedule_rebalance_job(
+        owner,
+        agent_name,
+        cron_expression="0 0 * * *",
+        target_account_id="0.0.999",
+        amount_hbar=2.5,
+    )
+
+    jobs = list_scheduled_jobs()
+    assert len(jobs) == 1
+    assert jobs[0]["id"] == job_id
+    assert list(jobs[0]["args"]) == [owner, agent_name, "rebalance", "0.0.999", 2.5]
+
+    run_res = run_scheduled_rebalance(owner, agent_name, "rebalance", "0.0.999", 2.5)
+    assert run_res["agent_name"] == agent_name
 
 
 def test_fastapi_lifespan_scheduler():

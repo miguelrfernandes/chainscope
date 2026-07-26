@@ -53,7 +53,11 @@ agents. Available specialists: {", ".join(SPECIALISTS)}.
   or set up a "recurring"/"every X" on-chain transfer belong (e.g. "schedule
   a transfer of 1 HBAR to X using Hedera Schedule Service", "send 5 HBAR
   every hour") — these build a real Hedera Schedule Service transaction for
-  the user's wallet to sign, and are NOT scheduler_admin (see below).
+  the user's wallet to sign, and are NOT scheduler_admin (see below). This is
+  distinct from asking a *provisioned agent wallet in the Vault* to send
+  funds on a recurring basis (e.g. "rebalance my yield-bot's wallet daily"),
+  which is scheduler_admin — the difference is whose key signs: the user's
+  own connected wallet (here) vs. an agent's own provisioned key (scheduler_admin).
 - saucerswap: SaucerSwap (https://www.saucerswap.finance), Hedera's leading
   DEX — finding the best farming/liquidity-pool APRs, and building token
   swap transactions on SaucerSwap for the user's own connected wallet to
@@ -70,15 +74,21 @@ agents. Available specialists: {", ".join(SPECIALISTS)}.
   about wallet balances/holdings on Uniswap tokens (e.g. "check my Uniswap
   balance", "what tokens do I hold on Uniswap") belong to portfolio instead,
   NOT uniswap — uniswap has no balance-lookup capability, only quotes/swaps.
-- scheduler_admin: scheduling natural-language RESEARCH QUESTIONS/alerts to
-  re-run periodically off-chain (e.g. "set up daily alerts for USDC whale
+- scheduler_admin: (1) scheduling natural-language RESEARCH QUESTIONS/alerts
+  to re-run periodically off-chain (e.g. "set up daily alerts for USDC whale
   transactions", "run this every day", "check on X periodically", "notify me
   daily/weekly about X", "what alerts do I have", "cancel my daily USDC
-  alert"). Explicitly distinct from live one-off data questions which stay
-  with defi_research/portfolio/etc. Does NOT cover scheduling an actual
-  on-chain transaction/transfer (e.g. via Hedera Schedule Service) — those
-  go to hedera_wallet_action/hedera_action instead, even though the word
-  "schedule" appears in the request.
+  alert") — explicitly distinct from live one-off data questions which stay
+  with defi_research/portfolio/etc; AND (2) scheduling a RECURRING HBAR
+  TRANSFER FROM ONE OF THE USER'S PROVISIONED AGENT WALLETS in the Vault
+  (e.g. "rebalance my yield-bot's wallet every day", "every week send 2 HBAR
+  from my risk-bot to 0.0.1234", "what wallet-rebalance jobs do I have",
+  "cancel my yield-bot rebalance job") — this is a recurring backend-
+  triggered transfer signed by the AGENT's own provisioned key, not the
+  user's connected wallet. Does NOT cover scheduling an on-chain transaction
+  from the USER's own connected wallet (e.g. via Hedera Schedule Service) —
+  those go to hedera_wallet_action/hedera_action instead, even though the
+  word "schedule"/"recurring" appears in the request; see the note there.
 
 Note: Suffixes like "(Note: if this question is about "my"/"me", the user's connected wallet is 0x...)" or "(Connected wallet: 0x...)" identify the user's own wallet when asking about "my" or "me". Do NOT treat the presence of a connected wallet address suffix as making that wallet the subject of every question. Questions asking about token whales, top holders, or other wallets belong in defi_research, not portfolio.
 

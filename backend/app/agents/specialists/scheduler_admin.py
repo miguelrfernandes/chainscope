@@ -6,6 +6,7 @@ Instructs the LLM to parse user prompts like "Set up daily alerts for USDC whale
 import json
 import re
 
+from hiero_sdk_python import AccountId
 from langchain_core.tools import tool
 
 from app.agents.specialists._shared import run_specialist
@@ -16,10 +17,14 @@ from app.core.scheduled_query_store import (
     save_query,
 )
 from app.core.scheduler import (
+    get_scheduler,
+    list_scheduled_jobs,
     remove_scheduled_job,
     schedule_query_job,
+    schedule_rebalance_job,
     validate_cron_expression,
 )
+from app.tools.hedera_provisioner import Vault
 
 LABEL = "Scheduler admin agent"
 
@@ -42,6 +47,12 @@ When the user asks to schedule an alert (e.g. "Set up daily alerts for USDC whal
 When the user asks to list their alerts or schedules (e.g. "What scheduled alerts do I have?"), call `list_scheduled_queries()`.
 
 When the user asks to cancel an alert (e.g. "Cancel my daily USDC alert"), call `cancel_scheduled_query(query_id)`.
+
+When the user asks to set up a recurring wallet transfer/rebalance from one of their provisioned agent wallets (e.g. "every day at midnight, send 2 HBAR from my yield-bot to 0.0.1234", "rebalance my risk-bot's wallet weekly"), determine the agent name, destination account ID, HBAR amount, and cron expression. If the destination account or amount isn't given, ask the user for it rather than guessing. Then call `schedule_wallet_rebalance(agent_name, target_account_id, amount_hbar, cron_expression)`. This is distinct from a one-off transfer or an on-chain Hedera Schedule Service transaction — it's a recurring backend-triggered transfer signed by the agent's own provisioned key.
+
+When the user asks to list their recurring wallet-rebalance jobs, call `list_wallet_rebalance_jobs()`.
+
+When the user asks to cancel a recurring wallet-rebalance job, call `cancel_wallet_rebalance_job(job_id)`.
 
 After calling a tool, confirm back to the user in one clear sentence what was performed (e.g. what query was scheduled and its schedule/frequency). Do NOT repeat raw cron syntax (like "0 8 * * *") verbatim to the user; describe the frequency in plain English (e.g. "every day at 8:00 AM UTC").
 """
@@ -115,6 +126,99 @@ def make_cancel_scheduled_query_tool(owner_address: str):
     return cancel_scheduled_query
 
 
+def make_schedule_wallet_rebalance_tool(owner_address: str):
+    @tool
+    def schedule_wallet_rebalance(
+        agent_name: str, target_account_id: str, amount_hbar: float, cron_expression: str = "0 0 * * *"
+    ) -> str:
+        """Schedules a recurring HBAR transfer from one of the user's provisioned agent wallets.
+
+        Args:
+            agent_name: Name of the provisioned agent whose wallet will send funds.
+            target_account_id: Destination Hedera account ID (e.g. "0.0.1234").
+            amount_hbar: Amount of HBAR to send on each run. Must be positive.
+            cron_expression: Standard 5-part cron syntax (default "0 0 * * *", daily at midnight UTC).
+        """
+        try:
+            validate_cron_expression(cron_expression)
+        except ValueError as exc:
+            return json.dumps({"status": "error", "message": str(exc)})
+
+        agent = Vault.get_agent(owner_address, agent_name)
+        if not agent:
+            return json.dumps(
+                {"status": "error", "message": f"Agent '{agent_name}' not found for this wallet."}
+            )
+        if agent.get("status") == "ARCHIVED":
+            return json.dumps({"status": "error", "message": f"Agent '{agent_name}' is archived."})
+
+        if amount_hbar <= 0:
+            return json.dumps({"status": "error", "message": "amount_hbar must be positive."})
+
+        try:
+            AccountId.from_string(target_account_id)
+        except Exception:
+            return json.dumps(
+                {"status": "error", "message": f"'{target_account_id}' is not a valid Hedera account ID."}
+            )
+
+        job_id = schedule_rebalance_job(
+            owner_address=owner_address,
+            agent_name=agent_name,
+            cron_expression=cron_expression,
+            action_type="rebalance",
+            target_account_id=target_account_id,
+            amount_hbar=amount_hbar,
+        )
+        return json.dumps(
+            {
+                "status": "success",
+                "job_id": job_id,
+                "agent_name": agent_name,
+                "target_account_id": target_account_id,
+                "amount_hbar": amount_hbar,
+                "cron_expression": cron_expression,
+            }
+        )
+
+    return schedule_wallet_rebalance
+
+
+def make_list_wallet_rebalance_jobs_tool(owner_address: str):
+    @tool
+    def list_wallet_rebalance_jobs() -> str:
+        """Lists the user's own recurring wallet-rebalance cron jobs."""
+        jobs = [
+            job
+            for job in list_scheduled_jobs()
+            if job["id"].startswith("cron-") and job.get("args") and job["args"][0] == owner_address
+        ]
+        return json.dumps({"status": "success", "count": len(jobs), "jobs": jobs})
+
+    return list_wallet_rebalance_jobs
+
+
+def make_cancel_wallet_rebalance_job_tool(owner_address: str):
+    @tool
+    def cancel_wallet_rebalance_job(job_id: str) -> str:
+        """Cancels a recurring wallet-rebalance cron job by ID.
+
+        Args:
+            job_id: The job ID as returned by schedule_wallet_rebalance or list_wallet_rebalance_jobs.
+        """
+        scheduler = get_scheduler()
+        job = scheduler.get_job(job_id) if scheduler else None
+        if not job or not job.args or job.args[0] != owner_address:
+            return json.dumps({"status": "error", "message": f"Job '{job_id}' not found."})
+
+        removed = remove_scheduled_job(job_id)
+        if removed:
+            return json.dumps({"status": "success", "job_id": job_id, "action": "cancelled"})
+        return json.dumps({"status": "error", "message": f"Job '{job_id}' not found."})
+
+    return cancel_wallet_rebalance_job
+
+
 async def scheduler_admin_node(state: GraphState) -> dict:
     match = CONNECTED_WALLET_RE.search(state["question"])
     if not match:
@@ -131,6 +235,9 @@ async def scheduler_admin_node(state: GraphState) -> dict:
         make_create_scheduled_query_tool(owner_address),
         make_list_scheduled_queries_tool(owner_address),
         make_cancel_scheduled_query_tool(owner_address),
+        make_schedule_wallet_rebalance_tool(owner_address),
+        make_list_wallet_rebalance_jobs_tool(owner_address),
+        make_cancel_wallet_rebalance_job_tool(owner_address),
     ]
 
     return await run_specialist(

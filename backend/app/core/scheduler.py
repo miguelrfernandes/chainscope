@@ -90,11 +90,11 @@ def execute_autonomous_hedera_action(
     private_key_raw = decrypt_private_key(encrypted_key)
 
     settings = get_settings()
-    tx_status = "success"
     tx_id = f"0.0.78492@{int(datetime.now(timezone.utc).timestamp())}.000000000"
     message = f"Autonomous {action_type} executed for agent '{agent_name}' ({account_id_str})"
 
     if settings.hedera_operator_account_id and settings.hedera_operator_private_key:
+        tx_status = "success"
         try:
             client = Client(Network(network=settings.hedera_network))
             acc_id = AccountId.from_string(account_id_str)
@@ -113,11 +113,12 @@ def execute_autonomous_hedera_action(
                 if receipt and receipt.status:
                     tx_status = str(receipt.status)
         except Exception as exc:
-            logger.warning(
-                "Hedera live execution failed, falling back to simulated execution: %s", exc
-            )
-            tx_status = "simulated"
-            message += f" (Simulated execution: {exc})"
+            logger.warning("Hedera live execution failed: %s", exc)
+            tx_status = "failed"
+            message += f" (Execution failed: {exc})"
+    else:
+        tx_status = "simulated"
+        message += " (Simulated: no Hedera operator credentials configured)"
 
     result = {
         "status": tx_status,
@@ -137,12 +138,16 @@ def run_scheduled_rebalance(
     owner_address: str,
     agent_name: str,
     action_type: str = "rebalance",
+    target_account_id: Optional[str] = None,
+    amount_hbar: float = 0.0,
 ) -> Dict[str, Any]:
     """Top-level task handler invoked by APScheduler on cron trigger."""
     return execute_autonomous_hedera_action(
         owner_address=owner_address,
         agent_name=agent_name,
         action_type=action_type,
+        target_account_id=target_account_id,
+        amount_hbar=amount_hbar,
     )
 
 
@@ -152,6 +157,8 @@ def schedule_rebalance_job(
     cron_expression: str = "0 0 * * *",
     job_id: Optional[str] = None,
     action_type: str = "rebalance",
+    target_account_id: Optional[str] = None,
+    amount_hbar: float = 0.0,
 ) -> str:
     """Schedule a persistent cron job in APScheduler.
     Defaults to daily midnight execution ("0 0 * * *").
@@ -169,7 +176,7 @@ def schedule_rebalance_job(
     scheduler.add_job(
         run_scheduled_rebalance,
         trigger=trigger,
-        args=[owner_address, agent_name, action_type],
+        args=[owner_address, agent_name, action_type, target_account_id, amount_hbar],
         id=effective_job_id,
         replace_existing=True,
     )
