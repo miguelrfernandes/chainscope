@@ -31,6 +31,9 @@ dev = [
     "pytest-asyncio>=1.4.0",
     "ruff>=0.16.0",
 ]
+evals = [
+    "langsmith>=0.10.10",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

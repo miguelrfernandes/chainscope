@@ -1,0 +1,80 @@
+[
+  {
+    "id": "portfolio-cross-chain",
+    "question": "What's my portfolio breakdown across chains right now?\n(Note: if this question is about \"my\"/\"me\", the user's connected wallet is 0x1234567890123456789012345678901234567890)",
+    "expected_route": ["portfolio"],
+    "answer_criteria": "Gives a portfolio breakdown (by chain and/or token) using only balances the portfolio specialist actually returned. Does not invent balances for chains with no data, and does not fabricate round USD totals."
+  },
+  {
+    "id": "yield-advisor-idle-assets",
+    "question": "Do I have any idle assets that could be earning yield?\n(Note: if this question is about \"my\"/\"me\", the user's connected wallet is 0x1234567890123456789012345678901234567890)",
+    "expected_route": ["yield_advisor"],
+    "answer_criteria": "Identifies idle wallet assets (or states none were found) and, if any are idle, proposes a concrete Aave/Uniswap-LP supply action with a specific token and current yield figure rather than a generic suggestion."
+  },
+  {
+    "id": "defi-research-whales",
+    "question": "Who are the biggest whales right now, and what are they doing?",
+    "expected_route": ["defi_research"],
+    "answer_criteria": "Names specific large holders/traders with amounts (and sender/timestamp where available) pulled from subgraph data, not a generic explanation of what a whale is."
+  },
+  {
+    "id": "hedera-read-balance",
+    "question": "What's the HBAR balance of account 0.0.123456?",
+    "expected_route": ["hedera"],
+    "answer_criteria": "Reports the HBAR balance for account 0.0.123456 as a specific number (or clearly states the account/balance could not be found), without fabricating a figure."
+  },
+  {
+    "id": "hedera-wallet-transfer",
+    "question": "Transfer 1 HBAR on Hedera testnet to 0.0.999999\n(Note: if this question is about \"my\"/\"me\", the user's connected Hedera wallet is 0.0.123456)",
+    "expected_route": ["hedera_wallet_action"],
+    "answer_criteria": "Builds/describes an unsigned HBAR transfer transaction of 1 HBAR from 0.0.123456 to 0.0.999999 for the user's own wallet to sign, rather than executing it from a backend-held account."
+  },
+  {
+    "id": "hedera-wallet-scheduled-transfer",
+    "question": "Schedule a transfer of 1 HBAR to 0.0.999999 using Hedera Schedule Service\n(Note: if this question is about \"my\"/\"me\", the user's connected Hedera wallet is 0.0.123456)",
+    "expected_route": ["hedera_wallet_action"],
+    "answer_criteria": "Builds a Hedera Schedule Service transaction for a 1 HBAR transfer to 0.0.999999, signed once now and executing later, for the user's own connected wallet."
+  },
+  {
+    "id": "hedera-action-hcs-topic",
+    "question": "Create an HCS topic and submit the message \"hello world\" to it.",
+    "expected_route": ["hedera_action"],
+    "answer_criteria": "Creates a Hedera Consensus Service topic and submits the given message using the backend-held demo account (no connected wallet is referenced anywhere in the question), and reports the resulting topic ID and/or transaction ID."
+  },
+  {
+    "id": "risk-monitor-health-factor",
+    "question": "What's my health factor on Aave right now?\n(Connected wallet: 0x1234567890123456789012345678901234567890)",
+    "expected_route": ["risk_monitor"],
+    "answer_criteria": "Reports the Aave health factor for the connected wallet as a specific number (or states no open position was found), and flags liquidation proximity if the factor is low."
+  },
+  {
+    "id": "governance-active-proposals",
+    "question": "What are the active governance proposals for Uniswap right now?",
+    "expected_route": ["governance"],
+    "answer_criteria": "Lists specific active Uniswap governance proposals (titles/ids and status) pulled from on-chain/subgraph data rather than a generic description of Uniswap governance."
+  },
+  {
+    "id": "saucerswap-best-apr",
+    "question": "What's the best APR I can get farming on SaucerSwap right now?",
+    "expected_route": ["saucerswap"],
+    "answer_criteria": "Names a specific SaucerSwap pool and its current APR figure rather than a generic statement about SaucerSwap farming."
+  },
+  {
+    "id": "uniswap-quote-eth-usdc",
+    "question": "Quote swapping 1 ETH to USDC on Ethereum mainnet.",
+    "expected_route": ["uniswap"],
+    "answer_criteria": "Returns a live quote (expected USDC output and/or exchange rate) for swapping 1 ETH to USDC on Ethereum mainnet via the Uniswap Trading API, not a made-up rate."
+  },
+  {
+    "id": "scheduler-admin-daily-alert",
+    "question": "Set up a daily alert for USDC whale transactions.",
+    "expected_route": ["scheduler_admin"],
+    "answer_criteria": "Confirms a recurring (daily) off-chain research alert has been scheduled for USDC whale transactions, distinct from an on-chain scheduled transfer."
+  },
+  {
+    "id": "compound-risk-and-portfolio",
+    "question": "Compare my Aave health factor and my wallet balance.\n(Connected wallet: 0x1234567890123456789012345678901234567890)",
+    "expected_route": ["risk_monitor", "portfolio"],
+    "answer_criteria": "Addresses both the Aave health factor and the wallet balance for the connected wallet in one answer, using only figures returned by the respective specialists."
+  }
+]

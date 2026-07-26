@@ -42,6 +42,16 @@ test-frontend:
 test-backend:
     cd backend && uv run pytest
 
+# --- Evals ---
+
+# Push backend/evals/gold_dataset.json to the LangSmith "chainscope-gold" dataset
+eval-upload:
+    cd backend && uv run --group evals python -m evals.upload_dataset
+
+# Run the gold Q&A dataset against the live agent graph via LangSmith (requires LANGCHAIN_API_KEY)
+eval-gold: eval-upload
+    cd backend && uv run --group evals python -m evals.run_eval
+
 # --- Linting & Formatting ---
 
 # Run all linters
