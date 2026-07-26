@@ -8,9 +8,9 @@ from app.tools.saucerswap_actions import SAUCERSWAP_TOOLS
 LABEL = "SaucerSwap agent"
 
 CONNECTED_WALLET_RE = re.compile(
-    r"(?:Connected Hedera wallet|Connected wallet):\s*(0\.0\.\d+|0x[a-fA-F0-9]{40})", re.IGNORECASE
+    r"connected\s+(?:Hedera\s+)?wallet(?:\s+is|:)\s*(0\.0\.\d+|0x[a-fA-F0-9]{40})", re.IGNORECASE
 )
-CONNECTED_EVM_RE = re.compile(r"Connected wallet:\s*(0x[a-fA-F0-9]{40})", re.IGNORECASE)
+CONNECTED_EVM_RE = re.compile(r"connected\s+wallet(?:\s+is|:)\s*(0x[a-fA-F0-9]{40})", re.IGNORECASE)
 
 NO_EVM_WALLET_MESSAGE = (
     "Swapping on SaucerSwap builds an EVM transaction (ERC20 approve + SwapRouter "

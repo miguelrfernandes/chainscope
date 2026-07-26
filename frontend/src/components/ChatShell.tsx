@@ -279,13 +279,13 @@ export function ChatShell() {
 
     let promptWithWallet =
       wallet.address && !q.toLowerCase().includes(wallet.address.toLowerCase())
-        ? `${q}\n(Connected wallet: ${wallet.address})`
+        ? `${q}\n(Note: if this question is about "my"/"me", the user's connected wallet is ${wallet.address})`
         : q;
     if (
       hederaWallet.accountId &&
       !promptWithWallet.includes(hederaWallet.accountId)
     ) {
-      promptWithWallet += `\n(Connected Hedera wallet: ${hederaWallet.accountId})`;
+      promptWithWallet += `\n(Note: if this question is about "my"/"me", the user's connected Hedera wallet is ${hederaWallet.accountId})`;
     }
 
     streamChat(

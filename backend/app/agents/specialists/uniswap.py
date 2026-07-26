@@ -6,7 +6,7 @@ from app.tools.uniswap_actions import UNISWAP_TOOLS
 
 LABEL = "Uniswap agent"
 
-CONNECTED_EVM_RE = re.compile(r"Connected wallet:\s*(0x[a-fA-F0-9]{40})", re.IGNORECASE)
+CONNECTED_EVM_RE = re.compile(r"connected\s+wallet(?:\s+is|:)\s*(0x[a-fA-F0-9]{40})", re.IGNORECASE)
 
 NO_EVM_WALLET_MESSAGE = (
     "Swapping on Uniswap builds an EVM transaction for your own connected wallet to sign, "

@@ -15,12 +15,12 @@ from app.tools.hedera_schedule_actions import build_recurring_hbar_transfer_acti
 LABEL = "Hedera wallet action agent"
 
 CONNECTED_HEDERA_RE = re.compile(
-    r"Connected Hedera wallet:\s*(0\.0\.\d+|0x[a-fA-F0-9]{40})", re.IGNORECASE
+    r"connected\s+Hedera\s+wallet(?:\s+is|:)\s*(0\.0\.\d+|0x[a-fA-F0-9]{40})", re.IGNORECASE
 )
 CONNECTED_WALLET_RE = re.compile(
-    r"(?:Connected Hedera wallet|Connected wallet):\s*(0\.0\.\d+|0x[a-fA-F0-9]{40})", re.IGNORECASE
+    r"connected\s+(?:Hedera\s+)?wallet(?:\s+is|:)\s*(0\.0\.\d+|0x[a-fA-F0-9]{40})", re.IGNORECASE
 )
-CONNECTED_EVM_RE = re.compile(r"Connected wallet:\s*(0x[a-fA-F0-9]{40})", re.IGNORECASE)
+CONNECTED_EVM_RE = re.compile(r"connected\s+wallet(?:\s+is|:)\s*(0x[a-fA-F0-9]{40})", re.IGNORECASE)
 RECURRING_RE = re.compile(r"\b(?:recurring|schedule|scheduled|every\s+\w+)\b", re.IGNORECASE)
 
 NO_WALLET_MESSAGE = (

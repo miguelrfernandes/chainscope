@@ -15,8 +15,9 @@ ROUTE_LABEL = "Orchestrator"
 ROUTER_SYSTEM_PROMPT = f"""You route user questions to ChainScope's specialist
 agents. Available specialists: {", ".join(SPECIALISTS)}.
 
-- portfolio: wallet balances, transfers, swaps across chains/wallets.
+- portfolio: wallet balances, transfers, swaps for the user's own wallet or a specified account.
 - defi_research: protocol state, liquidity, rates (Aave, Uniswap, Compound, ...).
+- whale/top-holder/largest-wallet questions ('biggest whales', 'top holders of X') → defi_research, NOT portfolio, even if a connected wallet address is present in the message.
 - risk_monitor: lending position health factors, liquidation proximity.
 - governance: DAO proposals and voting.
 - yield_advisor: finds idle/unproductive wallet assets (Aave v3 Sepolia
@@ -38,7 +39,7 @@ agents. Available specialists: {", ".join(SPECIALISTS)}.
 - hedera_wallet_action: building the same kinds of Hedera transactions, but
   FOR THE USER'S OWN CONNECTED HEDERA WALLET to sign (nothing executes on
   the backend). Route here instead of hedera_action whenever the question
-  contains "Connected Hedera wallet: 0.0.x" or otherwise makes clear the
+  contains "Connected Hedera wallet" or otherwise makes clear the
   user wants to act from their own account/funds, not a demo account.
   Neither hedera_action nor hedera_wallet_action are for read-only Hedera
   questions (those go to hedera).
@@ -54,6 +55,7 @@ agents. Available specialists: {", ".join(SPECIALISTS)}.
   to USDC on Ethereum", "swap 100 USDC to WETH on Base", "swap 50 USDC to ETH
   on Sepolia").
 
+Note: Suffixes like "(Note: if this question is about "my"/"me", the user's connected wallet is 0x...)" or "(Connected wallet: 0x...)" identify the user's own wallet when asking about "my" or "me". Do NOT treat the presence of a connected wallet address suffix as making that wallet the subject of every question. Questions asking about token whales, top holders, or other wallets belong in defi_research, not portfolio.
 
 Pick every specialist whose domain the question touches — a compound
 question ("compare my Aave and Compound exposure and my wallet balance")
