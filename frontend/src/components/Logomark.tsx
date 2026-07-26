@@ -6,13 +6,14 @@ export function Logomark({ className }: { className?: string }) {
       className={className}
       aria-hidden="true"
     >
-      <line x1="12" y1="11" x2="12" y2="4.4" stroke="currentColor" strokeWidth="1.3" strokeOpacity="0.85" />
-      <line x1="12" y1="11" x2="5.6" y2="17.2" stroke="currentColor" strokeWidth="1.3" strokeOpacity="0.85" />
-      <line x1="12" y1="11" x2="18.4" y2="17.2" stroke="currentColor" strokeWidth="1.3" strokeOpacity="0.85" />
-      <circle cx="12" cy="11" r="2.6" fill="currentColor" />
-      <circle cx="12" cy="4.4" r="1.6" fill="currentColor" fillOpacity="0.55" />
-      <circle cx="5.6" cy="17.2" r="1.6" fill="currentColor" fillOpacity="0.55" />
-      <circle cx="18.4" cy="17.2" r="1.6" fill="currentColor" fillOpacity="0.55" />
+      <circle cx="14.5" cy="9.5" r="5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.55" />
+      <circle cx="9.5" cy="14.5" r="5" stroke="currentColor" strokeWidth="1.6" strokeOpacity="0.95" />
+      <circle cx="9.5" cy="14.5" r="2.6" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.7" />
+      <line x1="9.5" y1="8.3" x2="9.5" y2="10.6" stroke="currentColor" strokeWidth="1" strokeOpacity="0.9" />
+      <line x1="9.5" y1="18.4" x2="9.5" y2="20.7" stroke="currentColor" strokeWidth="1" strokeOpacity="0.9" />
+      <line x1="3.3" y1="14.5" x2="5.6" y2="14.5" stroke="currentColor" strokeWidth="1" strokeOpacity="0.9" />
+      <line x1="13.4" y1="14.5" x2="15.7" y2="14.5" stroke="currentColor" strokeWidth="1" strokeOpacity="0.9" />
+      <circle cx="9.5" cy="14.5" r="0.9" fill="currentColor" />
     </svg>
   );
 }
