@@ -241,7 +241,12 @@ export function ChatShell() {
   }
 
   function ask(question: string) {
-    if (busy || !wallet.connected || !question.trim()) return;
+    if (
+      busy ||
+      !(wallet.connected || hederaWallet.connected) ||
+      !question.trim()
+    )
+      return;
     const q = question.trim();
     const threadId =
       activeThreadId && !EXAMPLE_IDS.has(activeThreadId)
@@ -361,7 +366,7 @@ export function ChatShell() {
     }
   }
 
-  const locked = busy || !wallet.connected;
+  const locked = busy || !(wallet.connected || hederaWallet.connected);
   const connectLabel =
     wallet.status === "connecting"
       ? "connecting..."
@@ -696,7 +701,7 @@ export function ChatShell() {
               onChange={(e) => setInput(e.target.value)}
               disabled={locked}
               placeholder={
-                !wallet.connected
+                !(wallet.connected || hederaWallet.connected)
                   ? "connect your wallet to ask a question"
                   : busy
                     ? "waiting for agents..."
@@ -823,7 +828,7 @@ function EmptyState({
     );
   }, [activeCategory]);
 
-  if (!wallet.connected) {
+  if (!(wallet.connected || hederaWallet.connected)) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 py-12 text-center">
         <motion.div
