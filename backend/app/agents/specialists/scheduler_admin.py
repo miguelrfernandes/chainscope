@@ -15,12 +15,21 @@ from app.core.scheduled_query_store import (
     get_user_queries,
     save_query,
 )
-from app.core.scheduler import remove_scheduled_job, schedule_query_job
+from app.core.scheduler import (
+    remove_scheduled_job,
+    schedule_query_job,
+    validate_cron_expression,
+)
 
 LABEL = "Scheduler admin agent"
 
 CONNECTED_WALLET_RE = re.compile(
     r"connected\s+(?:Hedera\s+)?wallet(?:\s+is|:)\s*(0\.0\.\d+|0x[a-fA-F0-9]{40})", re.IGNORECASE
+)
+
+NO_WALLET_MESSAGE = (
+    "I need your connected wallet address to manage scheduled alerts for you — "
+    "connect a wallet and try again."
 )
 
 SYSTEM_PROMPT = """You are the Scheduler Admin agent for ChainScope. Domain: setting up, listing, and canceling scheduled natural-language question alerts for the user's connected wallet ({owner_address}).
@@ -48,13 +57,22 @@ def make_create_scheduled_query_tool(owner_address: str):
             prompt: Self-contained prompt string to execute on each run.
             cron_expression: Standard 5-part cron syntax (default "0 8 * * *").
         """
+        try:
+            validate_cron_expression(cron_expression)
+        except ValueError as exc:
+            return json.dumps({"status": "error", "message": str(exc)})
+
         query = save_query(
             owner_address=owner_address,
             name=name,
             prompt=prompt,
             cron_expression=cron_expression,
         )
-        job_id = schedule_query_job(query_id=query["id"], cron_expression=cron_expression)
+        try:
+            job_id = schedule_query_job(query_id=query["id"], cron_expression=cron_expression)
+        except ValueError as exc:
+            archive_query(query["id"])
+            return json.dumps({"status": "error", "message": str(exc)})
         return json.dumps(
             {
                 "status": "success",
@@ -99,7 +117,15 @@ def make_cancel_scheduled_query_tool(owner_address: str):
 
 async def scheduler_admin_node(state: GraphState) -> dict:
     match = CONNECTED_WALLET_RE.search(state["question"])
-    owner_address = match.group(1) if match else "0x0000000000000000000000000000000000000000"
+    if not match:
+        return {
+            "specialist_results": {"scheduler_admin": NO_WALLET_MESSAGE},
+            "raw_data": {"scheduler_admin": []},
+            "steps": [{"agent": LABEL, "text": "No connected wallet found in the request."}],
+            "sources": [],
+            "artifacts": [],
+        }
+    owner_address = match.group(1)
 
     tools = [
         make_create_scheduled_query_tool(owner_address),

@@ -7,25 +7,44 @@ The landing page should stay aligned with the public pitch: live Graph data,
 Python analysis, and action cards when the answer should become a
 transaction.
 
-## Suggested layout
+## Layout
 
 ```
 frontend/
-  app/
-    page.tsx              # landing page
-    app/page.tsx          # chat UI
-    api/                  # (optional) thin proxy routes if not calling backend directly
-  components/
-    Landing.tsx           # homepage experience
-    Chat/
-      MessageList.tsx
-      MessageInput.tsx
-      AgentStatus.tsx      # shows which specialist is currently running
-    Artifacts/
-      ChartRenderer.tsx    # renders plotly/vega-lite specs from the sandbox tool
-      TableRenderer.tsx
-  lib/
-    api.ts                 # fetch/SSE client for the FastAPI backend
+  src/
+    components/
+      Landing.tsx              # homepage experience
+      ChatShell.tsx             # chat UI shell, wallet connect buttons
+      AppHeader.tsx
+      AgentsDrawer.tsx           # sub-agents drawer (managed Hedera agents)
+      AgentStatusList.tsx         # shows which specialist(s) are currently running
+      StreamingAnswer.tsx
+      AssistantTurn.tsx / LiveAssistantTurn.tsx
+      LiveArtifact.tsx             # dispatches artifact type -> renderer component
+      DataTableArtifact.tsx
+      SourcesRow.tsx / ProvenanceTag.tsx
+      SuggestedActions.tsx
+      HistorySidebar.tsx
+      action-cards/                 # per-artifact-type action card renderers
+        LiveActionCard.tsx           # action/yield-supply (EVM, Sepolia)
+        HederaActionCard.tsx          # action/hedera-tx-bytes (HashPack)
+        EvmActionCard.tsx              # generic single-step EVM tx (Uniswap/SaucerSwap)
+        HederaEvmActionCard.tsx         # action/hedera-evm-tx(-batch) (MetaMask on Hedera)
+        SeedAgentCard.tsx                # managed-agent seed-funding action card
+      charts/                         # chart artifact renderers
+      providers/                       # wallet/context providers
+    lib/
+      api.ts                  # fetch/SSE client for the FastAPI backend
+      wallet.ts                # EVM wallet (window.ethereum), ensureSepolia/ensureHederaTestnet
+      hederaWallet.ts           # HashConnect wrapper
+      scenarios.ts               # scripted demo scenario data
+      history.ts
+    hooks/
+      useWallet.ts / useHederaWallet.ts
+      useAgentCount.ts             # sub-agent count for AgentsDrawer badge
+      useAlertCount.ts               # scheduled-alert unread count
+      useSuggestions.ts
+      useTxSequence.ts                # multi-step tx sequencing (e.g. approve + supply)
 ```
 
 ## Talking to the backend
@@ -116,9 +135,9 @@ integration exists for it:
   wallet) renders as a plain already-executed receipt in `LiveArtifact.tsx`
   — no signing needed, nothing to connect.
 
-### Planned: MetaMask via Hedera's JSON-RPC relay
+### MetaMask via Hedera's JSON-RPC relay
 
-Alongside HashConnect, a second path is planned for wallets that only speak
+Alongside HashConnect, a second path covers wallets that only speak
 `window.ethereum` (MetaMask): Hedera's JSON-RPC relay (testnet chain id
 `296`, `https://testnet.hashio.io/api`) accepts plain `eth_sendTransaction`s
 against the same accounts. This reuses the _existing_ EVM plumbing rather
@@ -126,18 +145,21 @@ than adding a new wallet integration:
 
 - `ensureHederaTestnet` in `lib/wallet.ts`, mirroring `ensureSepolia`, adds/
   switches to Hedera testnet on the already-connected MetaMask provider.
-- A new `HederaEvmActionCard.tsx`, modeled on `LiveActionCard.tsx`, takes an
+- `HederaEvmActionCard.tsx`, modeled on `LiveActionCard.tsx`, takes an
   ordered list of `{to, data, value}` steps and signs each via the existing
   `sendTransaction` (`eth_sendTransaction`) helper — no new wallet SDK.
-- `LiveArtifact.tsx` gains branches for `action/hedera-evm-tx` (a single
-  plain transfer) and `action/hedera-evm-tx-batch` (the multi-step
-  scheduled-transfer flow via the vendored `ScheduledVault` contracts, see
-  [agents.md](./agents.md)).
+- `LiveArtifact.tsx` branches on `action/hedera-evm-tx` (a single plain
+  transfer or HTS token creation) and `action/hedera-evm-tx-batch` (the
+  multi-step scheduled-transfer flow via the deployed `ScheduledVault`
+  contracts in `contracts/src/`, see [agents.md](./agents.md)).
 - Routing between this and the HashConnect path is automatic, based on
   which wallet is connected — not a user-facing choice — since the two
   paths cover different capability surfaces (HashPack: everything
   including HCS; MetaMask: transfers plus whatever's reachable via Hedera's
   System Contract precompiles).
+- `EvmActionCard.tsx` is the plain-EVM counterpart used by the Uniswap and
+  SaucerSwap specialists' swap transactions (Sepolia/mainnet/Base, not
+  Hedera-specific).
 
 ### Human-in-the-Loop (HITL) Action Card Integration Architecture
 

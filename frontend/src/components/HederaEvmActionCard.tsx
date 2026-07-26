@@ -16,9 +16,17 @@ export type HederaEvmActionPayload = {
   value?: string;
   data?: string;
   steps?: HederaEvmStep[];
+  hashes?: string[];
+  executed?: boolean;
 };
 
-export function HederaEvmActionCard({ payload }: { payload: HederaEvmActionPayload }) {
+export function HederaEvmActionCard({
+  payload,
+  onArtifactUpdate,
+}: {
+  payload: HederaEvmActionPayload;
+  onArtifactUpdate?: (data: string) => void;
+}) {
   const steps: HederaEvmStep[] =
     payload.steps && payload.steps.length > 0
       ? payload.steps
@@ -52,6 +60,17 @@ export function HederaEvmActionCard({ payload }: { payload: HederaEvmActionPaylo
       humanMessage={payload.human_message}
       steps={steps}
       switchingLabel="switching to Hedera Testnet…"
+      initialHashes={payload.hashes}
+      initialDone={Boolean(payload.executed || (payload.hashes && payload.hashes.length > 0))}
+      onComplete={(hashes) => {
+        onArtifactUpdate?.(
+          JSON.stringify({
+            ...payload,
+            hashes,
+            executed: true,
+          })
+        );
+      }}
     />
   );
 }

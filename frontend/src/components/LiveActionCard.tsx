@@ -14,9 +14,17 @@ export type YieldActionPayload = {
   apy_pct: number;
   rationale: string;
   steps: ActionStep[];
+  hashes?: string[];
+  executed?: boolean;
 };
 
-export function LiveActionCard({ action }: { action: YieldActionPayload }) {
+export function LiveActionCard({
+  action,
+  onArtifactUpdate,
+}: {
+  action: YieldActionPayload;
+  onArtifactUpdate?: (data: string) => void;
+}) {
   const strategy: ChainStrategy = {
     ensureChain: ensureSepolia,
     explorerTxUrl: (hash) => `https://sepolia.etherscan.io/tx/${hash}`,
@@ -32,6 +40,17 @@ export function LiveActionCard({ action }: { action: YieldActionPayload }) {
       idleLabel={`Approve & Supply ${action.asset_symbol}`}
       steps={action.steps}
       switchingLabel="switching to Sepolia…"
+      initialHashes={action.hashes}
+      initialDone={Boolean(action.executed || (action.hashes && action.hashes.length > 0))}
+      onComplete={(hashes) => {
+        onArtifactUpdate?.(
+          JSON.stringify({
+            ...action,
+            hashes,
+            executed: true,
+          })
+        );
+      }}
     >
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex items-center gap-2">

@@ -11,7 +11,11 @@ from app.core.scheduled_query_store import (
     mark_run_read,
     save_query,
 )
-from app.core.scheduler import remove_scheduled_job, schedule_query_job
+from app.core.scheduler import (
+    remove_scheduled_job,
+    schedule_query_job,
+    validate_cron_expression,
+)
 
 router = APIRouter()
 
@@ -28,13 +32,22 @@ async def create_scheduled_query(req: CreateScheduledQueryRequest):
     if not req.owner_address or not req.name or not req.prompt or not req.cron_expression:
         raise HTTPException(status_code=400, detail="Missing required fields")
 
+    try:
+        validate_cron_expression(req.cron_expression)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     query = save_query(
         owner_address=req.owner_address,
         name=req.name,
         prompt=req.prompt,
         cron_expression=req.cron_expression,
     )
-    job_id = schedule_query_job(query_id=query["id"], cron_expression=req.cron_expression)
+    try:
+        job_id = schedule_query_job(query_id=query["id"], cron_expression=req.cron_expression)
+    except ValueError as exc:
+        archive_query(query["id"])
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     query["job_id"] = job_id
     return query
 

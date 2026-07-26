@@ -16,13 +16,23 @@ export type TxStep = {
 export type UseTxSequenceOptions = {
   steps: TxStep[];
   ensureChain: (provider: EthereumProvider) => Promise<void>;
+  initialHashes?: string[];
+  initialDone?: boolean;
+  onComplete?: (hashes: string[]) => void;
 };
 
-export function useTxSequence({ steps, ensureChain }: UseTxSequenceOptions) {
+export function useTxSequence({
+  steps,
+  ensureChain,
+  initialHashes = [],
+  initialDone = false,
+  onComplete,
+}: UseTxSequenceOptions) {
   const wallet = useWallet();
-  const [state, setState] = useState<RunState>("idle");
+  const isInitialDone = Boolean(initialDone || (initialHashes && initialHashes.length > 0));
+  const [state, setState] = useState<RunState>(isInitialDone ? "done" : "idle");
   const [stepIndex, setStepIndex] = useState(0);
-  const [hashes, setHashes] = useState<string[]>([]);
+  const [hashes, setHashes] = useState<string[]>(initialHashes);
   const [error, setError] = useState<string | null>(null);
 
   async function run() {
@@ -52,6 +62,7 @@ export function useTxSequence({ steps, ensureChain }: UseTxSequenceOptions) {
         setState("broadcasting");
       }
       setState("done");
+      onComplete?.(newHashes);
     } catch (err) {
       const message =
         err && typeof err === "object" && "message" in err

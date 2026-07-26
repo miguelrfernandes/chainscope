@@ -65,12 +65,12 @@ For HTS fungible token creation requests (e.g. "Create a token named MegaCoin (M
 
 For direct HBAR wallet transfer requests (not agent creation or token creation), call build_hbar_transfer_evm_tx to generate the transfer payload. Required parameters: to_evm_address, amount_hbar.
 
-After calling the action tool, tell the user in one short sentence what the transaction does and that it's ready for them to sign in their EVM wallet. Do NOT repeat raw hex or calldata."""
+After calling the action tool, tell the user in one short sentence what the transaction does and that it's ready for them to sign in their EVM wallet — do not claim it has already executed, been created, or been minted; nothing happens on-chain until the user signs. Do NOT repeat raw hex or calldata."""
 
 SYSTEM_PROMPT_EVM_RECURRING = """You are the Hedera wallet action agent for ChainScope. Domain: building recurring HBAR transfers using Hedera Schedule Service precompiles for the user's connected EVM wallet ({owner_address}).
 
 Call build_recurring_hbar_transfer_actions to generate the multi-step transaction sequence. Required parameters: user_evm_address (use {owner_address}), recipient_evm_address, amount_hbar, interval_seconds.
-After calling the tool, tell the user in one short sentence what the transaction sequence does and that it is ready for them to sign in their EVM wallet. Do NOT repeat raw hex or calldata."""
+After calling the tool, tell the user in one short sentence what the transaction sequence does and that it is ready for them to sign in their EVM wallet — do not claim it has already executed. Do NOT repeat raw hex or calldata."""
 
 
 async def hedera_wallet_action_node(state: GraphState) -> dict:

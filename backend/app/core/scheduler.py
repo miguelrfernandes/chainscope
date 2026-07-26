@@ -184,29 +184,49 @@ async def run_scheduled_query(query_id: int) -> dict:
     query = get_query_by_id(query_id)
     if not query or query["status"] != "ACTIVE":
         return {}
-    graph = get_graph()
-    config = {"configurable": {"thread_id": f"scheduled-{query_id}"}}
-    inputs = {
-        "question": query["prompt"],
-        "route": [],
-        "specialist_results": {},
-        "raw_data": {},
-        "sources": [],
-        "artifacts": [],
-        "steps": [],
-        "final_answer": None,
-    }
-    result = await graph.ainvoke(inputs, config=config)
-    save_run(query_id, result.get("final_answer") or "", result.get("sources") or [])
+
+    try:
+        graph = get_graph()
+        config = {"configurable": {"thread_id": f"scheduled-{query_id}"}}
+        inputs = {
+            "question": query["prompt"],
+            "route": [],
+            "specialist_results": {},
+            "raw_data": {},
+            "sources": [],
+            "artifacts": [],
+            "steps": [],
+            "final_answer": None,
+        }
+        result = await graph.ainvoke(inputs, config=config)
+        answer = result.get("final_answer") or ""
+        sources = result.get("sources") or []
+    except Exception as exc:
+        logger.warning("Scheduled query %s failed: %s", query_id, exc)
+        answer = f"⚠️ This scheduled check failed to run: {exc}"
+        sources = []
+
+    save_run(query_id, answer, sources)
     return {"query_id": query_id}
 
 
+def validate_cron_expression(cron_expression: str) -> CronTrigger:
+    """Parse `cron_expression` into a CronTrigger, raising ValueError with a
+    clear message on malformed input instead of letting callers hit APScheduler's
+    own (less legible) exception deep inside add_job."""
+    try:
+        return CronTrigger.from_crontab(cron_expression)
+    except Exception as exc:
+        raise ValueError(f"Invalid cron expression '{cron_expression}': {exc}") from exc
+
+
 def schedule_query_job(query_id: int, cron_expression: str, job_id: Optional[str] = None) -> str:
+    trigger = validate_cron_expression(cron_expression)
     scheduler = get_scheduler() or init_scheduler()
     effective_job_id = job_id or f"query-{query_id}"
     scheduler.add_job(
         run_scheduled_query,
-        trigger=CronTrigger.from_crontab(cron_expression),
+        trigger=trigger,
         args=[query_id],
         id=effective_job_id,
         replace_existing=True,

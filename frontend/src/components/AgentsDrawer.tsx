@@ -13,6 +13,7 @@ import {
   fetchScheduledQueries,
   deleteScheduledQuery,
   fetchScheduledQueryRuns,
+  fetchInboxSummary,
   markRunRead,
   type ManagedAgent,
   type ScheduledJob,
@@ -81,6 +82,14 @@ function setCachedScheduledQueries(owner: string, data: ScheduledQuery[]) {
   } catch {}
 }
 
+function unreadCountsFromInbox(latestUnread: ScheduledQueryRun[]): Record<number, number> {
+  const counts: Record<number, number> = {};
+  for (const run of latestUnread) {
+    counts[run.query_id] = (counts[run.query_id] || 0) + 1;
+  }
+  return counts;
+}
+
 function SkeletonCard() {
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 p-4 animate-pulse">
@@ -117,6 +126,7 @@ export function AgentsDrawer({
   const [queryRuns, setQueryRuns] = useState<Record<number, ScheduledQueryRun[]>>({});
   const [expandedQueryId, setExpandedQueryId] = useState<number | null>(null);
   const [loadingRunsQueryId, setLoadingRunsQueryId] = useState<number | null>(null);
+  const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({});
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -157,12 +167,14 @@ export function AgentsDrawer({
         fetchUserAgents(ownerAddress),
         fetchScheduledJobs(),
         fetchScheduledQueries(ownerAddress),
+        fetchInboxSummary(ownerAddress),
       ])
-        .then(([agentsData, jobsData, queriesData]) => {
+        .then(([agentsData, jobsData, queriesData, inboxData]) => {
           if (!ignore) {
             setAgents(agentsData);
             setSchedules(jobsData);
             setScheduledQueries(queriesData);
+            setUnreadCounts(unreadCountsFromInbox(inboxData.latest_unread));
             setCachedAgents(ownerAddress, agentsData);
             setCachedSchedules(ownerAddress, jobsData);
             setCachedScheduledQueries(ownerAddress, queriesData);
@@ -194,11 +206,13 @@ export function AgentsDrawer({
       fetchUserAgents(ownerAddress),
       fetchScheduledJobs(),
       fetchScheduledQueries(ownerAddress),
+      fetchInboxSummary(ownerAddress),
     ])
-      .then(([agentsData, jobsData, queriesData]) => {
+      .then(([agentsData, jobsData, queriesData, inboxData]) => {
         setAgents(agentsData);
         setSchedules(jobsData);
         setScheduledQueries(queriesData);
+        setUnreadCounts(unreadCountsFromInbox(inboxData.latest_unread));
         setCachedAgents(ownerAddress, agentsData);
         setCachedSchedules(ownerAddress, jobsData);
         setCachedScheduledQueries(ownerAddress, queriesData);
@@ -263,6 +277,10 @@ export function AgentsDrawer({
           [queryId]: existing.map((r) => (r.id === runId ? { ...r, is_read: 1 } : r)),
         };
       });
+      setUnreadCounts((prev) => ({
+        ...prev,
+        [queryId]: Math.max(0, (prev[queryId] || 0) - 1),
+      }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to mark run as read");
     }
@@ -791,7 +809,12 @@ export function AgentsDrawer({
                     );
                     const isExpanded = expandedQueryId === query.id;
                     const runs = queryRuns[query.id] || [];
-                    const unreadCount = runs.filter((r) => r.is_read === 0).length;
+                    // Once runs are loaded (card expanded at least once) they're the source
+                    // of truth; until then, fall back to the inbox summary's per-query count
+                    // so the badge isn't stuck at 0 before the user ever expands the card.
+                    const unreadCount = queryRuns[query.id]
+                      ? runs.filter((r) => r.is_read === 0).length
+                      : unreadCounts[query.id] || 0;
 
                     return (
                       <div

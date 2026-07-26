@@ -26,6 +26,8 @@ export type SeedAgentPayload = {
     amount_hbar: number;
     cta: string;
   };
+  tx_id?: string | null;
+  executed?: boolean;
 };
 
 type RunState = "idle" | "confirming" | "done" | "error";
@@ -45,16 +47,19 @@ function getTargetEvmAddress(payload: SeedAgentPayload): string {
 export function SeedAgentCard({
   payload,
   ownerAddress,
+  onArtifactUpdate,
 }: {
   payload: SeedAgentPayload;
   ownerAddress: string;
+  onArtifactUpdate?: (data: string) => void;
 }) {
   const hederaWallet = useHederaWallet();
   const evmWallet = useWallet();
-  const [state, setState] = useState<RunState>("idle");
-  const [txId, setTxId] = useState<string | null>(null);
+  const isDone = Boolean(payload.executed || payload.tx_id || payload.status === "ACTIVATED");
+  const [state, setState] = useState<RunState>(isDone ? "done" : "idle");
+  const [txId, setTxId] = useState<string | null>(payload.tx_id || null);
   const [error, setError] = useState<string | null>(null);
-  const [activated, setActivated] = useState(false);
+  const [activated, setActivated] = useState(payload.status === "ACTIVATED" || isDone);
 
   async function runEvmTransfer() {
     if (state !== "idle" && state !== "error") return;
@@ -117,6 +122,14 @@ export function SeedAgentCard({
         }
       }
       setState("done");
+      onArtifactUpdate?.(
+        JSON.stringify({
+          ...payload,
+          tx_id: hash,
+          executed: true,
+          status: "ACTIVATED",
+        })
+      );
     } catch (err) {
       const message =
         err && typeof err === "object" && "message" in err
@@ -166,6 +179,14 @@ export function SeedAgentCard({
         }
       }
       setState("done");
+      onArtifactUpdate?.(
+        JSON.stringify({
+          ...payload,
+          tx_id: id,
+          executed: true,
+          status: "ACTIVATED",
+        })
+      );
     } catch (err) {
       const message =
         err && typeof err === "object" && "message" in err

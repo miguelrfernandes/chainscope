@@ -38,9 +38,19 @@ HEDERA_OPERATOR_ACCOUNT_ID=...   # backend-held Hedera testnet account, e.g. 0.0
 HEDERA_OPERATOR_PRIVATE_KEY=...  # AUTONOMOUS-mode actions (HBAR transfer, HCS, HTS); get a free
                                  # funded testnet account at https://portal.hedera.com/dashboard
 HEDERA_NETWORK=testnet
-# Planned (MetaMask/EVM-relay Hedera actions — see agents.md):
-HEDERA_SCHEDULE_FACTORY_ADDRESS=...            # deployed ScheduledVaultFactory, Hedera testnet
-HEDERA_NATIVE_TRANSFER_STRATEGY_ADDRESS=...    # deployed NativeTransferStrategy, Hedera testnet
+# MetaMask/EVM-relay Hedera actions (see agents.md), deployed on Hedera testnet:
+HEDERA_SCHEDULE_FACTORY_ADDRESS=...            # deployed ScheduledVaultFactory
+HEDERA_NATIVE_TRANSFER_STRATEGY_ADDRESS=...    # deployed NativeTransferStrategy
+
+AGENT_VAULT_ENCRYPTION_KEY=...  # required — AES-256-GCM key encrypting managed agents' Hedera
+                                 # private keys at rest; generate with `openssl rand -hex 32`
+SAUCERSWAP_API_KEY=...          # defaults to SaucerSwap's public demo key; request a real one
+                                 # from support@saucerswap.finance for production use
+UNISWAP_API_KEY=...             # from developer.uniswap.org, used by the Uniswap specialist
+
+MANAGED_AGENT_DB_PATH=managed_agents.db      # SQLite store for managed Hedera agent accounts
+SCHEDULER_DB_PATH=scheduler.db                # APScheduler job store
+SCHEDULED_QUERY_DB_PATH=scheduled_queries.db  # SQLite store for recurring NL-question alerts
 ```
 
 See `backend/.env.example` for the full list. Swapping `LLM_PROVIDER` to

@@ -21,6 +21,9 @@ export type ActionCardProps = {
   steps: TxStep[];
   switchingLabel?: string;
   children?: React.ReactNode;
+  initialHashes?: string[];
+  initialDone?: boolean;
+  onComplete?: (hashes: string[]) => void;
 };
 
 export function ActionCard({
@@ -32,10 +35,16 @@ export function ActionCard({
   steps,
   switchingLabel,
   children,
+  initialHashes,
+  initialDone,
+  onComplete,
 }: ActionCardProps) {
   const { state, stepIndex, hashes, error, run } = useTxSequence({
     steps,
     ensureChain: strategy.ensureChain,
+    initialHashes,
+    initialDone,
+    onComplete,
   });
 
   const isPending = state === "switching" || state === "confirming" || state === "broadcasting";
@@ -43,6 +52,8 @@ export function ActionCard({
   const confirmingStepLabel = steps[stepIndex]?.label ?? `step ${stepIndex + 1}`;
   const shortConfirmingStepLabel =
     confirmingStepLabel.length > 28 ? `${confirmingStepLabel.slice(0, 25)}…` : confirmingStepLabel;
+
+  const displayHashes = hashes.length > 0 ? hashes : ["0xconfirmed"];
 
   return (
     <motion.div
@@ -91,7 +102,7 @@ export function ActionCard({
 
           {state === "done" ? (
             <div className="flex shrink-0 flex-col items-end gap-1.5 max-w-full min-w-0">
-              {hashes.map((h, i) => {
+              {displayHashes.map((h, i) => {
                 const defaultLabel =
                   steps.length === 1
                     ? "View on Explorer ↗"
@@ -103,7 +114,7 @@ export function ActionCard({
                   : defaultLabel;
                 return (
                   <motion.a
-                    key={h}
+                    key={h + i}
                     href={strategy.explorerTxUrl(h, i)}
                     target="_blank"
                     rel="noreferrer"

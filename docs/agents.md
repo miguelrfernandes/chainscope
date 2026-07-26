@@ -23,7 +23,7 @@ to one domain, with its own system prompt and curated subset of Subgraph
 MCP tools (so it queries the right subgraphs instead of guessing across
 15,000+).
 
-| Specialist | Domain | Example question | Key subgraphs |
+| Specialist | Domain | Example question | Key subgraphs / API |
 |---|---|---|---|
 | Portfolio agent | balances, transfers, swaps across wallets/chains | "What's my PnL on this wallet this month?" | token/transfer subgraphs per chain |
 | DeFi research agent | protocol state, liquidity, rates | "What's the current utilization on Aave USDC?" | Aave, Uniswap, Compound subgraphs |
@@ -32,7 +32,11 @@ MCP tools (so it queries the right subgraphs instead of guessing across
 | Yield advisor agent | finds idle wallet assets and proposes a real deposit action | "What should I do with my idle assets?" | Aave v3 Sepolia subgraph (APY) + live RPC balance reads |
 | Analyst/visualization agent | takes another agent's data and produces charts/tables via the Python sandbox | "Chart my token balances over the last 90 days" | (consumes prior agents' output) |
 | Hedera agent | HBAR balances, HTS tokens/NFTs, transactions, HCS topic messages on Hedera | "What's the HBAR balance of 0.0.1234?" | Hedera Mirror Node REST API (testnet by default) |
-| Hedera action agent | executes real Hedera testnet transactions: HBAR transfer, HCS topic create/submit, HTS token create/mint/associate | "Send 5 HBAR to 0.0.1234" | Hedera Agent Kit (Python), AUTONOMOUS mode |
+| Hedera action agent | executes real Hedera testnet transactions: HBAR transfer, HCS topic create/submit, HTS token create/mint/associate; can also provision a managed sub-agent account | "Send 5 HBAR to 0.0.1234" | Hedera Agent Kit (Python), AUTONOMOUS mode |
+| Hedera wallet action agent | builds unsigned transactions for the user's own HashPack or MetaMask wallet to sign (HBAR transfer, HCS, HTS, sub-agent provisioning) | "Send 1 HBAR to my agent" | Hedera Agent Kit RETURN_BYTES mode + Hedera EVM precompiles |
+| Uniswap agent | live swap quotes and unsigned swap tx building on Ethereum/Base/Sepolia | "Swap 1 ETH for USDC" | Uniswap Trading API |
+| SaucerSwap agent | best current farming APRs and unsigned swap tx building on Hedera's leading DEX | "Where should I farm on SaucerSwap?" | SaucerSwap public REST API (mainnet only — no testnet pools) |
+| Scheduler admin agent | creates/lists/cancels recurring natural-language question alerts for the user's connected wallet | "Set up daily alerts for USDC whale transactions" | (no external data source — schedules re-runs of the graph itself via APScheduler + SQLite) |
 
 ### Yield advisor — acting, not just reporting
 
@@ -100,26 +104,28 @@ different capability surfaces:
   artifact. Covers the full curated tool surface: HBAR transfer, HCS topic
   create/submit, HTS token create/mint/associate. MetaMask cannot sign
   these — it has no concept of a Hedera `TransferTransaction`.
-- **MetaMask, via Hedera's JSON-RPC relay** *(planned)* — plain
-  `eth_sendTransaction`s, returned as `action/hedera-evm-tx`. Covers native
-  HBAR value transfers directly, plus anything Hedera exposes as a System
-  Contract precompile at a fixed address — HTS at `0x167`, the Schedule
-  Service at `0x16b`. HCS has no System Contract equivalent, so topic
-  create/submit stays HashPack-only regardless of which wallet is
-  connected.
+- **MetaMask, via Hedera's JSON-RPC relay** (shipped,
+  `app/tools/hedera_evm_actions.py`) — plain `eth_sendTransaction`s, returned
+  as `action/hedera-evm-tx`. Covers native HBAR value transfers and HTS
+  fungible token creation via the HTS System Contract precompile at
+  `0x167`. HCS has no System Contract equivalent, so topic create/submit
+  stays HashPack-only regardless of which wallet is connected.
 - If a request needs a HashPack-only capability (e.g. HCS) but only
   MetaMask is connected, the agent should ask the user to connect a
   Hedera-native wallet rather than attempt something MetaMask can't sign.
 
-**Planned**: a recurring/scheduled HBAR transfer (e.g. "send 1 HBAR to X
-every hour"), signed entirely through MetaMask via a small deployed
-`ScheduledVaultFactory`/`ScheduledVault` contract pair (vendored from
+A recurring/scheduled HBAR transfer (e.g. "send 1 HBAR to X every hour"),
+signed entirely through MetaMask, is shipped via `app/tools/hedera_schedule_actions.py`
+and a small deployed `ScheduledVaultFactory`/`ScheduledVault`/
+`NativeTransferStrategy` contract pair (`contracts/src/`, vendored from
 [hedera-dev/scaffold-hbar](https://github.com/hedera-dev/scaffold-hbar)'s
 `templates/payments-scheduler`) that self-reschedules using the HSS
 precompile (`IHederaScheduleService.scheduleCall`, `0x16b`), returned as a
 multi-step `action/hedera-evm-tx-batch` artifact. This one is inherently
 MetaMask-only in the other direction — HashConnect has no path to a System
-Contract call at all, so it's not offered to HashPack users.
+Contract call at all, so it's not offered to HashPack users. (This is
+separate from the **Scheduler admin agent** above, which schedules re-runs
+of arbitrary natural-language questions, not on-chain transfers.)
 
 ### Managed Hedera Agent Accounts — User-Wallet Provisioning & Funding Architecture
 

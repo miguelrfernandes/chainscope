@@ -17,9 +17,11 @@ type HederaExecutedPayload = {
 export function LiveArtifact({
   artifact,
   ownerAddress = "0xdefault_owner",
+  onArtifactUpdate,
 }: {
   artifact: BackendArtifact;
   ownerAddress?: string;
+  onArtifactUpdate?: (updatedData: string) => void;
 }) {
   if (artifact.type === "action/yield-supply") {
     let payload: YieldActionPayload | { error: string };
@@ -29,7 +31,7 @@ export function LiveArtifact({
       return null;
     }
     if ("error" in payload) return null;
-    return <LiveActionCard action={payload} />;
+    return <LiveActionCard action={payload} onArtifactUpdate={onArtifactUpdate} />;
   }
 
   if (artifact.type === "action/seed-agent-hbar") {
@@ -40,11 +42,10 @@ export function LiveArtifact({
       return null;
     }
     if (!payload.action || payload.action.type !== "action/seed-agent-hbar") return null;
-    return <SeedAgentCard payload={payload} ownerAddress={ownerAddress} />;
+    return <SeedAgentCard payload={payload} ownerAddress={ownerAddress} onArtifactUpdate={onArtifactUpdate} />;
   }
 
   if (artifact.type === "action/hedera-tx-bytes") {
-
     let payload: HederaTxBytesPayload;
     try {
       payload = JSON.parse(artifact.data);
@@ -52,7 +53,7 @@ export function LiveArtifact({
       return null;
     }
     if (payload.error || !payload.bytes_data) return null;
-    return <HederaActionCard payload={payload} />;
+    return <HederaActionCard payload={payload} onArtifactUpdate={onArtifactUpdate} />;
   }
 
   if (artifact.type === "action/evm-tx-batch") {
@@ -62,7 +63,7 @@ export function LiveArtifact({
     } catch {
       return null;
     }
-    return <EvmActionCard payload={payload} />;
+    return <EvmActionCard payload={payload} onArtifactUpdate={onArtifactUpdate} />;
   }
 
   if (artifact.type === "action/hedera-evm-tx" || artifact.type === "action/hedera-evm-tx-batch") {
@@ -72,7 +73,7 @@ export function LiveArtifact({
     } catch {
       return null;
     }
-    return <HederaEvmActionCard payload={payload} />;
+    return <HederaEvmActionCard payload={payload} onArtifactUpdate={onArtifactUpdate} />;
   }
 
   if (artifact.type === "action/hedera-tx") {

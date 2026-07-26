@@ -9,6 +9,8 @@ export type HederaTxBytesPayload = {
   error: string | null;
   type: "return_bytes";
   bytes_data: string;
+  tx_id?: string | null;
+  executed?: boolean;
 };
 
 type RunState = "idle" | "confirming" | "done" | "error";
@@ -17,10 +19,17 @@ type RunState = "idle" | "confirming" | "done" | "error";
  * agent (app/agents/specialists/hedera_wallet_action.py) — an unsigned
  * transaction the connected HashPack wallet still needs to sign. Mirrors
  * LiveActionCard.tsx's flow, swapping eth_sendTransaction for HashConnect. */
-export function HederaActionCard({ payload }: { payload: HederaTxBytesPayload }) {
+export function HederaActionCard({
+  payload,
+  onArtifactUpdate,
+}: {
+  payload: HederaTxBytesPayload;
+  onArtifactUpdate?: (data: string) => void;
+}) {
   const wallet = useHederaWallet();
-  const [state, setState] = useState<RunState>("idle");
-  const [txId, setTxId] = useState<string | null>(null);
+  const isDone = Boolean(payload.executed || payload.tx_id);
+  const [state, setState] = useState<RunState>(isDone ? "done" : "idle");
+  const [txId, setTxId] = useState<string | null>(payload.tx_id || null);
   const [error, setError] = useState<string | null>(null);
 
   async function run() {
@@ -36,6 +45,13 @@ export function HederaActionCard({ payload }: { payload: HederaTxBytesPayload })
       const id = await signAndExecute(wallet.accountId, payload.bytes_data);
       setTxId(id);
       setState("done");
+      onArtifactUpdate?.(
+        JSON.stringify({
+          ...payload,
+          tx_id: id,
+          executed: true,
+        })
+      );
     } catch (err) {
       const message =
         err && typeof err === "object" && "message" in err

@@ -22,9 +22,16 @@ submission, and HTS token create/mint/associate directly against Hedera
 Testnet via the Hedera Agent Kit (Python) — no user signature required for
 this path (a dedicated backend-held testnet operator account signs and
 submits). A second Hedera specialist builds unsigned transaction bytes for
-the user's own HashPack wallet to sign when the action should come from
-the user's funds instead. See
+the user's own HashPack or MetaMask wallet to sign when the action should
+come from the user's funds instead, including a recurring/scheduled HBAR
+transfer signed once via a deployed `ScheduledVault` contract. See
 [agents.md](./agents.md#hedera-action-agent--acting-differently-than-the-yield-advisor).
+
+Two more specialists build unsigned swap transactions for the user's own
+wallet: **Uniswap** (Ethereum/Base/Sepolia) and **SaucerSwap** (Hedera's
+leading DEX). A **scheduler admin** agent lets the user set up recurring
+natural-language question alerts (e.g. "check USDC whale activity daily"),
+independent of the on-chain scheduled-transfer path above.
 
 ## Stack
 

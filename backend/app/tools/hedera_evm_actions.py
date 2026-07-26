@@ -122,7 +122,9 @@ async def build_hts_create_token_evm_tx(
     hex_value = "0x" + format(creation_fee_wei, "x")
 
     payload = {
-        "human_message": f"Create HTS fungible token {name} ({symbol}) with initial supply {initial_supply:g}",
+        "human_message": f"Create HTS fungible token {name} ({symbol}) with initial supply {initial_supply:,.0f}"
+        if initial_supply == int(initial_supply)
+        else f"Create HTS fungible token {name} ({symbol}) with initial supply {initial_supply:,}",
         "to": HTS_SYSTEM_CONTRACT_ADDRESS,
         "value": hex_value,
         "data": calldata,

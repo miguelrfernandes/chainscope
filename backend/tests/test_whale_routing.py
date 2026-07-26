@@ -37,6 +37,8 @@ def test_defi_research_prompt_whale_recipe():
     assert "whale/top-holder rankings" in DEFI_RESEARCH_PROMPT
     assert "search_subgraphs_by_keyword" in DEFI_RESEARCH_PROMPT
     assert "orderBy: balance, orderDirection: desc, first: 10" in DEFI_RESEARCH_PROMPT
+    assert "IGNORE any connected wallet suffix" in DEFI_RESEARCH_PROMPT
+    assert "uniswap-v3" in DEFI_RESEARCH_PROMPT
 
 
 def test_wallet_regexes_support_new_and_old_suffix_format():

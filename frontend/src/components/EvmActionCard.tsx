@@ -19,9 +19,17 @@ export type EvmActionPayload = {
   value?: string;
   data?: string;
   steps?: EvmStep[];
+  hashes?: string[];
+  executed?: boolean;
 };
 
-export function EvmActionCard({ payload }: { payload: EvmActionPayload }) {
+export function EvmActionCard({
+  payload,
+  onArtifactUpdate,
+}: {
+  payload: EvmActionPayload;
+  onArtifactUpdate?: (data: string) => void;
+}) {
   const chainId = payload.chain_id || 1;
   const networkTitle = payload.network || chainName(chainId);
   const protocolTitle = payload.protocol || "EVM Action";
@@ -53,6 +61,17 @@ export function EvmActionCard({ payload }: { payload: EvmActionPayload }) {
       humanMessage={payload.human_message}
       steps={steps}
       switchingLabel={`switching to ${networkTitle}…`}
+      initialHashes={payload.hashes}
+      initialDone={Boolean(payload.executed || (payload.hashes && payload.hashes.length > 0))}
+      onComplete={(hashes) => {
+        onArtifactUpdate?.(
+          JSON.stringify({
+            ...payload,
+            hashes,
+            executed: true,
+          })
+        );
+      }}
     />
   );
 }
