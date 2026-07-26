@@ -19,7 +19,7 @@ const STEPS = [
   {
     n: "03",
     title: "Query, live",
-    body: "The specialist calls The Graph directly — Subgraph MCP, the Token API, or Substreams. No mocked data, ever.",
+    body: "The specialist calls The Graph directly through Subgraph MCP, the Token API, or Substreams, pulling live data every time.",
   },
   {
     n: "04",
@@ -35,11 +35,11 @@ const HIGHLIGHTS = [
   },
   {
     title: "Answer with receipts",
-    body: "Every claim stays traceable to the actual query used, so the evidence is visible instead of buried in the prompt.",
+    body: "Every claim links back to the actual query that produced it, so you can see the evidence yourself.",
   },
   {
     title: "Act when it matters",
-    body: "When the output should become a transaction, the demo can surface a one-click action instead of stopping at prose.",
+    body: "When an answer should become a transaction, the demo can surface a one-click action to do it.",
   },
 ];
 
@@ -62,7 +62,7 @@ const AGENTS = [
   },
   {
     name: "Trading agent",
-    body: "Checks live liquidity depth before you size a swap — pays per query via x402 when it needs an off-list subgraph.",
+    body: "Checks live liquidity depth before you size a swap, paying per query via x402 when it needs an off-list subgraph.",
   },
 ];
 
@@ -77,7 +77,7 @@ const GRAPH_SURFACE = [
   },
   {
     name: "Substreams",
-    body: "Push, not poll — reacts to liquidation-proximity and price events as they happen.",
+    body: "Streams liquidation-proximity and price events the moment they happen.",
   },
   {
     name: "x402",
@@ -94,7 +94,7 @@ const INTEGRATIONS = [
   {
     name: "Aave",
     Icon: AaveMark,
-    body: "Reads and writes real lending positions — supply, borrow, and health factor — so the risk monitor can act, not just warn.",
+    body: "Reads and writes real lending positions (supply, borrow, health factor), so the risk monitor can take action directly.",
   },
   {
     name: "Hedera",
@@ -104,7 +104,7 @@ const INTEGRATIONS = [
   {
     name: "The Graph",
     Icon: GraphMark,
-    body: "Subgraph MCP, the Token API, and Substreams — the live query surface every specialist calls instead of a mocked backend.",
+    body: "Subgraph MCP, the Token API, and Substreams: the live query surface every specialist calls.",
   },
 ];
 
@@ -391,8 +391,8 @@ export function Landing() {
           </h2>
         </div>
         <p className="mb-8 max-w-xl text-sm text-[var(--ink-dim)]">
-          Every answer is grounded in live Graph data — not a snapshot, not a
-          fixture. This is the surface agents actually call.
+          Every answer is grounded in live Graph data — the same surface
+          agents query in production.
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
           {GRAPH_SURFACE.map((g) => (
