@@ -81,7 +81,34 @@ def _restricted_import(name, globals=None, locals=None, fromlist=(), level=0):
     return __import__(name, globals, locals, fromlist, level)
 
 
+def _disable_gui_popups() -> None:
+    """LLM-generated code may call fig.show(); nothing else in this sandbox stops that
+    from popping a real GUI window or local HTTP server + browser tab on the host, since
+    it's isolated only against imports/filesystem/network, not window/process spawning.
+
+    Plotly's default "browser" renderer (plotly.io._base_renderers.open_html_in_browser)
+    binds a one-shot HTTPServer on 127.0.0.1 and calls a webbrowser controller instance's
+    own .open() - not the webbrowser module's top-level open() - and then blocks on
+    server.handle_request() waiting for that browser to hit it. Patching the module-level
+    webbrowser.open wouldn't intercept that, and would just leave the call hanging until
+    the sandbox's wall-clock timeout. Patch the function directly instead so fig.show()
+    becomes a harmless no-op.
+    """
+    import matplotlib
+
+    matplotlib.use("Agg")
+
+    try:
+        import plotly.io._base_renderers as plotly_base_renderers
+
+        plotly_base_renderers.open_html_in_browser = lambda *a, **k: None
+    except ImportError:
+        pass
+
+
 def _build_globals(dataframes: dict[str, list[dict]] | None) -> dict:
+    _disable_gui_popups()
+
     import pandas as pd
 
     safe_builtins = {
