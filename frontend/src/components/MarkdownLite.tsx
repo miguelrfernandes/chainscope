@@ -259,6 +259,7 @@ export function renderInline(text: string): React.ReactNode[] {
 
 const HEX_CELL_RE = /^0x[0-9a-fA-F]{8,}$/;
 const HEX_LINK_CELL_RE = /^\[(0x[0-9a-fA-F]{8,})\]\(([^)]+)\)$/;
+const HEX_WITH_INDEX_CELL_RE = /^(0x[0-9a-fA-F]{8,})(#\d+)$/;
 const NUMERIC_CELL_RE = /^[+-]?[$]?[\d,]+(\.\d+)?%?$/;
 
 function truncateHex(value: string): string {
@@ -266,7 +267,7 @@ function truncateHex(value: string): string {
   return `${value.slice(0, 6)}…${value.slice(-4)}`;
 }
 
-function HexCell({ value }: { value: string }) {
+function HexCell({ value, display }: { value: string; display?: string }) {
   const [copied, setCopied] = useState(false);
 
   return (
@@ -281,7 +282,7 @@ function HexCell({ value }: { value: string }) {
       }}
       className="inline-flex items-center gap-1 rounded border border-[var(--border)] bg-[var(--bg-raised)] px-1.5 py-0.5 font-mono text-[12px] text-[var(--ink-dim)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
     >
-      {truncateHex(value)}
+      {display ?? truncateHex(value)}
       <span className="text-[10px] opacity-60">{copied ? "✓" : "⧉"}</span>
     </button>
   );
@@ -312,6 +313,12 @@ function renderTableCell(rawCell: string): React.ReactNode {
 
   if (HEX_CELL_RE.test(cell)) {
     return <HexCell value={cell} />;
+  }
+
+  const indexMatch = cell.match(HEX_WITH_INDEX_CELL_RE);
+  if (indexMatch) {
+    const [, hex, index] = indexMatch;
+    return <HexCell value={cell} display={`${truncateHex(hex)}${index}`} />;
   }
 
   return renderInline(rawCell);
