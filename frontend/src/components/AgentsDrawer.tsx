@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Wallet, Bot, Calendar, Copy, Check, RefreshCw, X, ExternalLink, Plus, Trash2, Sparkles, Archive, RotateCcw } from "lucide-react";
+import { Wallet, Bot, Calendar, Copy, Check, RefreshCw, X, ExternalLink, Plus, Sparkles, Archive, RotateCcw, Coins, Bell, ChevronDown, ChevronUp, CheckCircle } from "lucide-react";
 
 import {
   deleteScheduledJob,
@@ -10,8 +10,14 @@ import {
   unarchiveUserAgent,
   fetchScheduledJobs,
   fetchUserAgents,
+  fetchScheduledQueries,
+  deleteScheduledQuery,
+  fetchScheduledQueryRuns,
+  markRunRead,
   type ManagedAgent,
   type ScheduledJob,
+  type ScheduledQuery,
+  type ScheduledQueryRun,
 } from "@/lib/api";
 
 
@@ -21,7 +27,7 @@ type AgentsDrawerProps = {
   ownerAddress: string;
   onAskPrompt?: (prompt: string) => void;
   onPreparePrompt?: (prompt: string) => void;
-  initialTab?: "wallet" | "agents" | "schedules";
+  initialTab?: "wallet" | "agents" | "schedules" | "alerts";
 };
 
 function getCachedAgents(owner: string): ManagedAgent[] {
@@ -58,6 +64,23 @@ function setCachedSchedules(owner: string, data: ScheduledJob[]) {
   } catch {}
 }
 
+function getCachedScheduledQueries(owner: string): ScheduledQuery[] {
+  if (typeof window === "undefined" || !owner) return [];
+  try {
+    const raw = localStorage.getItem(`chainscope_cached_scheduled_queries_${owner.toLowerCase()}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function setCachedScheduledQueries(owner: string, data: ScheduledQuery[]) {
+  if (typeof window === "undefined" || !owner) return;
+  try {
+    localStorage.setItem(`chainscope_cached_scheduled_queries_${owner.toLowerCase()}`, JSON.stringify(data));
+  } catch {}
+}
+
 function SkeletonCard() {
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 p-4 animate-pulse">
@@ -81,17 +104,25 @@ export function AgentsDrawer({
   onPreparePrompt,
   initialTab = "wallet",
 }: AgentsDrawerProps) {
-  const [activeTab, setActiveTab] = useState<"wallet" | "agents" | "schedules">(initialTab);
+  const [activeTab, setActiveTab] = useState<"wallet" | "agents" | "schedules" | "alerts">(initialTab);
   const [agents, setAgents] = useState<ManagedAgent[]>(() =>
     getCachedAgents(ownerAddress)
   );
   const [schedules, setSchedules] = useState<ScheduledJob[]>(() =>
     getCachedSchedules(ownerAddress)
   );
+  const [scheduledQueries, setScheduledQueries] = useState<ScheduledQuery[]>(() =>
+    getCachedScheduledQueries(ownerAddress)
+  );
+  const [queryRuns, setQueryRuns] = useState<Record<number, ScheduledQueryRun[]>>({});
+  const [expandedQueryId, setExpandedQueryId] = useState<number | null>(null);
+  const [loadingRunsQueryId, setLoadingRunsQueryId] = useState<number | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
+  const [deletingQueryId, setDeletingQueryId] = useState<number | null>(null);
   const [deletingAgentName, setDeletingAgentName] = useState<string | null>(null);
   const [restoringAgentName, setRestoringAgentName] = useState<string | null>(null);
 
@@ -114,19 +145,27 @@ export function AgentsDrawer({
         if (ignore) return;
         const cachedAgents = getCachedAgents(ownerAddress);
         const cachedJobs = getCachedSchedules(ownerAddress);
+        const cachedQueries = getCachedScheduledQueries(ownerAddress);
         if (cachedAgents.length > 0) setAgents(cachedAgents);
         if (cachedJobs.length > 0) setSchedules(cachedJobs);
+        if (cachedQueries.length > 0) setScheduledQueries(cachedQueries);
         setLoading(true);
         setError(null);
       });
 
-      Promise.all([fetchUserAgents(ownerAddress), fetchScheduledJobs()])
-        .then(([agentsData, jobsData]) => {
+      Promise.all([
+        fetchUserAgents(ownerAddress),
+        fetchScheduledJobs(),
+        fetchScheduledQueries(ownerAddress),
+      ])
+        .then(([agentsData, jobsData, queriesData]) => {
           if (!ignore) {
             setAgents(agentsData);
             setSchedules(jobsData);
+            setScheduledQueries(queriesData);
             setCachedAgents(ownerAddress, agentsData);
             setCachedSchedules(ownerAddress, jobsData);
+            setCachedScheduledQueries(ownerAddress, queriesData);
           }
         })
         .catch((err) => {
@@ -151,12 +190,18 @@ export function AgentsDrawer({
     if (!ownerAddress) return;
     setLoading(true);
     setError(null);
-    Promise.all([fetchUserAgents(ownerAddress), fetchScheduledJobs()])
-      .then(([agentsData, jobsData]) => {
+    Promise.all([
+      fetchUserAgents(ownerAddress),
+      fetchScheduledJobs(),
+      fetchScheduledQueries(ownerAddress),
+    ])
+      .then(([agentsData, jobsData, queriesData]) => {
         setAgents(agentsData);
         setSchedules(jobsData);
+        setScheduledQueries(queriesData);
         setCachedAgents(ownerAddress, agentsData);
         setCachedSchedules(ownerAddress, jobsData);
+        setCachedScheduledQueries(ownerAddress, queriesData);
       })
       .catch((err) => {
         setError(
@@ -166,6 +211,61 @@ export function AgentsDrawer({
       .finally(() => {
         setLoading(false);
       });
+  }
+
+  async function handleCancelScheduledQuery(queryId: number) {
+    if (!ownerAddress) return;
+    setDeletingQueryId(queryId);
+    try {
+      await deleteScheduledQuery(queryId, ownerAddress);
+      setScheduledQueries((prev) => {
+        const next = prev.filter((q) => q.id !== queryId);
+        setCachedScheduledQueries(ownerAddress, next);
+        return next;
+      });
+      // also refresh scheduled jobs
+      const jobs = await fetchScheduledJobs();
+      setSchedules(jobs);
+      setCachedSchedules(ownerAddress, jobs);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to cancel scheduled query");
+    } finally {
+      setDeletingQueryId(null);
+    }
+  }
+
+  async function toggleExpandQueryRuns(queryId: number) {
+    if (expandedQueryId === queryId) {
+      setExpandedQueryId(null);
+      return;
+    }
+    setExpandedQueryId(queryId);
+    if (!queryRuns[queryId]) {
+      setLoadingRunsQueryId(queryId);
+      try {
+        const runs = await fetchScheduledQueryRuns(queryId, ownerAddress);
+        setQueryRuns((prev) => ({ ...prev, [queryId]: runs }));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load run history");
+      } finally {
+        setLoadingRunsQueryId(null);
+      }
+    }
+  }
+
+  async function handleMarkRunRead(runId: number, queryId: number) {
+    try {
+      await markRunRead(runId, ownerAddress);
+      setQueryRuns((prev) => {
+        const existing = prev[queryId] || [];
+        return {
+          ...prev,
+          [queryId]: existing.map((r) => (r.id === runId ? { ...r, is_read: 1 } : r)),
+        };
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to mark run as read");
+    }
   }
 
   function handleCopy(address: string) {
@@ -322,6 +422,18 @@ export function AgentsDrawer({
             >
               <Calendar className="h-3.5 w-3.5" />
               Schedules ({schedules.length})
+            </button>
+
+            <button
+              onClick={() => setActiveTab("alerts")}
+              className={`ml-5 flex items-center gap-1.5 border-b-2 py-3 text-xs font-semibold transition ${
+                activeTab === "alerts"
+                  ? "border-[var(--accent)] text-[var(--accent)]"
+                  : "border-transparent text-[var(--ink-dim)] hover:text-[var(--ink)]"
+              }`}
+            >
+              <Bell className="h-3.5 w-3.5" />
+              Alerts ({scheduledQueries.length})
             </button>
           </div>
 
@@ -504,6 +616,20 @@ export function AgentsDrawer({
                                 <Sparkles className="h-3 w-3" /> Provision & Seed
                               </button>
                             )}
+                            {agent.status === "ACTIVE" && (
+                              <button
+                                onClick={() => {
+                                  const prompt = `Create a fungible token named ${agent.agent_name}-TOKEN with symbol ${agent.agent_name.slice(0, 4).toUpperCase()} for agent ${agent.agent_name}`;
+                                  if (onPreparePrompt) onPreparePrompt(prompt);
+                                  else if (onAskPrompt) onAskPrompt(prompt);
+                                  onClose();
+                                }}
+                                className="flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-400 transition hover:bg-emerald-500 hover:text-white"
+                                title="Create an HTS token for this agent"
+                              >
+                                <Coins className="h-3 w-3" /> Create Token
+                              </button>
+                            )}
                             <button
                               onClick={() => handleArchiveAgent(agent.agent_name)}
                               disabled={deletingAgentName === agent.agent_name}
@@ -585,7 +711,7 @@ export function AgentsDrawer({
                   </button>
                 )}
               </div>
-            ) : (
+            ) : activeTab === "schedules" ? (
               <div className="flex flex-col gap-4">
                 {schedules.length === 0 && loading ? (
                   <>
@@ -638,6 +764,131 @@ export function AgentsDrawer({
                               <span className="font-semibold text-[var(--accent)]">
                                 {job.args[1] || job.args[0]}
                               </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            ) : (
+              /* activeTab === "alerts" */
+              <div className="flex flex-col gap-4">
+                {scheduledQueries.length === 0 && loading ? (
+                  <>
+                    <SkeletonCard />
+                    <SkeletonCard />
+                  </>
+                ) : scheduledQueries.length === 0 ? (
+                  <div className="py-10 text-center text-xs text-[var(--ink-dim)]">
+                    No scheduled question alerts created yet. Try asking: &quot;Set up daily alerts for USDC whale transactions&quot;
+                  </div>
+                ) : (
+                  scheduledQueries.map((query) => {
+                    const matchingJob = schedules.find(
+                      (j) => (j.job_id || j.id) === (query.job_id || `query-${query.id}`)
+                    );
+                    const isExpanded = expandedQueryId === query.id;
+                    const runs = queryRuns[query.id] || [];
+                    const unreadCount = runs.filter((r) => r.is_read === 0).length;
+
+                    return (
+                      <div
+                        key={query.id}
+                        className="rounded-2xl border border-white/10 bg-[#0d1210]/90 p-5 shadow-xl flex flex-col gap-3"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs text-[var(--ink)]">
+                              {query.name}
+                            </span>
+                            {unreadCount > 0 && (
+                              <span className="rounded-full bg-[var(--accent)] px-2 py-0.5 text-[10px] font-bold text-[var(--accent-ink)]">
+                                {unreadCount} new
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => handleCancelScheduledQuery(query.id)}
+                            disabled={deletingQueryId === query.id}
+                            className="rounded-full border border-[var(--danger)]/40 bg-[var(--danger)]/10 px-3 py-1 text-[10px] font-semibold text-[var(--danger)] transition hover:bg-[var(--danger)] hover:text-white disabled:opacity-50"
+                          >
+                            {deletingQueryId === query.id ? "Canceling..." : "Cancel"}
+                          </button>
+                        </div>
+
+                        <p className="text-xs text-[var(--ink-dim)] bg-white/5 rounded-lg p-2.5 font-mono">
+                          {query.prompt}
+                        </p>
+
+                        <div className="flex flex-col gap-1 text-[11px] text-[var(--ink-dim)]">
+                          <div className="flex items-center justify-between">
+                            <span>Cron Schedule:</span>
+                            <span className="font-mono text-[var(--ink)]">{query.cron_expression}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span>Next Run:</span>
+                            <span className="text-[var(--ink)]">
+                              {matchingJob?.next_run_time
+                                ? new Date(matchingJob.next_run_time).toLocaleString()
+                                : "Scheduled"}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="border-t border-white/10 pt-2">
+                          <button
+                            onClick={() => toggleExpandQueryRuns(query.id)}
+                            className="flex w-full items-center justify-between text-xs font-semibold text-[var(--accent)] hover:underline"
+                          >
+                            <span>
+                              Run History Inbox {runs.length > 0 ? `(${runs.length})` : ""}
+                            </span>
+                            {loadingRunsQueryId === query.id ? (
+                              <RefreshCw className="h-3 w-3 animate-spin" />
+                            ) : isExpanded ? (
+                              <ChevronUp className="h-3.5 w-3.5" />
+                            ) : (
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            )}
+                          </button>
+
+                          {isExpanded && (
+                            <div className="mt-3 flex flex-col gap-2.5 max-h-60 overflow-y-auto">
+                              {runs.length === 0 ? (
+                                <p className="text-[11px] text-[var(--ink-faint)] py-2 text-center">
+                                  No runs recorded yet for this alert.
+                                </p>
+                              ) : (
+                                runs.map((run) => (
+                                  <div
+                                    key={run.id}
+                                    className={`rounded-xl border p-3 text-xs transition ${
+                                      run.is_read === 0
+                                        ? "border-[var(--accent)]/40 bg-[var(--accent-soft)]/20"
+                                        : "border-white/5 bg-white/[0.02]"
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between mb-1.5">
+                                      <span className="text-[10px] text-[var(--ink-dim)]">
+                                        {new Date(run.run_at).toLocaleString()}
+                                      </span>
+                                      {run.is_read === 0 && (
+                                        <button
+                                          onClick={() => handleMarkRunRead(run.id, query.id)}
+                                          className="flex items-center gap-1 text-[10px] font-semibold text-[var(--accent)] hover:underline"
+                                        >
+                                          <CheckCircle className="h-3 w-3" /> Mark read
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div className="text-[11px] text-[var(--ink)] whitespace-pre-wrap leading-relaxed">
+                                      {run.answer}
+                                    </div>
+                                  </div>
+                                ))
+                              )}
                             </div>
                           )}
                         </div>

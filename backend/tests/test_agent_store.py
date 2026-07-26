@@ -85,5 +85,3 @@ def test_delete_agent():
     assert agent is not None
     assert agent["status"] == "ARCHIVED"
     assert delete_agent("0xowner", "yield-bot") is False
-
-

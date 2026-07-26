@@ -128,4 +128,3 @@ async def build_hts_create_token_evm_tx(
         "data": calldata,
     }
     return json.dumps(payload)
-

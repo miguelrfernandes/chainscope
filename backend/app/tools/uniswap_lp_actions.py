@@ -25,6 +25,7 @@ import httpx
 from langchain_core.tools import tool
 
 from app.core.config import get_settings
+from app.tools._evm_encoding import _encode_address, _encode_int, _encode_uint, network_name
 
 # NonfungiblePositionManager per chain
 NPM_ADDRESSES: dict[int, str] = {
@@ -46,21 +47,6 @@ APPROVE_SELECTOR = "095ea7b3"
 MINT_SELECTOR = "88316456"
 
 SECONDS_PER_YEAR = 365 * 24 * 3600
-
-
-def _encode_address(address: str) -> str:
-    return address.lower().removeprefix("0x").rjust(64, "0")
-
-
-def _encode_uint(value: int) -> str:
-    return format(value, "x").rjust(64, "0")
-
-
-def _encode_int(value: int) -> str:
-    """Two's complement 256-bit encoding for signed ints (tick values)."""
-    if value >= 0:
-        return format(value, "x").rjust(64, "0")
-    return format(value & (2**256 - 1), "x").rjust(64, "0")
 
 
 async def _query_subgraph(subgraph_id: str, query: str) -> dict[str, Any]:
@@ -152,11 +138,10 @@ async def get_uniswap_v3_pool_aprs(
             }
         )
 
-    network = {1: "Ethereum mainnet", 8453: "Base", 11155111: "Sepolia"}.get(chain_id, f"chain {chain_id}")
     return json.dumps(
         {
             "chain_id": chain_id,
-            "network": network,
+            "network": network_name(chain_id),
             "token_queried": token_address,
             "pools": results,
             "warning": (
@@ -174,6 +159,8 @@ def build_uniswap_lp_tx(
     token1_address: str,
     amount0_desired: float,
     amount1_desired: float,
+    decimals0: int,
+    decimals1: int,
     fee_tier: int,
     tick_lower: int,
     tick_upper: int,
@@ -190,7 +177,10 @@ def build_uniswap_lp_tx(
 
     `fee_tier` is in Uniswap units: 500, 3000, or 10000 (0.05%, 0.3%, 1%).
     `tick_lower` / `tick_upper` define the price range for the position.
-    `amount0_desired` / `amount1_desired` are in human units (e.g. 100.0 USDC).
+    `amount0_desired` / `amount1_desired` are in human units (e.g. 100.0 USDC);
+    `decimals0` / `decimals1` are token0/token1's real on-chain decimals
+    (e.g. 6 for USDC, 18 for WETH) — pass the actual value, since scaling by
+    the wrong decimals produces a wildly wrong on-chain amount.
     `deadline_seconds` is added to block.timestamp on-chain (default 20 min).
 
     Returns a JSON action payload with 3 transaction steps for the wallet to
@@ -205,17 +195,6 @@ def build_uniswap_lp_tx(
             }
         )
 
-    network = {1: "Ethereum Mainnet", 8453: "Base", 11155111: "Sepolia"}.get(chain_id, f"Chain {chain_id}")
-
-    # Amounts in raw units — we use a large integer approximation from the
-    # human-readable float. The exact amounts are determined by the pool's
-    # current price and the tick range; slippage tolerance is set via
-    # amount0Min / amount1Min (we use 0 here, caller should tighten in prod).
-    # Using 1e18 as a generic scaling factor is wrong for non-18-decimal tokens;
-    # the agent must pass pre-scaled raw values if it knows the decimals.
-    # To keep the tool simple and safe, we express amounts as float strings
-    # and note that the wallet's UI will compute exact amounts at sign time.
-
     # We encode MintParams as ABI-encoded calldata for mint(MintParams):
     # struct MintParams {
     #   address token0; address token1; uint24 fee;
@@ -225,50 +204,43 @@ def build_uniswap_lp_tx(
     #   address recipient; uint256 deadline;
     # }
     # For testnet demo: amount0Min = amount1Min = 0 (max slippage accepted).
-    # deadline = block.timestamp + deadline_seconds (encoded symbolically).
-
-    # Scale amounts: use 6 decimals for USDC-like, 18 for everything else.
-    # The tool intentionally keeps this simple — caller provides desired amounts.
     import time
+
     deadline = int(time.time()) + deadline_seconds
 
-    # Raw amounts — floats scaled to wei-like units.
-    # We use 10**18 as a placeholder; the agent should pass amounts already
-    # in the token's native decimals when it knows them.
-    raw0 = int(amount0_desired * 10**18)
-    raw1 = int(amount1_desired * 10**18)
+    raw0 = int(round(amount0_desired * 10**decimals0))
+    raw1 = int(round(amount1_desired * 10**decimals1))
 
-    mint_calldata = (
-        "0x"
-        + MINT_SELECTOR
-        # offset to MintParams struct (always 0x20 for single-param calls)
-        + _encode_uint(32)
-        + _encode_address(token0_address)
-        + _encode_address(token1_address)
-        + _encode_uint(fee_tier)
-        + _encode_int(tick_lower)
-        + _encode_int(tick_upper)
-        + _encode_uint(raw0)          # amount0Desired
-        + _encode_uint(raw1)          # amount1Desired
-        + _encode_uint(0)             # amount0Min (0 = max slippage for demo)
-        + _encode_uint(0)             # amount1Min
-        + _encode_address(wallet_address)  # recipient
-        + _encode_uint(deadline)
-    )
+    try:
+        mint_calldata = (
+            "0x"
+            + MINT_SELECTOR
+            # offset to MintParams struct (always 0x20 for single-param calls)
+            + _encode_uint(32)
+            + _encode_address(token0_address)
+            + _encode_address(token1_address)
+            + _encode_uint(fee_tier)
+            + _encode_int(tick_lower)
+            + _encode_int(tick_upper)
+            + _encode_uint(raw0)  # amount0Desired
+            + _encode_uint(raw1)  # amount1Desired
+            + _encode_uint(0)  # amount0Min (0 = max slippage for demo)
+            + _encode_uint(0)  # amount1Min
+            + _encode_address(wallet_address)  # recipient
+            + _encode_uint(deadline)
+        )
 
-    approve0_calldata = (
-        "0x" + APPROVE_SELECTOR + _encode_address(npm) + _encode_uint(raw0)
-    )
-    approve1_calldata = (
-        "0x" + APPROVE_SELECTOR + _encode_address(npm) + _encode_uint(raw1)
-    )
+        approve0_calldata = "0x" + APPROVE_SELECTOR + _encode_address(npm) + _encode_uint(raw0)
+        approve1_calldata = "0x" + APPROVE_SELECTOR + _encode_address(npm) + _encode_uint(raw1)
+    except ValueError as exc:
+        return json.dumps({"error": str(exc)})
 
     fee_pct = fee_tier / 10_000
 
     return json.dumps(
         {
             "protocol": "Uniswap v3",
-            "network": network,
+            "network": network_name(chain_id),
             "chain_id": chain_id,
             "pool_address": pool_address,
             "token0": token0_address,

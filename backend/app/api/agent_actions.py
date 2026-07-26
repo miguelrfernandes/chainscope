@@ -125,7 +125,11 @@ async def list_agents(owner_address: str):
 
                 # Auto-activate PENDING agents if Mirror Node shows on-chain creation & funding
                 resolved_acc = account_info.get("account") or ""
-                if status == "PENDING" and resolved_acc and balance_tinybars >= SEED_AMOUNT_TINYBARS:
+                if (
+                    status == "PENDING"
+                    and resolved_acc
+                    and balance_tinybars >= SEED_AMOUNT_TINYBARS
+                ):
                     set_agent_account_and_status(
                         owner_address, agent["agent_name"], resolved_acc, "ACTIVE"
                     )
@@ -174,8 +178,6 @@ async def unarchive_agent_endpoint(agent_name: str, owner_address: str):
     return {"status": "success", "agent_name": agent_name, "action": "unarchived"}
 
 
-
-
 @router.get("/api/scheduler/jobs")
 async def get_scheduled_jobs():
     from app.core.scheduler import list_scheduled_jobs
@@ -200,4 +202,3 @@ async def delete_scheduled_job(job_id: str):
             detail=f"Scheduled job '{job_id}' not found.",
         )
     return {"status": "success", "job_id": job_id}
-

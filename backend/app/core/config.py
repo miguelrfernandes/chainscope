@@ -87,6 +87,7 @@ class Settings(BaseSettings):
     # setting only controls where the (already-encrypted) rows live on disk.
     managed_agent_db_path: str = "managed_agents.db"
     scheduler_db_path: str = "scheduler.db"
+    scheduled_query_db_path: str = "scheduled_queries.db"
 
     @property
     def cors_origin_list(self) -> list[str]:

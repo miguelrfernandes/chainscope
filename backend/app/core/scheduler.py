@@ -85,7 +85,6 @@ def execute_autonomous_hedera_action(
     if agent.get("status") == "ARCHIVED":
         raise ValueError(f"Agent '{agent_name}' for owner '{owner_address}' is archived.")
 
-
     account_id_str = agent["account_id"]
     encrypted_key = agent["encrypted_private_key"]
     private_key_raw = decrypt_private_key(encrypted_key)
@@ -175,6 +174,44 @@ def schedule_rebalance_job(
         replace_existing=True,
     )
     logger.info("Scheduled cron job '%s' with schedule '%s'", effective_job_id, cron_expression)
+    return effective_job_id
+
+
+async def run_scheduled_query(query_id: int) -> dict:
+    from app.api.chat import get_graph
+    from app.core.scheduled_query_store import get_query_by_id, save_run
+
+    query = get_query_by_id(query_id)
+    if not query or query["status"] != "ACTIVE":
+        return {}
+    graph = get_graph()
+    config = {"configurable": {"thread_id": f"scheduled-{query_id}"}}
+    inputs = {
+        "question": query["prompt"],
+        "route": [],
+        "specialist_results": {},
+        "raw_data": {},
+        "sources": [],
+        "artifacts": [],
+        "steps": [],
+        "final_answer": None,
+    }
+    result = await graph.ainvoke(inputs, config=config)
+    save_run(query_id, result.get("final_answer") or "", result.get("sources") or [])
+    return {"query_id": query_id}
+
+
+def schedule_query_job(query_id: int, cron_expression: str, job_id: Optional[str] = None) -> str:
+    scheduler = get_scheduler() or init_scheduler()
+    effective_job_id = job_id or f"query-{query_id}"
+    scheduler.add_job(
+        run_scheduled_query,
+        trigger=CronTrigger.from_crontab(cron_expression),
+        args=[query_id],
+        id=effective_job_id,
+        replace_existing=True,
+    )
+    logger.info("Scheduled query job '%s' with schedule '%s'", effective_job_id, cron_expression)
     return effective_job_id
 
 

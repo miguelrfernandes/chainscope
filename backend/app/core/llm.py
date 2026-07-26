@@ -55,19 +55,13 @@ def get_llm(
             metadata={"llm_provider": provider, "provider": provider},
         )
 
-    openai_llm = _build_llm(
-        provider=OPENAI_PROVIDER,
-        model=settings.openai_model,
-        base_url=settings.openai_base_url,
-        api_key=settings.openai_api_key,
-    )
-
-    openrouter_llm = _build_llm(
-        provider=OPENROUTER_PROVIDER,
-        model=settings.openrouter_model,
-        base_url=settings.openrouter_base_url,
-        api_key=settings.openrouter_api_key,
-    )
+    def _openrouter_llm():
+        return _build_llm(
+            provider=OPENROUTER_PROVIDER,
+            model=settings.openrouter_model,
+            base_url=settings.openrouter_base_url,
+            api_key=settings.openrouter_api_key,
+        )
 
     if effective_provider == ZERO_G_PROVIDER:
         # 0G Compute Router: an OpenAI-compatible gateway in front of the 0G
@@ -83,9 +77,14 @@ def get_llm(
             metadata={"llm_provider": ZERO_G_PROVIDER, "provider": ZERO_G_PROVIDER},
         )
         # Use 0G as primary with OpenRouter as automatic fallback if 0G errors or times out
-        return zg_llm.with_fallbacks([openrouter_llm])
+        return zg_llm.with_fallbacks([_openrouter_llm()])
 
     if effective_provider == OPENROUTER_PROVIDER:
-        return openrouter_llm
+        return _openrouter_llm()
 
-    return openai_llm
+    return _build_llm(
+        provider=OPENAI_PROVIDER,
+        model=settings.openai_model,
+        base_url=settings.openai_base_url,
+        api_key=settings.openai_api_key,
+    )

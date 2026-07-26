@@ -45,7 +45,9 @@ async def analyst_node(state: GraphState) -> dict:
                     parsed_items.append(item)
             else:
                 parsed_items.append(item)
-        raw_formatted.append(f"## {k} raw query results\n{json.dumps(parsed_items, indent=2)[:4000]}")
+        raw_formatted.append(
+            f"## {k} raw query results\n{json.dumps(parsed_items, indent=2)[:4000]}"
+        )
     raw = "\n\n".join(raw_formatted)
 
     llm = get_llm(max_tokens=900).bind_tools([run_python])

@@ -54,6 +54,7 @@ agents. Available specialists: {", ".join(SPECIALISTS)}.
   transaction requests on Ethereum mainnet, Base, or Sepolia (e.g. "quote 1 ETH
   to USDC on Ethereum", "swap 100 USDC to WETH on Base", "swap 50 USDC to ETH
   on Sepolia").
+- scheduler_admin: scheduling natural-language questions and alerts to run periodically (e.g. "set up daily alerts for USDC whale transactions", "run this every day", "check on X periodically", "notify me daily/weekly about X", "what alerts do I have", "cancel my daily USDC alert"). Explicitly distinct from live one-off data questions which stay with defi_research/portfolio/etc.
 
 Note: Suffixes like "(Note: if this question is about "my"/"me", the user's connected wallet is 0x...)" or "(Connected wallet: 0x...)" identify the user's own wallet when asking about "my" or "me". Do NOT treat the presence of a connected wallet address suffix as making that wallet the subject of every question. Questions asking about token whales, top holders, or other wallets belong in defi_research, not portfolio.
 
@@ -114,4 +115,3 @@ async def synthesize_node(state: GraphState) -> dict:
         "final_answer": response.content,
         "messages": [AIMessage(content=response.content)],
     }
-

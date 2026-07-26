@@ -59,9 +59,7 @@ async def suggest(req: SuggestRequest) -> SuggestedItems:
     """
     llm = get_llm(temperature=0.7).with_structured_output(SuggestedItems)
 
-    conversation_text = "\n".join(
-        f"{t.role.upper()}: {t.text}" for t in req.turns
-    )
+    conversation_text = "\n".join(f"{t.role.upper()}: {t.text}" for t in req.turns)
 
     messages = [
         SystemMessage(

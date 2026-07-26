@@ -11,6 +11,7 @@ from app.agents.specialists.hedera_wallet_action import hedera_wallet_action_nod
 from app.agents.specialists.portfolio import portfolio_node
 from app.agents.specialists.risk_monitor import risk_monitor_node
 from app.agents.specialists.saucerswap import saucerswap_node
+from app.agents.specialists.scheduler_admin import scheduler_admin_node
 from app.agents.specialists.uniswap import uniswap_node
 from app.agents.specialists.yield_advisor import yield_advisor_node
 from app.agents.state import GraphState
@@ -26,6 +27,7 @@ SPECIALIST_NODES = {
     "hedera_wallet_action": hedera_wallet_action_node,
     "saucerswap": saucerswap_node,
     "uniswap": uniswap_node,
+    "scheduler_admin": scheduler_admin_node,
 }
 
 

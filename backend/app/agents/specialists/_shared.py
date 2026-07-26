@@ -40,7 +40,7 @@ DATA_TOOL_NAMES = (
         "get_uniswap_v3_pool_aprs",
     }
 )
-HEDERA_ACTION_TOOL_NAMES = {
+HEDERA_ACTION_TOOL_NAME_STRINGS = {
     "transfer_hbar_tool",
     "create_topic_tool",
     "submit_topic_message_tool",
@@ -48,19 +48,95 @@ HEDERA_ACTION_TOOL_NAMES = {
     "mint_fungible_token_tool",
     "associate_token_tool",
 }
+
+# Per-tool metadata for named (non-group) tools: how to describe a call in
+# the step list, and what source-id to record for it (if it's a data tool).
+# Keeping this as one dict-per-tool instead of three separately-maintained
+# if/elif chains means adding/renaming a tool only has one place to update.
+TOOL_METADATA: dict[str, dict] = {
+    "get_wallet_balances": {
+        "describe": lambda a: (
+            f"Fetching wallet balances for {a.get('address', '')} ({a.get('network', 'sepolia')}) via Pinax Token API..."
+        ),
+        "source_id": lambda a: "pinax/token-api/get_wallet_balances",
+    },
+    "get_wallet_transfers": {
+        "describe": lambda a: (
+            f"Fetching transfer history for {a.get('address', '')} ({a.get('network', 'sepolia')}) via Pinax Token API..."
+        ),
+        "source_id": lambda a: "pinax/token-api/get_wallet_transfers",
+    },
+    "check_aave_positions": {
+        "describe": lambda a: (
+            f"Checking Aave v3 Sepolia positions for {a.get('wallet_address', '')} via live RPC..."
+        ),
+        "source_id": lambda a: "aave-v3-sepolia/live-rpc-atokens",
+    },
+    "get_saucerswap_pool_aprs": {
+        "describe": lambda a: (
+            "Fetching SaucerSwap farms/pools/token prices to compute pool APRs..."
+        ),
+        "source_id": lambda a: "saucerswap/rest-api/farms-pools-tokens",
+    },
+    "build_saucerswap_swap_tx": {
+        "describe": lambda a: (
+            f"Building SaucerSwap V2 swap: {a.get('amount_in', '')} {a.get('token_in_id', '')} -> {a.get('token_out_id', '')}..."
+        ),
+    },
+    "get_uniswap_quote": {
+        "describe": lambda a: (
+            f"Fetching quote for {a.get('amount_in', '')} ({a.get('token_in_address', '')} -> {a.get('token_out_address', '')}) via Uniswap Trading API..."
+        ),
+        "source_id": lambda a: "uniswap/trading-api/quote",
+    },
+    "build_uniswap_swap_tx": {
+        "describe": lambda a: (
+            f"Building Uniswap swap: {a.get('amount_in', '')} ({a.get('token_in_address', '')} -> {a.get('token_out_address', '')}) via Trading API..."
+        ),
+    },
+    "get_uniswap_v3_pool_aprs": {
+        "describe": lambda a: (
+            f"Querying Uniswap v3 pool APRs for {a.get('token_address', '')} (chain {a.get('chain_id', 1)}) via The Graph..."
+        ),
+        "source_id": lambda a: f"uniswap-v3/the-graph/pool-aprs/chain-{a.get('chain_id', 1)}",
+    },
+    "build_uniswap_lp_tx": {
+        "describe": lambda a: (
+            f"Building Uniswap v3 addLiquidity tx ({(a.get('fee_tier', 3000) or 3000) / 10_000:.2f}% pool, {a.get('amount0_desired', '')} + {a.get('amount1_desired', '')}..."
+        ),
+        "artifact_type": "action/evm-tx-batch",
+    },
+    "propose_yield_action": {
+        "describe": lambda a: (
+            f"Building Aave v3 Sepolia supply transaction for {a.get('amount', '')} {a.get('asset_symbol', '')}..."
+        ),
+        "artifact_type": "action/yield-supply",
+    },
+    "provision_hedera_agent": {
+        "describe": lambda a: (
+            f"Generating ECDSA keypair for agent '{a.get('name', '')}' (account auto-created on seed funding)..."
+        ),
+        "artifact_type": "action/seed-agent-hbar",
+    },
+}
+
 # Action tool -> artifact type shown to the frontend. yield_advisor's action
 # is a *proposed* tx the user's own wallet still has to sign; Hedera actions
 # have already executed (AUTONOMOUS mode, backend-held testnet operator) by
 # the time the tool returns, hence the different artifact type.
 ACTION_ARTIFACT_TYPES = {
-    "propose_yield_action": "action/yield-supply",
-    "build_uniswap_lp_tx": "action/evm-tx-batch",
-    "provision_hedera_agent": "action/seed-agent-hbar",
-    **{name: "action/hedera-tx" for name in HEDERA_ACTION_TOOL_NAMES},
+    **{
+        name: meta["artifact_type"]
+        for name, meta in TOOL_METADATA.items()
+        if "artifact_type" in meta
+    },
+    **{name: "action/hedera-tx" for name in HEDERA_ACTION_TOOL_NAME_STRINGS},
 }
 
 
 def _describe_tool_call(name: str, args: dict) -> str:
+    if name in TOOL_METADATA:
+        return TOOL_METADATA[name]["describe"](args)
     if name in QUERY_TOOL_NAMES:
         target = args.get("subgraph_id") or args.get("deployment_id") or args.get("ipfs_hash") or ""
         return (
@@ -81,33 +157,10 @@ def _describe_tool_call(name: str, args: dict) -> str:
         return f"Resolving best-indexed subgraph on The Graph for {args.get('contract_address', 'contract')}..."
     if name == "get_deployment_30day_query_counts":
         return "Checking subgraph query volume on The Graph..."
-    if name == "get_wallet_balances":
-        return f"Fetching wallet balances for {args.get('address', '')} ({args.get('network', 'sepolia')}) via Pinax Token API..."
-    if name == "get_wallet_transfers":
-        return f"Fetching transfer history for {args.get('address', '')} ({args.get('network', 'sepolia')}) via Pinax Token API..."
-    if name == "check_aave_positions":
-        return f"Checking Aave v3 Sepolia positions for {args.get('wallet_address', '')} via live RPC..."
-    if name == "get_saucerswap_pool_aprs":
-        return "Fetching SaucerSwap farms/pools/token prices to compute pool APRs..."
-    if name == "build_saucerswap_swap_tx":
-        return f"Building SaucerSwap V2 swap: {args.get('amount_in', '')} {args.get('token_in_id', '')} -> {args.get('token_out_id', '')}..."
-    if name == "get_uniswap_quote":
-        return f"Fetching quote for {args.get('amount_in', '')} ({args.get('token_in_address', '')} -> {args.get('token_out_address', '')}) via Uniswap Trading API..."
-    if name == "build_uniswap_swap_tx":
-        return f"Building Uniswap swap: {args.get('amount_in', '')} ({args.get('token_in_address', '')} -> {args.get('token_out_address', '')}) via Trading API..."
-    if name == "get_uniswap_v3_pool_aprs":
-        return f"Querying Uniswap v3 pool APRs for {args.get('token_address', '')} (chain {args.get('chain_id', 1)}) via The Graph..."
-    if name == "build_uniswap_lp_tx":
-        fee_pct = (args.get('fee_tier', 3000) or 3000) / 10_000
-        return f"Building Uniswap v3 addLiquidity tx ({fee_pct:.2f}% pool, {args.get('amount0_desired', '')} + {args.get('amount1_desired', '')}..."
-    if name == "propose_yield_action":
-        return f"Building Aave v3 Sepolia supply transaction for {args.get('amount', '')} {args.get('asset_symbol', '')}..."
-    if name == "provision_hedera_agent":
-        return f"Generating ECDSA keypair for agent '{args.get('name', '')}' (account auto-created on seed funding)..."
     if name in HEDERA_TOOL_NAMES:
         target = args.get("account_id") or args.get("token_id") or args.get("topic_id") or ""
         return f"Querying Hedera Mirror Node ({name}) for {target}..."
-    if name in HEDERA_ACTION_TOOL_NAMES:
+    if name in HEDERA_ACTION_TOOL_NAME_STRINGS:
         readable = name.removesuffix("_tool").replace("_", " ")
         return f"Executing Hedera {readable} on testnet (backend operator account)..."
     return f"Calling {name}..."
@@ -144,19 +197,10 @@ def _friendly_hedera_action_message(name: str, args: dict) -> str:
 
 
 def _source_id(name: str, args: dict) -> str:
+    if name in TOOL_METADATA and "source_id" in TOOL_METADATA[name]:
+        return TOOL_METADATA[name]["source_id"](args)
     if name in QUERY_TOOL_NAMES:
         return args.get("subgraph_id") or args.get("deployment_id") or args.get("ipfs_hash") or ""
-    if name in {"get_wallet_balances", "get_wallet_transfers"}:
-        return f"pinax/token-api/{name}"
-    if name == "check_aave_positions":
-        return "aave-v3-sepolia/live-rpc-atokens"
-    if name == "get_saucerswap_pool_aprs":
-        return "saucerswap/rest-api/farms-pools-tokens"
-    if name == "get_uniswap_quote":
-        return "uniswap/trading-api/quote"
-    if name == "get_uniswap_v3_pool_aprs":
-        chain = args.get('chain_id', 1)
-        return f"uniswap-v3/the-graph/pool-aprs/chain-{chain}"
     if name in HEDERA_TOOL_NAMES:
         return f"hedera-mirror-node/{name}"
     return name
@@ -192,7 +236,7 @@ async def run_specialist(
     )
     all_messages = result["messages"]
     new_messages = (
-        all_messages[len(conv_messages):]
+        all_messages[len(conv_messages) :]
         if len(all_messages) >= len(conv_messages)
         else all_messages
     )
@@ -230,7 +274,7 @@ async def run_specialist(
                 name = action_call_ids[msg.tool_call_id]
                 artifact_type = artifact_types[name]
                 content = str(msg.content)
-                if name in HEDERA_ACTION_TOOL_NAMES:
+                if name in HEDERA_ACTION_TOOL_NAME_STRINGS:
                     try:
                         payload = json.loads(content)
                     except (json.JSONDecodeError, TypeError):
@@ -247,7 +291,8 @@ async def run_specialist(
     )
     if not final_text:
         final_text = next(
-            (m.content for m in reversed(all_messages) if isinstance(m, AIMessage) and m.content), ""
+            (m.content for m in reversed(all_messages) if isinstance(m, AIMessage) and m.content),
+            "",
         )
 
     return {

@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.agent_actions import router as agent_actions_router
 from app.api.chat import router as chat_router
 from app.api.health import router as health_router
+from app.api.scheduled_queries import router as scheduled_queries_router
 from app.api.suggest import router as suggest_router
 from app.core.config import get_settings
 from app.core.langsmith import configure_langsmith
@@ -38,4 +39,4 @@ app.include_router(health_router)
 app.include_router(chat_router)
 app.include_router(suggest_router)
 app.include_router(agent_actions_router)
-
+app.include_router(scheduled_queries_router)

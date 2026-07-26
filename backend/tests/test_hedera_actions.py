@@ -9,10 +9,8 @@ from app.tools.hedera_actions import get_hedera_action_tools, get_hedera_return_
 @pytest.fixture(autouse=True)
 def _clear_tool_cache():
     get_hedera_action_tools.cache_clear()
-    get_hedera_return_bytes_tools.cache_clear()
     yield
     get_hedera_action_tools.cache_clear()
-    get_hedera_return_bytes_tools.cache_clear()
 
 
 def test_get_hedera_action_tools_requires_operator_credentials(monkeypatch):
@@ -70,3 +68,24 @@ def test_get_hedera_return_bytes_tools_builds_unsigned_bytes_for_user_account():
     assert '"type": "return_bytes"' in result
     assert '"bytes_data"' in result
     assert "error" not in result or '"error": null' in result
+
+
+def test_get_hedera_return_bytes_tools_builds_create_fungible_token_bytes():
+    tools = {t.name: t for t in get_hedera_return_bytes_tools("0.0.7890")}
+    assert "create_fungible_token_tool" in tools
+
+
+def test_get_hedera_action_tools_has_token_tools(monkeypatch):
+    monkeypatch.setenv("HEDERA_OPERATOR_ACCOUNT_ID", "0.0.2")
+    monkeypatch.setenv(
+        "HEDERA_OPERATOR_PRIVATE_KEY",
+        "302e020100300506032b657004220420" + "00" * 32,
+    )
+    get_settings.cache_clear()
+
+    tools = {t.name: t for t in get_hedera_action_tools()}
+    assert "create_fungible_token_tool" in tools
+    assert "mint_fungible_token_tool" in tools
+    assert "associate_token_tool" in tools
+
+    get_settings.cache_clear()

@@ -76,6 +76,7 @@ a different safety model than the yield advisor:
   create/submit, and HTS token create/mint/associate — narrow on purpose,
   same reasoning as the curated per-specialist subgraph lists in
   [graph-api.md](./graph-api.md).
+- HTS token creation (creating fungible tokens on Hedera testnet via `create_fungible_token_tool`) is live and demoable end-to-end via both autonomous operator execution and user-wallet-signed return bytes.
 - Requires `HEDERA_OPERATOR_ACCOUNT_ID`/`HEDERA_OPERATOR_PRIVATE_KEY` (see
   `.env.example`); without them the action agent raises clearly on first
   use rather than silently no-opping. The read-only `hedera` specialist

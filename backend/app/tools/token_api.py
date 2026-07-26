@@ -71,7 +71,9 @@ async def _get_sepolia_rpc_balances(address: str) -> dict:
             res = resp.json()
             if "result" in res and res["result"] != "0x":
                 eth_val = int(res["result"], 16) / 1e18
-                balances.append({"symbol": "ETH", "balance": eth_val, "contract": None, "type": "native"})
+                balances.append(
+                    {"symbol": "ETH", "balance": eth_val, "contract": None, "type": "native"}
+                )
         except Exception as exc:  # noqa: BLE001
             balances.append({"symbol": "ETH", "error": str(exc)})
 
@@ -88,7 +90,14 @@ async def _get_sepolia_rpc_balances(address: str) -> dict:
                 res = resp.json()
                 if "result" in res and res["result"] != "0x":
                     val = int(res["result"], 16) / (10 ** info["decimals"])
-                    balances.append({"symbol": symbol, "balance": val, "contract": info["address"], "type": "erc20"})
+                    balances.append(
+                        {
+                            "symbol": symbol,
+                            "balance": val,
+                            "contract": info["address"],
+                            "type": "erc20",
+                        }
+                    )
             except Exception:  # noqa: BLE001
                 continue
 
@@ -131,7 +140,9 @@ async def get_wallet_transfers(address: str, network: str = "sepolia", limit: in
             "note": "Live Sepolia RPC does not index historical transfers; use mainnet for Pinax transfers API.",
         }
     try:
-        return await _get("/v1/evm/transfers", {"address": address, "network": network, "limit": limit})
+        return await _get(
+            "/v1/evm/transfers", {"address": address, "network": network, "limit": limit}
+        )
     except httpx.HTTPStatusError as exc:
         if exc.response.status_code == 400:
             return {
@@ -144,4 +155,3 @@ async def get_wallet_transfers(address: str, network: str = "sepolia", limit: in
 
 
 TOKEN_API_TOOLS = [get_wallet_balances, get_wallet_transfers]
-

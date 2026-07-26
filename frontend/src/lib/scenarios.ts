@@ -483,6 +483,45 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    id: "hedera-create-token",
+    question: "Create a fungible token called ChainScope Points (CSP) with 2 decimals and mint 1,000,000 to my account",
+    agent: "Hedera agent",
+    steps: [
+      { agent: "Orchestrator", text: "Routing to Hedera agent..." },
+      {
+        agent: "Hedera agent",
+        text: "Constructing HTS TokenCreateTransaction for 'ChainScope Points' (CSP, 2 decimals)...",
+      },
+      {
+        agent: "Hedera agent",
+        text: "Submitting token create transaction via Hedera SDK / Agent Kit...",
+      },
+      {
+        agent: "Hedera agent",
+        text: "Minting initial supply of 1,000,000 CSP to treasury account...",
+      },
+    ],
+    answer:
+      "Created fungible token **ChainScope Points (CSP)** on Hedera testnet with token ID `0.0.78531` and 2 decimals. Minted an initial supply of **1,000,000 CSP** to the treasury account. Use `associate_token_tool` first if a different account needs to hold it.",
+    sources: [
+      {
+        label: "Hedera Mirror Node — Token 0.0.78531",
+        id: "hedera/testnet-mirror-node-token",
+        query: "GET /api/v1/tokens/0.0.78531",
+      },
+    ],
+    actions: [
+      {
+        id: "create-fungible-token",
+        label: "Create CSP token (2 decimals) + mint 1,000,000",
+        description: "Create fungible token 'ChainScope Points' (CSP, 2 decimals) on Hedera testnet and mint an initial supply of 1,000,000 to the treasury account.",
+        protocol: "Hedera Testnet · HTS",
+        value: "1,000,000 CSP",
+        cta: "Confirm Token Creation",
+      },
+    ],
+  },
+  {
     id: "saucerswap-apr",
     question: "What's the best APR I can get farming on SaucerSwap right now?",
     agent: "SaucerSwap agent",

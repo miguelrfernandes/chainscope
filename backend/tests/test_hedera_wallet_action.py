@@ -42,9 +42,48 @@ async def test_hedera_wallet_action_extracts_connected_account(monkeypatch):
     assert "provision_hedera_agent" in captured["tool_names"]
     assert captured["action_artifact_types"]["transfer_hbar_tool"] == "action/hedera-tx-bytes"
 
-    # Single Hedera tag means EVM owner defaults to 0xdefault_owner
+    # Single Hedera tag (no paired EVM address) means the Vault owner key
+    # falls back to the native account_id, not a shared literal.
     prov_tool = [t for t in captured["tools"] if t.name == "provision_hedera_agent"][0]
     assert set(prov_tool.args.keys()) == {"name"}
+
+
+@pytest.mark.asyncio
+async def test_hedera_wallet_action_native_only_owner_keys_by_account_id(monkeypatch):
+    """No paired EVM address: provisioned agents must be namespaced by the
+    user's own native Hedera account_id, not pooled under a shared literal
+    that every EVM-less user would otherwise collide on."""
+    captured = {}
+
+    async def fake_run_specialist(
+        state, *, key, label, system_prompt, tools, action_artifact_types=None
+    ):
+        captured["tools"] = tools
+        return {
+            "specialist_results": {key: "ok"},
+            "raw_data": {key: []},
+            "steps": [],
+            "sources": [],
+            "artifacts": [],
+        }
+
+    monkeypatch.setattr(
+        "app.agents.specialists.hedera_wallet_action.run_specialist", fake_run_specialist
+    )
+
+    state = {"question": "Send 1 HBAR to 0.0.1234 (Connected Hedera wallet: 0.0.7890)"}
+    await hedera_wallet_action_node(state)
+
+    import json
+
+    prov_tool = [t for t in captured["tools"] if t.name == "provision_hedera_agent"][0]
+    result = json.loads(prov_tool.invoke({"name": "SentinelA"}))
+
+    from app.tools.hedera_provisioner import Vault
+
+    assert Vault.get_agent("0.0.7890", "SentinelA") is not None
+    assert Vault.get_agent("0.0.7890", "SentinelA")["evm_address"] == result["evm_address"]
+    assert Vault.get_agent("0xdefault_owner", "SentinelA") is None
 
 
 @pytest.mark.asyncio

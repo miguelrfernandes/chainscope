@@ -7,18 +7,18 @@ import pytest
 
 from app.tools.uniswap_lp_actions import (
     NPM_ADDRESSES,
-    UNISWAP_V3_SUBGRAPH_IDS,
     build_uniswap_lp_tx,
     get_uniswap_v3_pool_aprs,
 )
-
 
 # ── get_uniswap_v3_pool_aprs ──────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
 async def test_get_pool_aprs_unsupported_chain():
-    result = json.loads(await get_uniswap_v3_pool_aprs.ainvoke({"token_address": "0xabc", "chain_id": 999}))
+    result = json.loads(
+        await get_uniswap_v3_pool_aprs.ainvoke({"token_address": "0xabc", "chain_id": 999})
+    )
     assert "error" in result
 
 
@@ -26,7 +26,9 @@ async def test_get_pool_aprs_unsupported_chain():
 async def test_get_pool_aprs_subgraph_error():
     with patch("app.tools.uniswap_lp_actions._query_subgraph", new_callable=AsyncMock) as mock_q:
         mock_q.side_effect = Exception("timeout")
-        result = json.loads(await get_uniswap_v3_pool_aprs.ainvoke({"token_address": "0xabc", "chain_id": 1}))
+        result = json.loads(
+            await get_uniswap_v3_pool_aprs.ainvoke({"token_address": "0xabc", "chain_id": 1})
+        )
     assert "error" in result
     assert "timeout" in result["error"]
 
@@ -77,14 +79,16 @@ def test_build_lp_tx_unsupported_chain():
         build_uniswap_lp_tx.invoke(
             {
                 "pool_address": "0xpool",
-                "token0_address": "0xtoken0",
-                "token1_address": "0xtoken1",
+                "token0_address": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+                "token1_address": "0xC558DBdd856501FCd9aaF1E62eae57A9F0629a3c",
                 "amount0_desired": 100.0,
                 "amount1_desired": 0.05,
+                "decimals0": 6,
+                "decimals1": 18,
                 "fee_tier": 3000,
                 "tick_lower": -887220,
                 "tick_upper": 887220,
-                "wallet_address": "0xwallet",
+                "wallet_address": "0x67e6bb3400da3af23f1b54623ff5972494b8e132",
                 "chain_id": 999,
             }
         )
@@ -97,10 +101,14 @@ def test_build_lp_tx_sepolia():
         build_uniswap_lp_tx.invoke(
             {
                 "pool_address": "0xpool",
+                # Circle USDC on Sepolia (6 decimals)
                 "token0_address": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+                # WETH on Sepolia (18 decimals)
                 "token1_address": "0xC558DBdd856501FCd9aaF1E62eae57A9F0629a3c",
                 "amount0_desired": 100.0,
                 "amount1_desired": 0.03,
+                "decimals0": 6,
+                "decimals1": 18,
                 "fee_tier": 3000,
                 "tick_lower": -887220,
                 "tick_upper": 887220,
@@ -122,6 +130,11 @@ def test_build_lp_tx_sepolia():
     assert mint["to"] == NPM_ADDRESSES[11155111]
     assert mint["data"].startswith("0x88316456")  # mint selector
 
+    # amount0Desired is scaled by decimals0=6 (100 USDC = 100_000_000), not
+    # the wrong hardcoded 10**18 the tool used to always apply.
+    approve0_amount_hex = approve0["data"][-64:]
+    assert int(approve0_amount_hex, 16) == 100 * 10**6
+
 
 def test_build_lp_tx_mainnet_uses_correct_npm():
     result = json.loads(
@@ -132,6 +145,8 @@ def test_build_lp_tx_mainnet_uses_correct_npm():
                 "token1_address": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
                 "amount0_desired": 1000.0,
                 "amount1_desired": 0.3,
+                "decimals0": 6,
+                "decimals1": 18,
                 "fee_tier": 500,
                 "tick_lower": -887272,
                 "tick_upper": 887272,
@@ -155,6 +170,8 @@ def test_build_lp_tx_negative_tick_encoded():
                 "token1_address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
                 "amount0_desired": 50.0,
                 "amount1_desired": 50.0,
+                "decimals0": 6,
+                "decimals1": 18,
                 "fee_tier": 10000,
                 "tick_lower": -887200,
                 "tick_upper": 887200,
@@ -167,3 +184,26 @@ def test_build_lp_tx_negative_tick_encoded():
     mint_data = result["steps"][2]["data"]
     # calldata should be a valid hex string (only 0-9, a-f, and leading 0x)
     assert all(c in "0123456789abcdefx" for c in mint_data.lower())
+
+
+def test_build_lp_tx_rejects_malformed_address():
+    """A malformed address must not silently corrupt calldata sent to the wallet."""
+    result = json.loads(
+        build_uniswap_lp_tx.invoke(
+            {
+                "pool_address": "0xpool",
+                "token0_address": "not-an-address",
+                "token1_address": "0xC558DBdd856501FCd9aaF1E62eae57A9F0629a3c",
+                "amount0_desired": 100.0,
+                "amount1_desired": 0.03,
+                "decimals0": 6,
+                "decimals1": 18,
+                "fee_tier": 3000,
+                "tick_lower": -887220,
+                "tick_upper": 887220,
+                "wallet_address": "0x67e6bb3400da3af23f1b54623ff5972494b8e132",
+                "chain_id": 11155111,
+            }
+        )
+    )
+    assert "error" in result

@@ -90,14 +90,18 @@ def get_hedera_action_tools() -> list[BaseTool]:
     return toolkit.get_tools()
 
 
-@lru_cache
 def get_hedera_return_bytes_tools(user_account_id: str) -> list[BaseTool]:
     """Build the Hedera Agent Kit LangChain tools in RETURN_BYTES mode for a
     specific user's Hedera account — the built transaction's payer/source is
     `user_account_id`, not any backend-held account. Requires no operator
     credentials; nothing is submitted here, only unsigned bytes are built
     (confirmed offline against the installed package: freezing a
-    transaction only needs a Client's network node list, not an operator)."""
+    transaction only needs a Client's network node list, not an operator).
+
+    Deliberately NOT cached: this is called once per specialist invocation
+    (not a hot path), and caching per-`user_account_id` would pin an
+    unbounded/never-closed `Client` (open gRPC channels) in memory for every
+    distinct user for the life of the process."""
     settings = get_settings()
     client = Client(Network(network=settings.hedera_network))
 

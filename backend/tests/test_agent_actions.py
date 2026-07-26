@@ -199,7 +199,10 @@ def test_confirm_agent_activates_on_evm_transaction_hash(client):
         ) as mock_get_account,
     ):
         mock_get_tx.return_value = {"transactions": [{"result": "SUCCESS"}]}
-        mock_get_account.return_value = {"account": "0.0.78492", "balance": {"balance": 100_000_000}}
+        mock_get_account.return_value = {
+            "account": "0.0.78492",
+            "balance": {"balance": 100_000_000},
+        }
         response = client.post(
             "/api/actions/confirm-agent",
             json={
@@ -230,7 +233,10 @@ def test_confirm_agent_activates_on_native_evm_transfer_fallback(client):
     ):
         # Native EVM transfer returns 404 on /contracts/results endpoint -> empty transactions
         mock_get_tx.return_value = {"transactions": []}
-        mock_get_account.return_value = {"account": "0.0.9754107", "balance": {"balance": 100_000_000}}
+        mock_get_account.return_value = {
+            "account": "0.0.9754107",
+            "balance": {"balance": 100_000_000},
+        }
         response = client.post(
             "/api/actions/confirm-agent",
             json={
@@ -253,7 +259,9 @@ def test_list_agents_auto_heals_pending_funded_agent(client):
     save_agent("0xowner", "yield-bot", EVM_ADDRESS, "enc-key-1")
     assert get_agent_by_name("0xowner", "yield-bot")["status"] == "PENDING"
 
-    with patch("app.api.agent_actions.get_account_by_address_or_id", new_callable=AsyncMock) as mock_get:
+    with patch(
+        "app.api.agent_actions.get_account_by_address_or_id", new_callable=AsyncMock
+    ) as mock_get:
         mock_get.return_value = {"account": "0.0.9754107", "balance": {"balance": 100_000_000}}
         res = client.get("/api/agents?owner_address=0xowner")
 
@@ -315,4 +323,9 @@ def test_delete_and_unarchive_agent_endpoints(client):
     assert res_list2.json()[0]["status"] == "PENDING"
 
 
+def test_propose_yield_action_docstring_circle_usdc_warning():
+    from app.tools.aave_actions import propose_yield_action
 
+    doc = propose_yield_action.description
+    assert "Circle USDC" in doc
+    assert "Uniswap" in doc

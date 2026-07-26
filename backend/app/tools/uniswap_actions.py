@@ -12,26 +12,20 @@ Two tools for the uniswap specialist:
 """
 
 import json
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 import httpx
 from langchain_core.tools import tool
 
 from app.core.config import get_settings
+from app.tools._evm_encoding import _encode_address, _encode_uint, network_name
 
 APPROVE_SELECTOR = "095ea7b3"
 NATIVE_ETH_ADDRESSES = {
     "0x0000000000000000000000000000000000000000",
     "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
 }
-
-
-def _encode_address(address: str) -> str:
-    return address.lower().removeprefix("0x").rjust(64, "0")
-
-
-def _encode_uint(value: int) -> str:
-    return format(value, "x").rjust(64, "0")
 
 
 async def _uniswap_post(path: str, payload: dict[str, Any]) -> Any:
@@ -140,27 +134,27 @@ async def build_uniswap_swap_tx(
         except (ValueError, TypeError):
             value = "0x0"
 
-    network_name = (
-        "Ethereum Mainnet"
-        if chain_id == 1
-        else "Base"
-        if chain_id == 8453
-        else "Sepolia"
-        if chain_id == 11155111
-        else f"Chain {chain_id}"
-    )
+    network = network_name(chain_id)
     steps = []
 
     # Prepend ERC20 approve step if token_in is not native ETH
     is_native = token_in_address.lower() in NATIVE_ETH_ADDRESSES
     if not is_native and to_address:
+        # amount_in is already in the token's raw smallest-unit representation
+        # (matching what's sent to the /quote and /swap calls above), so it
+        # must be parsed exactly — float() silently loses precision above
+        # 2**53 and would approve the wrong amount for realistic on-chain
+        # amounts (e.g. 1e18 wei).
         try:
-            amount_wei = int(float(amount_in))
-        except (ValueError, TypeError):
+            amount_wei = int(Decimal(str(amount_in)))
+        except (InvalidOperation, ValueError, TypeError):
             amount_wei = 2**256 - 1
-        approve_calldata = (
-            "0x" + APPROVE_SELECTOR + _encode_address(to_address) + _encode_uint(amount_wei)
-        )
+        try:
+            approve_calldata = (
+                "0x" + APPROVE_SELECTOR + _encode_address(to_address) + _encode_uint(amount_wei)
+            )
+        except ValueError as exc:
+            return json.dumps({"error": str(exc)})
         steps.append(
             {
                 "label": f"Approve {token_in_address} for Uniswap Router",
@@ -172,7 +166,7 @@ async def build_uniswap_swap_tx(
 
     steps.append(
         {
-            "label": f"Swap {amount_in} token via Uniswap on {network_name}",
+            "label": f"Swap {amount_in} token via Uniswap on {network}",
             "to": to_address,
             "data": calldata,
             "value": str(value),
@@ -182,9 +176,9 @@ async def build_uniswap_swap_tx(
     return json.dumps(
         {
             "protocol": "Uniswap Trading API",
-            "network": network_name,
+            "network": network,
             "chain_id": chain_id,
-            "human_message": f"Swap {amount_in} on Uniswap ({network_name})",
+            "human_message": f"Swap {amount_in} on Uniswap ({network})",
             "steps": steps,
         }
     )

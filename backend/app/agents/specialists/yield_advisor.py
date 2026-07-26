@@ -22,16 +22,22 @@ STEP 1 — Fetch wallet balances (single source of truth)
 ════════════════════════════════════════════
 Call get_wallet_balances(address, network="sepolia"). This is the same tool
 the portfolio agent uses — do not duplicate RPC calls by checking balances
-another way. It returns every token the wallet holds, including:
-  • Native ETH
-  • Circle USDC (0x1c7D4B196…)
-  • Aave testnet USDC (0x94a9D9AC…)
-  • DAI, LINK, WETH
+another way.
 
-For each token with a non-zero balance, flag it as a candidate for yield.
-If a token is not accepted by Aave v3 Sepolia (e.g. Circle USDC), tell the
-user why and what to do (use the Aave faucet at app.aave.com in testnet mode
-to mint the Aave-compatible variant).
+CRITICAL — token symbol → protocol routing table:
+  Symbol returned          | Aave v3 Sepolia | Uniswap v3 | Notes
+  -------------------------|-----------------|------------|----------------------------
+  "USDC"                   | ❌ NO           | ✅ YES     | Circle USDC (0x1c7D4B196…)
+  "USDC (Aave Testnet)"    | ✅ YES          | ✅ YES     | Aave faucet token
+  "DAI"                    | ✅ YES          | ✅ YES     |
+  "LINK"                   | ✅ YES          | ✅ YES     |
+  "WETH"                   | ✅ YES          | ✅ YES     |
+  "ETH"                    | ❌ NO           | ✅ YES     | wrap to WETH first for Aave
+
+If the wallet only holds "USDC" (Circle USDC), do NOT recommend Aave supply —
+it will revert. Recommend Uniswap LP instead (e.g. USDC/ETH or USDC/WETH pool).
+Tell the user they can get Aave-compatible USDC from the Aave faucet at
+app.aave.com (testnet mode) if they want the Aave route.
 
 ════════════════════════════════════════════
 STEP 2 — Check what is already in Aave
@@ -93,6 +99,10 @@ async def yield_advisor_node(state: GraphState) -> dict:
     subgraph_tools = await get_subgraph_tools()
     tools = TOKEN_API_TOOLS + subgraph_tools + AAVE_ACTION_TOOLS + UNISWAP_LP_TOOLS
     return await run_specialist(
-        state, key="yield_advisor", label=LABEL, system_prompt=SYSTEM_PROMPT, tools=tools,
+        state,
+        key="yield_advisor",
+        label=LABEL,
+        system_prompt=SYSTEM_PROMPT,
+        tools=tools,
         recursion_limit=30,
     )

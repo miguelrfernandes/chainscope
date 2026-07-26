@@ -1,5 +1,4 @@
 import json
-from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -100,7 +99,9 @@ async def test_hedera_wallet_action_node_evm_create_token(monkeypatch):
     res = await hedera_wallet_action_node(state)
 
     assert "build_hts_create_token_evm_tx" in captured["tool_names"]
-    assert captured["action_artifact_types"]["build_hts_create_token_evm_tx"] == "action/hedera-evm-tx"
+    assert (
+        captured["action_artifact_types"]["build_hts_create_token_evm_tx"] == "action/hedera-evm-tx"
+    )
 
     artifacts = res.get("artifacts", [])
     assert len(artifacts) == 1
@@ -109,4 +110,3 @@ async def test_hedera_wallet_action_node_evm_create_token(monkeypatch):
     artifact_data = json.loads(artifacts[0]["data"])
     assert artifact_data["to"] == HTS_SYSTEM_CONTRACT_ADDRESS
     assert artifact_data["data"].startswith("0x" + CREATE_FUNGIBLE_TOKEN_SELECTOR)
-

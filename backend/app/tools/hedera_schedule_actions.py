@@ -12,6 +12,7 @@ from eth_utils import keccak
 from langchain_core.tools import tool
 
 from app.core.config import get_settings
+from app.tools._evm_encoding import _encode_address, _encode_bytes_payload, _encode_uint
 from app.tools.hedera_evm_actions import resolve_evm_address
 
 CREATE_VAULT_SELECTOR = "b4bd6f46"
@@ -19,21 +20,6 @@ GET_LATEST_USER_VAULT_SELECTOR = "70111f88"
 CONFIGURE_SELECTOR = "ba674903"
 DEPOSIT_SELECTOR = "d0e30db0"
 SCHEDULE_NEXT_RUN_SELECTOR = "38b295fd"
-
-
-def _encode_address(address: str) -> str:
-    return address.lower().removeprefix("0x").rjust(64, "0")
-
-
-def _encode_uint(value: int) -> str:
-    return format(value, "x").rjust(64, "0")
-
-
-def _encode_bytes_payload(data: bytes) -> str:
-    length_word = _encode_uint(len(data))
-    padded_len = ((len(data) + 31) // 32) * 32
-    data_hex = data.hex().ljust(padded_len * 2, "0")
-    return length_word + data_hex
 
 
 def encode_configure(config: bytes, interval: int) -> str:
@@ -99,6 +85,12 @@ async def build_recurring_hbar_transfer_actions(
     strategy_address = settings.hedera_native_transfer_strategy_address
 
     resolved_recipient = await resolve_evm_address(recipient_evm_address)
+    try:
+        _encode_address(user_evm_address)
+        _encode_address(resolved_recipient)
+    except ValueError as exc:
+        return json.dumps({"error": str(exc)})
+
     amount_wei = int(round(amount_hbar * 1e18))
     hex_value = "0x" + format(amount_wei, "x")
 

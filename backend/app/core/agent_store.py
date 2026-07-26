@@ -178,5 +178,3 @@ def delete_agent(owner_address: str, agent_name: str) -> bool:
     """Archive the managed agent for (owner_address, agent_name) instead of hard-deleting.
     Returns True if a row was updated, False otherwise."""
     return archive_agent(owner_address, agent_name)
-
-

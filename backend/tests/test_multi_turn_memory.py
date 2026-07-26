@@ -92,7 +92,9 @@ async def test_synthesize_node_uses_history_messages(monkeypatch):
 
     res = await synthesize_node(state)
     assert res["final_answer"] == "Synthesized response"
-    assert len(captured_messages) == 4  # SystemMessage + Human(turn1) + AI(turn1) + Human(turn2 + findings)
+    assert (
+        len(captured_messages) == 4
+    )  # SystemMessage + Human(turn1) + AI(turn1) + Human(turn2 + findings)
     assert captured_messages[1].content == "What is my account ID?"
     assert captured_messages[2].content == "Your account is 0.0.999"
     assert "Question: Transfer 10 HBAR to 0.0.123" in captured_messages[3].content
@@ -104,7 +106,9 @@ async def test_multi_turn_graph_memory(monkeypatch):
     async def mock_get_subgraph_tools():
         return []
 
-    monkeypatch.setattr("app.agents.specialists.defi_research.get_subgraph_tools", mock_get_subgraph_tools)
+    monkeypatch.setattr(
+        "app.agents.specialists.defi_research.get_subgraph_tools", mock_get_subgraph_tools
+    )
 
     class FakeRouteDecision:
         specialists = ["defi_research"]
@@ -130,7 +134,9 @@ async def test_multi_turn_graph_memory(monkeypatch):
 
     monkeypatch.setattr("app.agents.orchestrator.get_llm", lambda: FakeLLM())
     monkeypatch.setattr("app.agents.specialists._shared.get_llm", lambda: FakeLLM())
-    monkeypatch.setattr("app.agents.specialists._shared.create_react_agent", lambda *a, **k: FakeReactAgent())
+    monkeypatch.setattr(
+        "app.agents.specialists._shared.create_react_agent", lambda *a, **k: FakeReactAgent()
+    )
 
     graph = build_graph()
     config = {"configurable": {"thread_id": "multi-turn-test-thread"}}

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 export type Block =
   | { type: "paragraph"; text: string }
@@ -257,6 +257,66 @@ export function renderInline(text: string): React.ReactNode[] {
   return nodes;
 }
 
+const HEX_CELL_RE = /^0x[0-9a-fA-F]{8,}$/;
+const HEX_LINK_CELL_RE = /^\[(0x[0-9a-fA-F]{8,})\]\(([^)]+)\)$/;
+const NUMERIC_CELL_RE = /^[+-]?[$]?[\d,]+(\.\d+)?%?$/;
+
+function truncateHex(value: string): string {
+  if (value.length <= 14) return value;
+  return `${value.slice(0, 6)}…${value.slice(-4)}`;
+}
+
+function HexCell({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <button
+      type="button"
+      title={value}
+      onClick={() => {
+        navigator.clipboard?.writeText(value).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1200);
+        });
+      }}
+      className="inline-flex items-center gap-1 rounded border border-[var(--border)] bg-[var(--bg-raised)] px-1.5 py-0.5 font-mono text-[12px] text-[var(--ink-dim)] transition-colors hover:border-[var(--accent)] hover:text-[var(--accent)]"
+    >
+      {truncateHex(value)}
+      <span className="text-[10px] opacity-60">{copied ? "✓" : "⧉"}</span>
+    </button>
+  );
+}
+
+function isColumnNumeric(rows: string[][], colIdx: number): boolean {
+  return rows.length > 0 && rows.every((row) => NUMERIC_CELL_RE.test((row[colIdx] ?? "").trim()));
+}
+
+function renderTableCell(rawCell: string): React.ReactNode {
+  const cell = rawCell.trim();
+
+  const linkMatch = cell.match(HEX_LINK_CELL_RE);
+  if (linkMatch) {
+    const [, hex, href] = linkMatch;
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={hex}
+        className="font-mono text-[12px] text-[var(--accent)] underline transition-opacity hover:opacity-80"
+      >
+        {truncateHex(hex)}
+      </a>
+    );
+  }
+
+  if (HEX_CELL_RE.test(cell)) {
+    return <HexCell value={cell} />;
+  }
+
+  return renderInline(rawCell);
+}
+
 export function MarkdownLite({ text }: { text: string }) {
   if (!text) return null;
 
@@ -318,6 +378,7 @@ export function MarkdownLite({ text }: { text: string }) {
         }
 
         if (block.type === "table") {
+          const numericCols = block.header.map((_, colIdx) => isColumnNumeric(block.rows, colIdx));
           return (
             <div
               key={idx}
@@ -327,7 +388,12 @@ export function MarkdownLite({ text }: { text: string }) {
                 <thead>
                   <tr className="text-[var(--ink-faint)]">
                     {block.header.map((cell, cellIdx) => (
-                      <th key={cellIdx} className="px-3 py-2 font-medium uppercase tracking-wide">
+                      <th
+                        key={cellIdx}
+                        className={`px-3 py-2 font-medium uppercase tracking-wide ${
+                          numericCols[cellIdx] ? "text-right" : "text-left"
+                        }`}
+                      >
                         {renderInline(cell)}
                       </th>
                     ))}
@@ -335,10 +401,18 @@ export function MarkdownLite({ text }: { text: string }) {
                 </thead>
                 <tbody>
                   {block.rows.map((row, rowIdx) => (
-                    <tr key={rowIdx} className="border-t border-[var(--border-soft)] text-[var(--ink)]">
+                    <tr
+                      key={rowIdx}
+                      className="border-t border-[var(--border-soft)] text-[var(--ink)] hover:bg-[var(--bg-raised)]"
+                    >
                       {row.map((cell, cellIdx) => (
-                        <td key={cellIdx} className="px-3 py-2 tabular-nums">
-                          {renderInline(cell)}
+                        <td
+                          key={cellIdx}
+                          className={`px-3 py-2 tabular-nums ${
+                            numericCols[cellIdx] ? "text-right" : "text-left"
+                          }`}
+                        >
+                          {renderTableCell(cell)}
                         </td>
                       ))}
                     </tr>

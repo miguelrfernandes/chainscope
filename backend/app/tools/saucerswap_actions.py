@@ -26,6 +26,7 @@ import httpx
 from langchain_core.tools import tool
 
 from app.core.config import get_settings
+from app.tools._evm_encoding import _encode_address, _encode_bytes_payload, _encode_uint
 from app.tools.hedera_evm_actions import resolve_evm_address
 
 SAUCERSWAP_API_BASE_URL = "https://api.saucerswap.finance"
@@ -38,22 +39,6 @@ DEFAULT_FEE_BPS = 1500  # 0.30% — SaucerSwap V2's most common pool tier
 
 APPROVE_SELECTOR = "095ea7b3"
 EXACT_INPUT_SELECTOR = "c04b8d59"  # exactInput((bytes,address,uint256,uint256,uint256))
-
-
-def _encode_address(address: str) -> str:
-    return address.lower().removeprefix("0x").rjust(64, "0")
-
-
-def _encode_uint(value: int) -> str:
-    return format(value, "x").rjust(64, "0")
-
-
-def _encode_dynamic_bytes(data: bytes) -> str:
-    length_hex = _encode_uint(len(data))
-    body = data.hex()
-    padded_len = ((len(data) + 31) // 32) * 32
-    body = body.ljust(padded_len * 2, "0")
-    return length_hex + body
 
 
 async def _saucerswap_get(path: str, params: dict[str, Any] | None = None) -> Any:
@@ -178,29 +163,35 @@ async def build_saucerswap_swap_tx(
     amount_out_min_wei = int(round(min_amount_out * 10**token_out_decimals))
     deadline = int(time.time()) + 600
 
-    path_bytes = (
-        bytes.fromhex(token_in.removeprefix("0x"))
-        + fee_bps.to_bytes(3, "big")
-        + bytes.fromhex(token_out.removeprefix("0x"))
-    )
+    try:
+        path_bytes = (
+            bytes.fromhex(_encode_address(token_in)[-40:])
+            + fee_bps.to_bytes(3, "big")
+            + bytes.fromhex(_encode_address(token_out)[-40:])
+        )
 
-    approve_calldata = (
-        "0x" + APPROVE_SELECTOR + _encode_address(ROUTER_EVM_ADDRESS) + _encode_uint(amount_in_wei)
-    )
+        approve_calldata = (
+            "0x"
+            + APPROVE_SELECTOR
+            + _encode_address(ROUTER_EVM_ADDRESS)
+            + _encode_uint(amount_in_wei)
+        )
 
-    tuple_offset = _encode_uint(0x20)
-    path_offset_in_tuple = _encode_uint(5 * 32)
-    swap_calldata = (
-        "0x"
-        + EXACT_INPUT_SELECTOR
-        + tuple_offset
-        + path_offset_in_tuple
-        + _encode_address(recipient)
-        + _encode_uint(deadline)
-        + _encode_uint(amount_in_wei)
-        + _encode_uint(amount_out_min_wei)
-        + _encode_dynamic_bytes(path_bytes)
-    )
+        tuple_offset = _encode_uint(0x20)
+        path_offset_in_tuple = _encode_uint(5 * 32)
+        swap_calldata = (
+            "0x"
+            + EXACT_INPUT_SELECTOR
+            + tuple_offset
+            + path_offset_in_tuple
+            + _encode_address(recipient)
+            + _encode_uint(deadline)
+            + _encode_uint(amount_in_wei)
+            + _encode_uint(amount_out_min_wei)
+            + _encode_bytes_payload(path_bytes)
+        )
+    except ValueError as exc:
+        return json.dumps({"error": str(exc)})
 
     return json.dumps(
         {

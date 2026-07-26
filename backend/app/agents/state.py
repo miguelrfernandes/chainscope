@@ -30,7 +30,12 @@ def get_history_messages(state: dict[str, Any]) -> list[BaseMessage]:
     raw_messages = list(state.get("messages") or [])
     messages = [m for m in (_ensure_base_message(msg) for msg in raw_messages) if m is not None]
     question = state.get("question", "")
-    if messages and question and isinstance(messages[-1], HumanMessage) and messages[-1].content == question:
+    if (
+        messages
+        and question
+        and isinstance(messages[-1], HumanMessage)
+        and messages[-1].content == question
+    ):
         return messages[:-1]
     return messages
 
@@ -42,10 +47,11 @@ def get_conversation_messages(state: dict[str, Any]) -> list[BaseMessage]:
     messages = [m for m in (_ensure_base_message(msg) for msg in raw_messages) if m is not None]
     question = state.get("question", "")
     if question:
-        if not messages or not (isinstance(messages[-1], HumanMessage) and messages[-1].content == question):
+        if not messages or not (
+            isinstance(messages[-1], HumanMessage) and messages[-1].content == question
+        ):
             messages.append(HumanMessage(content=question))
     return messages
-
 
 
 SpecialistName = Literal[
@@ -59,6 +65,7 @@ SpecialistName = Literal[
     "hedera_wallet_action",
     "saucerswap",
     "uniswap",
+    "scheduler_admin",
 ]
 
 SPECIALISTS: tuple[SpecialistName, ...] = (
@@ -72,6 +79,7 @@ SPECIALISTS: tuple[SpecialistName, ...] = (
     "hedera_wallet_action",
     "saucerswap",
     "uniswap",
+    "scheduler_admin",
 )
 
 

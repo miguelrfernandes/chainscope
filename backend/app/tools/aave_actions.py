@@ -23,6 +23,7 @@ import httpx
 from langchain_core.tools import tool
 
 from app.core.config import get_settings
+from app.tools._evm_encoding import _encode_address, _encode_uint
 
 CHAIN_ID = 11155111  # Sepolia
 POOL_ADDRESS = "0x6Ae43d3271ff6888e7Fc43Fd7321a503ff738951"
@@ -57,21 +58,13 @@ NON_AAVE_TOKENS: dict[str, dict[str, Any]] = {
         "underlying": "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
         "decimals": 6,
         "note": "Circle USDC — not listed in the Aave v3 Sepolia market. "
-                "Use the Aave faucet to mint Aave testnet USDC instead.",
+        "Use the Aave faucet to mint Aave testnet USDC instead.",
     },
 }
 
 BALANCE_OF_SELECTOR = "70a08231"
 APPROVE_SELECTOR = "095ea7b3"
 SUPPLY_SELECTOR = "617ba037"
-
-
-def _encode_address(address: str) -> str:
-    return address.lower().removeprefix("0x").rjust(64, "0")
-
-
-def _encode_uint(value: int) -> str:
-    return format(value, "x").rjust(64, "0")
 
 
 async def _eth_call(to: str, data: str) -> int:
@@ -104,9 +97,12 @@ async def check_aave_positions(wallet_address: str) -> str:
     the wallet *holds* in the first place, use get_wallet_balances — that
     is the single source of truth for wallet balances, shared with the
     portfolio agent."""
-    results = {}
-    call_data = "0x" + BALANCE_OF_SELECTOR + _encode_address(wallet_address)
+    try:
+        call_data = "0x" + BALANCE_OF_SELECTOR + _encode_address(wallet_address)
+    except ValueError as exc:
+        return json.dumps({"error": str(exc)})
 
+    results = {}
     for symbol, reserve in RESERVES.items():
         try:
             a_token_raw = await _eth_call(reserve["a_token"], call_data)
@@ -135,12 +131,17 @@ def propose_yield_action(
     """Build a real Aave v3 Sepolia deposit action for the given idle asset.
 
     `asset_symbol` must be one of USDC, DAI, LINK, WETH (only these have
-    known, verified Sepolia addresses). `amount` is in human units (e.g.
-    0.5 for 0.5 WETH). `apy_pct` is the current supply APY you found via the
-    Aave Sepolia subgraph — do not guess it. Returns a JSON action payload
-    with the exact approve() + supply() transaction calldata for the
-    wallet to sign; no funds move until the user approves each step in
-    their own wallet."""
+    known, verified Sepolia addresses).
+
+    NOTE: On Sepolia, Aave v3 supports Aave Testnet USDC (0x94a9D9AC8a22534E3FaCa9F4e7F2E2cf85d5E4C8),
+    NOT Circle USDC (0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238). If the wallet holds
+    Circle USDC, do NOT call this tool — recommend Uniswap v3 instead.
+
+    `amount` is in human units (e.g. 0.5 for 0.5 WETH). `apy_pct` is the current
+    supply APY you found via the Aave Sepolia subgraph — do not guess it.
+    Returns a JSON action payload with the exact approve() + supply()
+    transaction calldata for the wallet to sign; no funds move until the user
+    approves each step in their own wallet."""
     symbol = asset_symbol.upper()
     if symbol not in RESERVES:
         return json.dumps(
@@ -150,17 +151,20 @@ def propose_yield_action(
     reserve = RESERVES[symbol]
     amount_wei = int(round(amount * 10 ** reserve["decimals"]))
 
-    approve_calldata = (
-        "0x" + APPROVE_SELECTOR + _encode_address(POOL_ADDRESS) + _encode_uint(amount_wei)
-    )
-    supply_calldata = (
-        "0x"
-        + SUPPLY_SELECTOR
-        + _encode_address(reserve["underlying"])
-        + _encode_uint(amount_wei)
-        + _encode_address(wallet_address)
-        + _encode_uint(0)  # referral code
-    )
+    try:
+        approve_calldata = (
+            "0x" + APPROVE_SELECTOR + _encode_address(POOL_ADDRESS) + _encode_uint(amount_wei)
+        )
+        supply_calldata = (
+            "0x"
+            + SUPPLY_SELECTOR
+            + _encode_address(reserve["underlying"])
+            + _encode_uint(amount_wei)
+            + _encode_address(wallet_address)
+            + _encode_uint(0)  # referral code
+        )
+    except ValueError as exc:
+        return json.dumps({"error": str(exc)})
 
     return json.dumps(
         {
