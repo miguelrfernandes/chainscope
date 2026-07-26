@@ -3,7 +3,7 @@ export type AgentStep = {
   text: string;
 };
 
-export type Source = { label: string; id: string; query: string };
+export type Source = { label: string; id: string; query: string; kind?: "subgraph" | "other" };
 export type BarDatum = { label: string; value: number; color: string };
 export type LineDatum = { label: string; value: number };
 export type TableRow = Record<string, string>;
@@ -118,6 +118,7 @@ export const SCENARIOS: Scenario[] = [
       {
         label: "Aave v3 Ethereum — user positions",
         id: "aave/protocol-v3-ethereum",
+        kind: "subgraph",
         query:
           "{ userReserve(id: \"0x8f2a19b4...-stETH\") { currentATokenBalance currentTotalDebt } }",
       },
@@ -159,6 +160,7 @@ export const SCENARIOS: Scenario[] = [
       {
         label: "Aave v3 Sepolia — USDC reserve",
         id: "aave/protocol-v3-sepolia",
+        kind: "subgraph",
         query: "{ reserve(id: \"0x94a9...usdc\") { liquidityRate } } (converted from ray to APY)",
       },
     ],
@@ -203,23 +205,27 @@ export const SCENARIOS: Scenario[] = [
       {
         label: "Compound v2 — account positions",
         id: "compound/compound-v2",
+        kind: "subgraph",
         query:
           "{ account(id: \"0x8f2a19b4...\") { tokens { symbol supplyBalanceUnderlying } } }",
       },
       {
         label: "Uniswap v3 Arbitrum — LP positions",
         id: "uniswap/uniswap-v3-arbitrum",
+        kind: "subgraph",
         query:
           "{ positions(where: { owner: \"0x8f2a19b4...\" }) { pool { token0 token1 } collectedFeesToken0 collectedFeesToken1 } }",
       },
       {
         label: "Curve — liquidity positions",
         id: "curve/curve-finance",
+        kind: "subgraph",
         query: "{ liquidityPositions(where: { user: \"0x8f2a19b4...\" }) { liquidityPool { name } balance } }",
       },
       {
         label: "SushiSwap — LP positions",
         id: "sushiswap/exchange",
+        kind: "subgraph",
         query: "{ liquidityPositions(where: { user: \"0x8f2a19b4...\" }) { pair { token0 token1 } } }",
       },
     ],
@@ -278,6 +284,7 @@ export const SCENARIOS: Scenario[] = [
       {
         label: "Uniswap v3 Ethereum — USDC/ETH pool ticks",
         id: "uniswap/uniswap-v3-ethereum",
+        kind: "subgraph",
         query:
           "{ pool(id: \"0x88e6...0640\") { ticks(first: 1000, orderBy: tickIdx) { tickIdx liquidityNet } } } (paid via x402)",
       },
@@ -603,6 +610,7 @@ export const SCENARIOS: Scenario[] = [
       {
         label: "Uniswap v3 Ethereum — top pools by fees/TVL",
         id: "uniswap/uniswap-v3-ethereum-pools",
+        kind: "subgraph",
         query:
           "{ pools(first: 20, orderBy: feesUSD, orderDirection: desc) { token0 { symbol } token1 { symbol } feeTier totalValueLockedUSD volumeUSD feesUSD } }",
       },
@@ -728,6 +736,7 @@ export const SCENARIOS: Scenario[] = [
       {
         label: "Uniswap v3 — tokenized equities (xStocks) pools",
         id: "uniswap/xstocks-pools",
+        kind: "subgraph",
         query:
           "{ pools(where: { token0_in: [\"TSLA-U\", \"CRCL-U\"] }) { id token0 { symbol } token1 { symbol } } }",
       },

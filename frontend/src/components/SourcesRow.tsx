@@ -6,6 +6,7 @@ import type { Source } from "@/lib/scenarios";
 const COLLAPSE_THRESHOLD = 3;
 
 function SourcePill({ s, i }: { s: Source; i: number }) {
+  const isSubgraph = s.kind === "subgraph";
   return (
     <span
       key={`${s.id}-${i}`}
@@ -14,14 +15,18 @@ function SourcePill({ s, i }: { s: Source; i: number }) {
     >
       <span className="text-[var(--ink-dim)] font-medium">{s.label}</span>
       <span className="text-[var(--ink-faint)]">·</span>
-      <a
-        href={`https://thegraph.com/explorer?search=${encodeURIComponent(s.id)}`}
-        target="_blank"
-        rel="noreferrer"
-        className="font-mono text-[var(--accent)]/90 underline decoration-[var(--accent)]/30 underline-offset-2 hover:text-[var(--accent)] font-medium"
-      >
-        {s.id}
-      </a>
+      {isSubgraph ? (
+        <a
+          href={`https://thegraph.com/explorer?search=${encodeURIComponent(s.id)}`}
+          target="_blank"
+          rel="noreferrer"
+          className="font-mono text-[var(--accent)]/90 underline decoration-[var(--accent)]/30 underline-offset-2 hover:text-[var(--accent)] font-medium"
+        >
+          {s.id}
+        </a>
+      ) : (
+        <span className="font-mono text-[var(--ink-dim)] font-medium">{s.id}</span>
+      )}
       <span
         role="tooltip"
         className="pointer-events-none absolute bottom-full left-0 z-20 mb-2 hidden w-max max-w-sm rounded-xl border border-white/10 bg-[#070a09]/95 backdrop-blur-xl p-3 text-[10px] normal-case leading-relaxed text-[var(--ink)] shadow-2xl transition-all duration-300 group-hover:block group-focus:block animate-fade-in"

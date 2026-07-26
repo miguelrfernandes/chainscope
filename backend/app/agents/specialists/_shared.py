@@ -206,6 +206,17 @@ def _source_id(name: str, args: dict) -> str:
     return name
 
 
+# Tools whose source id is an actual Graph subgraph (safe to link to
+# thegraph.com's explorer search). Everything else — REST APIs, live RPC
+# calls, Hedera Mirror Node, etc. — isn't indexed there, so the frontend
+# must not send those through the same "search on The Graph" link.
+_SUBGRAPH_TOOL_NAMES = QUERY_TOOL_NAMES | {"get_uniswap_v3_pool_aprs"}
+
+
+def _source_kind(name: str) -> str:
+    return "subgraph" if name in _SUBGRAPH_TOOL_NAMES else "other"
+
+
 async def run_specialist(
     state: GraphState,
     *,
@@ -260,6 +271,7 @@ async def run_specialist(
                         {
                             "label": label,
                             "id": sid,
+                            "kind": _source_kind(call["name"]),
                             "query": call["args"].get("query", "") or str(call["args"]),
                         }
                     )
