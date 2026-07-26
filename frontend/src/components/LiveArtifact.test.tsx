@@ -47,6 +47,62 @@ describe("LiveArtifact component", () => {
     expect(element?.props.payload.human_message).toBe("Transfer 5 HBAR to 0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB");
   });
 
+  it("preserves executed state when restoring action artifacts from past conversations", () => {
+    const artifact = {
+      type: "action/hedera-evm-tx",
+      data: JSON.stringify({
+        human_message: "Transfer 5 HBAR to 0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB",
+        to: "0x53b87eAC409C46A2CfDdB10e761dFD0F3d58A0cB",
+        value: "0x4563918244f40000",
+        data: "0x",
+        hashes: ["0x123abc456def7890"],
+        executed: true,
+      }),
+    };
+
+    const element = LiveArtifact({ artifact });
+    expect(element).not.toBeNull();
+    expect(element?.props.payload.executed).toBe(true);
+    expect(element?.props.payload.hashes).toEqual(["0x123abc456def7890"]);
+  });
+
+  it("passes onArtifactUpdate callback down to action components", () => {
+    let updatedData = "";
+    const artifact = {
+      type: "action/hedera-tx-bytes",
+      data: JSON.stringify({
+        type: "return_bytes",
+        human_message: "Approve token",
+        error: null,
+        bytes_data: "0x1234",
+      }),
+    };
+
+    const element = LiveArtifact({
+      artifact,
+      onArtifactUpdate: (data) => {
+        updatedData = data;
+      },
+    });
+
+    expect(element).not.toBeNull();
+    expect(element?.props.onArtifactUpdate).toBeDefined();
+
+    element?.props.onArtifactUpdate?.(
+      JSON.stringify({
+        type: "return_bytes",
+        human_message: "Approve token",
+        error: null,
+        bytes_data: "0x1234",
+        tx_id: "0.0.12345@123456.789",
+        executed: true,
+      })
+    );
+
+    expect(updatedData).toContain('"executed":true');
+    expect(updatedData).toContain("0.0.12345@123456.789");
+  });
+
   it("returns null for unknown artifact type", () => {
     const artifact = {
       type: "unknown/type",

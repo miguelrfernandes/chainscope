@@ -18,10 +18,12 @@ export function LiveAssistantTurn({
   live,
   instant = false,
   ownerAddress = "0xdefault_owner",
+  onUpdateLive,
 }: {
   live: LiveState;
   instant?: boolean;
   ownerAddress?: string;
+  onUpdateLive?: (updatedLive: LiveState) => void;
 }) {
   if (live.error) {
     return (
@@ -114,7 +116,16 @@ export function LiveAssistantTurn({
           {live.artifacts.length > 0 && (
             <div className="flex flex-col gap-3">
               {live.artifacts.map((a, i) => (
-                <LiveArtifact key={i} artifact={a} ownerAddress={ownerAddress} />
+                <LiveArtifact
+                  key={i}
+                  artifact={a}
+                  ownerAddress={ownerAddress}
+                  onArtifactUpdate={(updatedData) => {
+                    const newArtifacts = [...live.artifacts];
+                    newArtifacts[i] = { ...a, data: updatedData };
+                    onUpdateLive?.({ ...live, artifacts: newArtifacts });
+                  }}
+                />
               ))}
             </div>
           )}

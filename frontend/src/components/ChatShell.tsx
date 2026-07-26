@@ -138,27 +138,29 @@ export function ChatShell() {
     };
   }
 
+  const historyAddress = wallet.address || hederaWallet.accountId || null;
+
   // Sidebar list: saved threads from local storage, sorted by updatedAt
   const threads = useMemo(() => {
-    const base = wallet.address ? loadThreads(wallet.address) : [];
+    const base = historyAddress ? loadThreads(historyAddress) : [];
     const saved = base.find((t) => t.id === activeThreadId);
     const timestamp = saved ? saved.updatedAt : 0;
     const live = activeThreadSnapshot(timestamp);
     if (!live) return base;
     return base.map((t) => (t.id === live.id ? live : t));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wallet.address, activeThreadId, messages]);
+  }, [historyAddress, activeThreadId, messages]);
 
   // Persist the active conversation to this wallet's local history whenever it changes.
   useEffect(() => {
-    if (!wallet.address) return;
-    const base = loadThreads(wallet.address);
+    if (!historyAddress) return;
+    const base = loadThreads(historyAddress);
     const saved = base.find((t) => t.id === activeThreadId);
     const snapshot = activeThreadSnapshot(saved ? saved.updatedAt : Date.now());
     if (!snapshot) return;
-    saveThread(wallet.address, snapshot);
+    saveThread(historyAddress, snapshot);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages, activeThreadId, wallet.address]);
+  }, [messages, activeThreadId, historyAddress]);
 
   // Sync thread parameter from URL on mount or wallet address update
   const threadParam = searchParams.get("thread");
@@ -179,15 +181,15 @@ export function ChatShell() {
       return;
     }
 
-    if (wallet.address) {
-      const stored = loadThreads(wallet.address);
+    if (historyAddress) {
+      const stored = loadThreads(historyAddress);
       if (stored.some((t) => t.id === threadParam)) {
         lastSyncedRef.current = threadParam;
         openThread(threadParam);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [threadParam, wallet.address]);
+  }, [threadParam, historyAddress]);
 
   function genId(): string {
     return String(nextId++);
@@ -287,7 +289,7 @@ export function ChatShell() {
   }
 
   function openThread(id: string) {
-    const base = wallet.address ? loadThreads(wallet.address) : [];
+    const base = historyAddress ? loadThreads(historyAddress) : [];
     const thread = base.find((t) => t.id === id) || threads.find((t) => t.id === id);
     if (!thread) return;
     lastSyncedRef.current = id;
@@ -317,8 +319,8 @@ export function ChatShell() {
   }
 
   function handleDeleteThread(id: string) {
-    if (!wallet.address) return;
-    deleteThread(wallet.address, id);
+    if (!historyAddress) return;
+    deleteThread(historyAddress, id);
     if (activeThreadId === id) {
       newConversation();
     } else {
@@ -354,8 +356,6 @@ export function ChatShell() {
           activePage="app"
           rightContent={
             <div className="flex items-center gap-2">
-              {/* Sub-Agents Badge Icon Button */}
-
               {wallet.connected && (
                 <>
                   <motion.button
@@ -392,46 +392,57 @@ export function ChatShell() {
                 </>
               )}
 
-              {/* Unified Wallet Connection Pill Cluster */}
               <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 p-1 backdrop-blur-md">
                 {wallet.connected ? (
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.97 }}
-                    onClick={() => {
-                      setDrawerTab("wallet");
-                      setDrawerOpen(true);
-                    }}
-                    title="Click to view wallet details & sub-agents"
-                    className="group flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-mono text-[var(--ink)] transition hover:border-[var(--accent)]/50 hover:bg-white/10"
+                    onClick={wallet.disconnect}
+                    title="Click to disconnect EVM wallet"
+                    className="flex items-center gap-1.5 rounded-full border border-[var(--success)]/40 bg-[var(--success)]/10 px-3 py-1 text-xs font-medium text-[var(--success)] font-mono transition hover:border-[var(--danger)]/50 hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
                   >
-                    <span className="h-2 w-2 rounded-full bg-[var(--success)] shadow-[0_0_8px_var(--success)]" />
-                    <span>
-                      {wallet.short} <span className="text-[10px] text-[var(--ink-faint)]">({wallet.chainLabel})</span>
-                    </span>
+                    <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)] animate-pulse" />
+                    {wallet.address ? `${wallet.address.slice(0, 6)}…${wallet.address.slice(-4)}` : "EVM connected"}
                   </motion.button>
                 ) : (
                   <motion.button
-                    whileHover={{ scale: 1.03 }}
+                    whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.97 }}
                     onClick={wallet.connect}
-                    disabled={
-                      wallet.status === "connecting" ||
-                      wallet.status === "signing"
-                    }
-                    className="rounded-full border border-[var(--accent)] bg-[var(--accent)] px-3.5 py-1 text-xs font-semibold text-[var(--accent-ink)] shadow-[0_0_15px_rgba(255,180,84,0.25)] transition hover:bg-[var(--accent)]/90 disabled:opacity-50"
+                    disabled={wallet.status === "connecting" || wallet.status === "signing"}
+                    className="rounded-full border border-[var(--accent)] bg-[var(--accent)] px-3.5 py-1 text-xs font-semibold text-[var(--accent-ink)] shadow-[0_0_12px_rgba(255,180,84,0.25)] transition hover:bg-[var(--accent)]/90 disabled:opacity-60"
                   >
                     {connectLabel}
                   </motion.button>
                 )}
+
+                {hederaWallet.connected ? (
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={hederaWallet.disconnect}
+                    title="Click to disconnect Hedera wallet"
+                    className="flex items-center gap-1.5 rounded-full border border-[#00ea90]/40 bg-[#00ea90]/10 px-3 py-1 text-xs font-medium text-[#00ea90] font-mono transition hover:border-[var(--danger)]/50 hover:bg-[var(--danger)]/10 hover:text-[var(--danger)]"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#00ea90] animate-pulse" />
+                    {hederaWallet.accountId ? `ħ ${hederaWallet.accountId}` : "ħ Hedera connected"}
+                  </motion.button>
+                ) : (
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={hederaWallet.connect}
+                    disabled={hederaWallet.status === "connecting"}
+                    title="Connect Hedera WalletConnect (HashPack)"
+                    className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-[var(--ink)] transition hover:border-[#00ea90]/50 hover:bg-[#00ea90]/15 hover:text-[#00ea90] disabled:opacity-60"
+                  >
+                    {hederaWallet.status === "connecting" ? "ħ connecting..." : "ħ connect Hedera"}
+                  </motion.button>
+                )}
               </div>
             </div>
-
-
-
           }
         />
-
 
         <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar px-5 py-6">
           {messages.length === 0 && <EmptyState onPick={ask} wallet={wallet} />}
@@ -483,6 +494,9 @@ export function ChatShell() {
                       live={m.live}
                       instant={loadedFromHistory}
                       ownerAddress={wallet.address || "0xdefault_owner"}
+                      onUpdateLive={(updatedLive) => {
+                        updateLive(m.id, () => updatedLive);
+                      }}
                     />
                   </div>
                 </motion.div>
