@@ -34,15 +34,26 @@ agents. Available specialists: {", ".join(SPECIALISTS)}.
 - hedera_action: executing a real Hedera testnet transaction FROM A BACKEND-
   HELD DEMO ACCOUNT (not the user's wallet) — transferring HBAR, creating an
   HCS topic or submitting a topic message, creating/minting an HTS fungible
-  token, associating a token. Route here for action requests on Hedera when
-  the question does NOT mention a connected Hedera wallet.
+  token, associating a token. Route here for action requests on Hedera ONLY
+  when no connected wallet suffix (Hedera or EVM) is present in the message
+  at all.
 - hedera_wallet_action: building the same kinds of Hedera transactions, but
   FOR THE USER'S OWN CONNECTED HEDERA WALLET to sign (nothing executes on
-  the backend). Route here instead of hedera_action whenever the question
-  contains "Connected Hedera wallet" or otherwise makes clear the
-  user wants to act from their own account/funds, not a demo account.
+  the backend). Route here instead of hedera_action whenever a connected
+  wallet suffix (Hedera or EVM) is present in the message — action/transfer/
+  swap/schedule requests are inherently first-person ("transfer 1 HBAR to X"
+  implicitly means "from my funds") even when the question doesn't literally
+  say "my" or "me", so a present wallet suffix routes here regardless of its
+  exact wording or whether it's phrased conditionally on "my"/"me". (That
+  "my"/"me" gating only matters for read-only questions like whale/top-holder
+  lookups about a *different* address — see the Note below — not for actions
+  requested against the user's own connected wallet.)
   Neither hedera_action nor hedera_wallet_action are for read-only Hedera
-  questions (those go to hedera).
+  questions (those go to hedera). This is ALSO where requests to "schedule"
+  or set up a "recurring"/"every X" on-chain transfer belong (e.g. "schedule
+  a transfer of 1 HBAR to X using Hedera Schedule Service", "send 5 HBAR
+  every hour") — these build a real Hedera Schedule Service transaction for
+  the user's wallet to sign, and are NOT scheduler_admin (see below).
 - saucerswap: SaucerSwap (https://www.saucerswap.finance), Hedera's leading
   DEX — finding the best farming/liquidity-pool APRs, and building token
   swap transactions on SaucerSwap for the user's own connected wallet to
@@ -50,11 +61,21 @@ agents. Available specialists: {", ".join(SPECIALISTS)}.
   farm", or "swap <token> for <token> on SaucerSwap" style questions.
 - uniswap: live Uniswap Trading API integration on Ethereum mainnet (chain 1),
   Base (chain 8453), and Sepolia testnet (chain 11155111) for quote-and-swap
-  trade execution. Route here for live Uniswap quotes, routes, or swap
-  transaction requests on Ethereum mainnet, Base, or Sepolia (e.g. "quote 1 ETH
-  to USDC on Ethereum", "swap 100 USDC to WETH on Base", "swap 50 USDC to ETH
-  on Sepolia").
-- scheduler_admin: scheduling natural-language questions and alerts to run periodically (e.g. "set up daily alerts for USDC whale transactions", "run this every day", "check on X periodically", "notify me daily/weekly about X", "what alerts do I have", "cancel my daily USDC alert"). Explicitly distinct from live one-off data questions which stay with defi_research/portfolio/etc.
+  trade execution ONLY — it has no pool/liquidity/APR/yield data. Route here
+  only for live Uniswap price quotes, routes, or swap transaction requests
+  naming specific tokens/amounts on Ethereum mainnet, Base, or Sepolia (e.g.
+  "quote 1 ETH to USDC on Ethereum", "swap 100 USDC to WETH on Base", "swap 50
+  USDC to ETH on Sepolia"). Questions about the highest-yield/best-APR/top
+  pools on Uniswap belong to defi_research instead, NOT uniswap.
+- scheduler_admin: scheduling natural-language RESEARCH QUESTIONS/alerts to
+  re-run periodically off-chain (e.g. "set up daily alerts for USDC whale
+  transactions", "run this every day", "check on X periodically", "notify me
+  daily/weekly about X", "what alerts do I have", "cancel my daily USDC
+  alert"). Explicitly distinct from live one-off data questions which stay
+  with defi_research/portfolio/etc. Does NOT cover scheduling an actual
+  on-chain transaction/transfer (e.g. via Hedera Schedule Service) — those
+  go to hedera_wallet_action/hedera_action instead, even though the word
+  "schedule" appears in the request.
 
 Note: Suffixes like "(Note: if this question is about "my"/"me", the user's connected wallet is 0x...)" or "(Connected wallet: 0x...)" identify the user's own wallet when asking about "my" or "me". Do NOT treat the presence of a connected wallet address suffix as making that wallet the subject of every question. Questions asking about token whales, top holders, or other wallets belong in defi_research, not portfolio.
 
