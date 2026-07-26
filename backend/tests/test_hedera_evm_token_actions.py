@@ -29,6 +29,10 @@ async def test_build_hts_create_token_evm_tx_valid():
     assert data["to"] == HTS_SYSTEM_CONTRACT_ADDRESS
     assert data["to"] == "0x0000000000000000000000000000000000000167"
     assert data["data"].startswith("0x" + CREATE_FUNGIBLE_TOKEN_SELECTOR)
+    # Selector for createFungibleToken(HederaToken,int64,int32) per HIP-358 / the HTS
+    # system contract ABI. Hardcoded (independent of CREATE_FUNGIBLE_TOKEN_SELECTOR) so a
+    # regression to the wrong int/uint types doesn't get lost when both sides shift together.
+    assert CREATE_FUNGIBLE_TOKEN_SELECTOR == "0fb65bf3"
     assert data["value"] == "0x" + format(int(30 * 1e18), "x")
     assert "MegaCoin" in data["human_message"]
     assert "MGC" in data["human_message"]

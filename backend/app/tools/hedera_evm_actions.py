@@ -19,7 +19,7 @@ _HEDERA_TOKEN_TYPE_SIG = (
     "(uint256,(bool,address,bytes,bytes,address))[],"
     "(int64,address,int64))"
 )
-_CREATE_FUNGIBLE_TOKEN_SIG = f"createFungibleToken({_HEDERA_TOKEN_TYPE_SIG},uint64,uint32)"
+_CREATE_FUNGIBLE_TOKEN_SIG = f"createFungibleToken({_HEDERA_TOKEN_TYPE_SIG},int64,int32)"
 CREATE_FUNGIBLE_TOKEN_SELECTOR = keccak(_CREATE_FUNGIBLE_TOKEN_SIG.encode("utf-8"))[:4].hex()
 
 
@@ -112,7 +112,7 @@ async def build_hts_create_token_evm_tx(
 
     raw_supply = int(round(initial_supply * (10**decimals)))
     encoded_bytes = encode(
-        [_HEDERA_TOKEN_TYPE_SIG, "uint64", "uint32"],
+        [_HEDERA_TOKEN_TYPE_SIG, "int64", "int32"],
         [token_struct, raw_supply, decimals],
     )
 
