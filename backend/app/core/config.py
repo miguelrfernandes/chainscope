@@ -89,6 +89,23 @@ class Settings(BaseSettings):
     scheduler_db_path: str = "scheduler.db"
     scheduled_query_db_path: str = "scheduled_queries.db"
 
+    # Postgres connection string. When set, every store above targets Postgres
+    # and the *_db_path settings are ignored. Required on serverless hosts
+    # (Vercel), where the filesystem is read-only apart from an ephemeral /tmp
+    # that does not survive between invocations — losing managed_agents.db
+    # means losing the encrypted keys to real funded testnet accounts.
+    database_url: str | None = None
+
+    # "embedded" runs APScheduler in-process (long-lived host: local, VPS).
+    # "external" skips it entirely and relies on something outside the process
+    # POSTing /api/scheduled-queries/tick on a cron — required on serverless,
+    # where there is no process alive between requests to fire a trigger.
+    scheduler_mode: str = "embedded"
+
+    # Shared secret for the tick endpoint. Without it the endpoint is exposed
+    # to anyone who finds the URL and can be used to force agent runs.
+    cron_secret: str | None = None
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

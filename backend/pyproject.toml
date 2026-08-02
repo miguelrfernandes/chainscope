@@ -20,10 +20,20 @@ dependencies = [
     "hedera-agent-kit>=3.4.2",
     "apscheduler>=3.11.3",
     "sqlalchemy>=2.0.51",
+    "psycopg[binary]>=3.2",
 ]
 
 [tool.uv]
 package = false
+# hedera-agent-kit pulls in google-adk, which drags along pyarrow,
+# google-api-python-client and google-cloud-* — 411MB of transitive deps for
+# code we never import (we only use hedera_agent_kit.langchain / .plugins /
+# .shared). That blows past Vercel's serverless bundle limit, so the dep is
+# overridden out with a marker that is never satisfiable. If a future
+# hedera-agent-kit release imports google-adk at module scope, this will
+# surface as an ImportError in app/tools/hedera_actions.py — drop the
+# override and find another way to slim the bundle if that happens.
+override-dependencies = ["google-adk ; python_version < '3.0'"]
 
 [dependency-groups]
 dev = [

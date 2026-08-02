@@ -87,28 +87,52 @@ npm run dev
 
 - **Frontend**: Vercel. Standard Next.js deploy, no special config beyond
   setting `NEXT_PUBLIC_API_BASE_URL` to the deployed backend URL.
-- **Backend**: two options —
-  - **Vercel** (serverless functions) — simplest to keep everything on one
-    platform, but watch execution time limits and the fact that a
-    long-running LangGraph agent loop plus a Python sandbox call can
-    exceed default serverless timeouts. If using Vercel for the backend,
-    raise `maxDuration` on the relevant function and confirm the sandbox
-    provider is called out-of-process (not spawning a subprocess in the
-    serverless function itself).
-  - **VPS** — a long-running `uvicorn`/`gunicorn` process behind a
-    reverse proxy (e.g. Caddy/Nginx) with TLS. No timeout ceiling, and
-    it's the safer choice if the Python sandbox runs as a local subprocess
-    rather than a hosted service. Preferred if agent turns are slow
-    (multiple subgraph queries + a sandbox execution can add up) or if
-    streaming (SSE/WebSocket) responses need to stay open longer than a
-    serverless function allows.
+- **Backend**: Vercel, as a **second Vercel project** with its root
+  directory set to `backend/` (the frontend project stays as it is). The
+  serverless entrypoint is `backend/api/index.py`, which re-exports the same
+  FastAPI app — there is no separate serverless code path.
 
-  Recommendation for the hackathon: use the VPS for the backend if the
-  Python sandbox is self-hosted (subprocess-based), since that avoids
-  serverless timeout/isolation headaches during the live demo; use Vercel
-  for the backend only if the sandbox is fully outsourced to a hosted
-  provider (E2B/Modal/etc.) so the backend itself stays fast and stateless.
+  Three things differ from running on a long-lived host, and all three are
+  configuration rather than code:
+
+  | Constraint | Why | Setting |
+  | --- | --- | --- |
+  | No writable disk | The SQLite files don't survive a request, and `managed_agents` holds the encrypted keys to funded testnet accounts | `DATABASE_URL` (Postgres) |
+  | No process between requests | An in-process APScheduler would never fire | `SCHEDULER_MODE=external` |
+  | Tick endpoint is unauthenticated by default | Anyone who finds the URL could drive agent runs | `CRON_SECRET` |
+
+  Scheduled queries are then driven by
+  `.github/workflows/scheduled-queries.yml`, which POSTs
+  `/api/scheduled-queries/tick` every 15 minutes. Vercel's own cron is not
+  used: the Hobby plan caps it at one firing per day, which would silently
+  break any user-defined cron expression finer than daily. The workflow
+  needs `BACKEND_URL` and `CRON_SECRET` as repository secrets, and
+  `CRON_SECRET` must match the backend's.
+
+  Two limits are worth knowing, since they are what made this viable:
+  Python function bundles may be up to 500MB (raised from 250MB in Feb
+  2026), and Fluid compute allows `maxDuration` up to 300s on Hobby — long
+  enough for a multi-query LangGraph turn plus a sandbox call. `vercel.json`
+  sets `maxDuration: 300`.
+
+  `hedera-agent-kit` pulls in `google-adk`, which drags along
+  `pyarrow`/`google-cloud-*` — 411MB of dependencies nothing in this repo
+  imports. `[tool.uv] override-dependencies` in `backend/pyproject.toml`
+  excludes it, taking the install from 851MB to 460MB and cutting cold-start
+  time. Regenerate `backend/requirements.txt` (what Vercel installs from)
+  after any dependency change:
+
+  ```
+  cd backend && uv lock && uv export --frozen --no-dev --no-hashes --no-emit-project -o requirements.txt
+  ```
+
+- **VPS (legacy)** — `deploy/docker-compose.yml` plus Caddy still works and
+  is kept for rollback, but `.github/workflows/deploy.yml` is now
+  manual-only (`workflow_dispatch`) so it doesn't fail on every push once
+  the VPS is gone. On a long-lived host leave `DATABASE_URL` unset and
+  `SCHEDULER_MODE=embedded` to keep SQLite + in-process APScheduler.
 
 - Point the frontend's `NEXT_PUBLIC_API_BASE_URL` at whichever backend URL
-  is live, and make sure CORS on the FastAPI app allows the Vercel
-  frontend origin.
+  is live, and set `CORS_ORIGINS` on the backend to the frontend's Vercel
+  origins (production and preview) — the API returns CORS failures rather
+  than anything obviously wrong if this is missed.

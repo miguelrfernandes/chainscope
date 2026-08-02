@@ -1,10 +1,14 @@
 """API endpoints for managing generic scheduled question queries and viewing run inbox histories."""
 
-from fastapi import APIRouter, HTTPException
+import hmac
+
+from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
+from app.core.config import get_settings
 from app.core.scheduled_query_store import (
     archive_query,
+    get_query_by_id,
     get_runs_for_query,
     get_unread_runs,
     get_user_queries,
@@ -13,6 +17,7 @@ from app.core.scheduled_query_store import (
 )
 from app.core.scheduler import (
     remove_scheduled_job,
+    run_due_queries,
     schedule_query_job,
     validate_cron_expression,
 )
@@ -48,8 +53,39 @@ async def create_scheduled_query(req: CreateScheduledQueryRequest):
     except ValueError as exc:
         archive_query(query["id"])
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    # Re-read: scheduling is what assigns next_run_at, so the row returned by
+    # save_query above still carries the pre-scheduling NULL.
+    query = get_query_by_id(query["id"]) or query
     query["job_id"] = job_id
     return query
+
+
+@router.post("/api/scheduled-queries/tick")
+async def tick_scheduled_queries(authorization: str | None = Header(default=None)):
+    """Run every scheduled query that is now due.
+
+    This is the external-cron counterpart to the in-process APScheduler: on a
+    serverless host nothing is alive between requests to fire a trigger, so
+    something outside (GitHub Actions) has to POST here on a schedule.
+
+    Firing agent runs is a side effect worth protecting, so the endpoint
+    refuses to serve unless CRON_SECRET is configured and matches — an
+    unauthenticated tick would let anyone who guesses the URL drive the
+    user's scheduled Hedera actions.
+    """
+    secret = get_settings().cron_secret
+    if not secret:
+        raise HTTPException(
+            status_code=503,
+            detail="CRON_SECRET is not configured; refusing to run scheduled queries.",
+        )
+
+    presented = (authorization or "").removeprefix("Bearer ").strip()
+    if not hmac.compare_digest(presented, secret):
+        raise HTTPException(status_code=401, detail="Invalid or missing cron credentials.")
+
+    return await run_due_queries()
 
 
 @router.get("/api/scheduled-queries")

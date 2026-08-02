@@ -1,15 +1,19 @@
-"""SQLite-backed storage for scheduled queries and query execution run logs.
+"""Storage for scheduled queries and query execution run logs.
 
-Opened via fresh sqlite3 connection per call, following the agent_store.py pattern.
+Backed by SQLite on a long-lived host and by Postgres when DATABASE_URL is
+set — see app/core/db.py. A fresh connection is opened per call, following
+the agent_store.py pattern.
+
+`next_run_at` exists so the schedule survives without a live APScheduler:
+in external scheduler mode nothing is holding cron triggers in memory, so
+due-ness has to be a fact in the database that any invocation can read.
 """
 
 import json
-import sqlite3
-from contextlib import closing
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from app.core.config import get_settings
+from app.core.db import PG_UTC_NOW, connect, insert_returning_id
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS scheduled_queries (
@@ -33,22 +37,43 @@ CREATE TABLE IF NOT EXISTS scheduled_query_runs (
 );
 """
 
-_MIGRATIONS: List[str] = []
+_PG_SCHEMA = f"""
+CREATE TABLE IF NOT EXISTS scheduled_queries (
+    id SERIAL PRIMARY KEY,
+    owner_address TEXT NOT NULL,
+    name TEXT NOT NULL,
+    prompt TEXT NOT NULL,
+    cron_expression TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'ACTIVE',
+    created_at TEXT NOT NULL DEFAULT ({PG_UTC_NOW})
+);
+
+CREATE TABLE IF NOT EXISTS scheduled_query_runs (
+    id SERIAL PRIMARY KEY,
+    query_id INTEGER NOT NULL REFERENCES scheduled_queries(id),
+    run_at TEXT NOT NULL DEFAULT ({PG_UTC_NOW}),
+    answer TEXT NOT NULL,
+    sources_json TEXT NOT NULL DEFAULT '[]',
+    is_read INTEGER NOT NULL DEFAULT 0
+)
+"""
+
+_MIGRATIONS: List[str] = [
+    "ALTER TABLE scheduled_queries ADD COLUMN next_run_at TEXT",
+]
+
+_PG_MIGRATIONS: List[str] = [
+    "ALTER TABLE scheduled_queries ADD COLUMN IF NOT EXISTS next_run_at TEXT",
+]
 
 
-def _connect() -> sqlite3.Connection:
-    db_path = get_settings().scheduled_query_db_path
-    if db_path != ":memory:":
-        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    conn.executescript(_SCHEMA)
-    for migration in _MIGRATIONS:
-        try:
-            conn.execute(migration)
-        except sqlite3.OperationalError:
-            pass
-    return conn
+def _connect():
+    return connect(
+        get_settings().scheduled_query_db_path,
+        _SCHEMA,
+        _PG_SCHEMA,
+        _PG_MIGRATIONS if get_settings().database_url else _MIGRATIONS,
+    )
 
 
 def _norm(address: str) -> str:
@@ -60,22 +85,23 @@ def save_query(
     name: str,
     prompt: str,
     cron_expression: str,
+    next_run_at: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Create a new scheduled query entry."""
     owner_address = _norm(owner_address)
-    with closing(_connect()) as conn:
-        cursor = conn.execute(
+    with _connect() as conn:
+        query_id = insert_returning_id(
+            conn,
             """
-            INSERT INTO scheduled_queries (owner_address, name, prompt, cron_expression, status)
-            VALUES (?, ?, ?, ?, 'ACTIVE')
+            INSERT INTO scheduled_queries (owner_address, name, prompt, cron_expression, status, next_run_at)
+            VALUES (?, ?, ?, ?, 'ACTIVE', ?)
             """,
-            (owner_address, name, prompt, cron_expression),
+            (owner_address, name, prompt, cron_expression, next_run_at),
         )
         conn.commit()
-        query_id = cursor.lastrowid
         row = conn.execute(
             """
-            SELECT id, owner_address, name, prompt, cron_expression, status, created_at
+            SELECT id, owner_address, name, prompt, cron_expression, status, created_at, next_run_at
             FROM scheduled_queries
             WHERE id = ?
             """,
@@ -84,10 +110,42 @@ def save_query(
         return dict(row) if row else {}
 
 
+def get_due_queries(now_iso: str) -> List[Dict[str, Any]]:
+    """Active queries whose next_run_at has passed.
+
+    Rows with a NULL next_run_at are skipped rather than treated as due —
+    they predate the column, and firing every one of them at once the first
+    time an external tick lands would be a surprising side effect of an
+    upgrade. They get a next_run_at as soon as they are rescheduled.
+    """
+    with _connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT id, owner_address, name, prompt, cron_expression, status, created_at, next_run_at
+            FROM scheduled_queries
+            WHERE status = 'ACTIVE' AND next_run_at IS NOT NULL AND next_run_at <= ?
+            ORDER BY next_run_at ASC
+            """,
+            (now_iso,),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+
+def set_next_run_at(query_id: int, next_run_at: Optional[str]) -> bool:
+    """Record when a query should next fire (None to unschedule it)."""
+    with _connect() as conn:
+        cursor = conn.execute(
+            "UPDATE scheduled_queries SET next_run_at = ? WHERE id = ?",
+            (next_run_at, query_id),
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+
+
 def get_user_queries(owner_address: str) -> List[Dict[str, Any]]:
     """Get all non-archived scheduled queries for an owner, newest first."""
     owner_address = _norm(owner_address)
-    with closing(_connect()) as conn:
+    with _connect() as conn:
         rows = conn.execute(
             """
             SELECT id, owner_address, name, prompt, cron_expression, status, created_at
@@ -102,10 +160,10 @@ def get_user_queries(owner_address: str) -> List[Dict[str, Any]]:
 
 def get_query_by_id(query_id: int) -> Optional[Dict[str, Any]]:
     """Fetch a single scheduled query by ID."""
-    with closing(_connect()) as conn:
+    with _connect() as conn:
         row = conn.execute(
             """
-            SELECT id, owner_address, name, prompt, cron_expression, status, created_at
+            SELECT id, owner_address, name, prompt, cron_expression, status, created_at, next_run_at
             FROM scheduled_queries
             WHERE id = ?
             """,
@@ -116,7 +174,7 @@ def get_query_by_id(query_id: int) -> Optional[Dict[str, Any]]:
 
 def archive_query(query_id: int, owner_address: Optional[str] = None) -> bool:
     """Archive a scheduled query by setting status='ARCHIVED'."""
-    with closing(_connect()) as conn:
+    with _connect() as conn:
         if owner_address:
             cursor = conn.execute(
                 """
@@ -152,8 +210,9 @@ def save_run(
     else:
         sources_json = json.dumps(sources)
 
-    with closing(_connect()) as conn:
-        cursor = conn.execute(
+    with _connect() as conn:
+        run_id = insert_returning_id(
+            conn,
             """
             INSERT INTO scheduled_query_runs (query_id, answer, sources_json, is_read)
             VALUES (?, ?, ?, 0)
@@ -161,7 +220,6 @@ def save_run(
             (query_id, answer, sources_json),
         )
         conn.commit()
-        run_id = cursor.lastrowid
         row = conn.execute(
             """
             SELECT id, query_id, run_at, answer, sources_json, is_read
@@ -181,7 +239,7 @@ def save_run(
 
 def get_runs_for_query(query_id: int, owner_address: Optional[str] = None) -> List[Dict[str, Any]]:
     """Fetch run history for a query, newest first."""
-    with closing(_connect()) as conn:
+    with _connect() as conn:
         if owner_address:
             rows = conn.execute(
                 """
@@ -218,7 +276,7 @@ def get_runs_for_query(query_id: int, owner_address: Optional[str] = None) -> Li
 def get_unread_runs(owner_address: str) -> List[Dict[str, Any]]:
     """Fetch all unread runs for active queries belonging to owner_address."""
     owner_address = _norm(owner_address)
-    with closing(_connect()) as conn:
+    with _connect() as conn:
         rows = conn.execute(
             """
             SELECT r.id, r.query_id, r.run_at, r.answer, r.sources_json, r.is_read, q.name AS query_name, q.prompt
@@ -243,7 +301,7 @@ def get_unread_runs(owner_address: str) -> List[Dict[str, Any]]:
 
 def mark_run_read(run_id: int, owner_address: Optional[str] = None) -> bool:
     """Mark a run as read (is_read = 1)."""
-    with closing(_connect()) as conn:
+    with _connect() as conn:
         if owner_address:
             cursor = conn.execute(
                 """

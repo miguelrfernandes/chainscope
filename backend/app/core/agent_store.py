@@ -1,20 +1,20 @@
-"""SQLite-backed storage for managed Hedera agent accounts — one row per
+"""Durable storage for managed Hedera agent accounts — one row per
 (owner_address, agent_name), holding the agent's Hedera account ID and its
 private key encrypted at rest. This module never sees plaintext key
 material: callers encrypt before calling save_agent and decrypt after
 reading it back — the store's only job is durable, keyed lookup.
 
-A fresh sqlite3 connection is opened per call rather than shared across
-threads, since sqlite3 connections aren't safe to use from a thread other
-than the one that created them and this module has no async/request-scoped
-lifecycle to hook into.
+Backed by SQLite on a long-lived host and by Postgres when DATABASE_URL is
+set (serverless, where no disk survives the request) — see app/core/db.py.
+A fresh connection is opened per call rather than shared across threads,
+since sqlite3 connections aren't safe to use from a thread other than the
+one that created them and this module has no async/request-scoped lifecycle
+to hook into.
 """
 
-import sqlite3
-from contextlib import closing
-from pathlib import Path
 
 from app.core.config import get_settings
+from app.core.db import PG_UTC_NOW, connect
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS managed_agents (
@@ -29,6 +29,19 @@ CREATE TABLE IF NOT EXISTS managed_agents (
 )
 """
 
+_PG_SCHEMA = f"""
+CREATE TABLE IF NOT EXISTS managed_agents (
+    id SERIAL PRIMARY KEY,
+    owner_address TEXT NOT NULL,
+    agent_name TEXT NOT NULL,
+    account_id TEXT NOT NULL,
+    encrypted_private_key TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'PENDING',
+    created_at TEXT NOT NULL DEFAULT ({PG_UTC_NOW}),
+    UNIQUE (owner_address, agent_name)
+)
+"""
+
 # Agent accounts are now provisioned "on demand": a keypair is generated up
 # front and its EVM address is permanent, but the account itself doesn't
 # exist on Hedera until Auto Account Creation materializes it on first seed
@@ -39,19 +52,18 @@ _MIGRATIONS = [
     "ALTER TABLE managed_agents ADD COLUMN evm_address TEXT NOT NULL DEFAULT ''",
 ]
 
+_PG_MIGRATIONS = [
+    "ALTER TABLE managed_agents ADD COLUMN IF NOT EXISTS evm_address TEXT NOT NULL DEFAULT ''",
+]
 
-def _connect() -> sqlite3.Connection:
-    db_path = get_settings().managed_agent_db_path
-    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    conn.execute(_SCHEMA)
-    for migration in _MIGRATIONS:
-        try:
-            conn.execute(migration)
-        except sqlite3.OperationalError:
-            pass  # column already exists
-    return conn
+
+def _connect():
+    return connect(
+        get_settings().managed_agent_db_path,
+        _SCHEMA,
+        _PG_SCHEMA,
+        _PG_MIGRATIONS if get_settings().database_url else _MIGRATIONS,
+    )
 
 
 def _norm(address: str) -> str:
@@ -70,7 +82,7 @@ def save_agent(
     time — the account doesn't exist on-chain yet — and gets filled in by
     set_agent_account_and_status once seed funding auto-creates it."""
     owner_address = _norm(owner_address)
-    with closing(_connect()) as conn:
+    with _connect() as conn:
         conn.execute(
             """
             INSERT INTO managed_agents (owner_address, agent_name, account_id, evm_address, encrypted_private_key)
@@ -88,7 +100,7 @@ def save_agent(
 def get_user_agents(owner_address: str) -> list[dict]:
     """All managed agents belonging to owner_address, oldest first."""
     owner_address = _norm(owner_address)
-    with closing(_connect()) as conn:
+    with _connect() as conn:
         rows = conn.execute(
             """
             SELECT agent_name, account_id, evm_address, encrypted_private_key, status, created_at
@@ -104,7 +116,7 @@ def get_user_agents(owner_address: str) -> list[dict]:
 def get_agent_by_name(owner_address: str, agent_name: str) -> dict | None:
     """The single managed agent for (owner_address, agent_name), or None."""
     owner_address = _norm(owner_address)
-    with closing(_connect()) as conn:
+    with _connect() as conn:
         row = conn.execute(
             """
             SELECT agent_name, account_id, evm_address, encrypted_private_key, status, created_at
@@ -121,7 +133,7 @@ def set_agent_status(owner_address: str, agent_name: str, status: str) -> bool:
     agent identified by (owner_address, agent_name). Returns whether a row was
     found and updated."""
     owner_address = _norm(owner_address)
-    with closing(_connect()) as conn:
+    with _connect() as conn:
         cursor = conn.execute(
             """
             UPDATE managed_agents
@@ -141,7 +153,7 @@ def set_agent_account_and_status(
     Auto Account Creation and update lifecycle status in one step. Returns
     whether a row was found and updated."""
     owner_address = _norm(owner_address)
-    with closing(_connect()) as conn:
+    with _connect() as conn:
         cursor = conn.execute(
             """
             UPDATE managed_agents

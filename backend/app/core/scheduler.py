@@ -29,11 +29,27 @@ def get_scheduler() -> Optional[AsyncIOScheduler]:
     return _scheduler
 
 
-def init_scheduler(db_path: Optional[str] = None) -> AsyncIOScheduler:
+def is_external_mode() -> bool:
+    """Whether cron firing is owned by something outside this process.
+
+    On a serverless host nothing stays alive between requests, so an
+    in-process scheduler would simply never fire. In that mode the schedule
+    lives in the database as `scheduled_queries.next_run_at` and an external
+    cron POSTs /api/scheduled-queries/tick to drive it.
+    """
+    return get_settings().scheduler_mode.lower() == "external"
+
+
+def init_scheduler(db_path: Optional[str] = None) -> Optional[AsyncIOScheduler]:
     """Initialize and start the global AsyncIOScheduler with a SQLite jobstore.
-    If already initialized and running, returns the active instance.
+    If already initialized and running, returns the active instance. Returns
+    None in external mode, where no in-process scheduler is wanted.
     """
     global _scheduler
+
+    if is_external_mode():
+        logger.info("Scheduler in external mode — skipping in-process APScheduler")
+        return None
 
     if _scheduler is not None and _scheduler.running:
         return _scheduler
@@ -41,7 +57,18 @@ def init_scheduler(db_path: Optional[str] = None) -> AsyncIOScheduler:
     settings = get_settings()
     target_db = db_path or settings.scheduler_db_path
 
-    if target_db != ":memory:":
+    if settings.database_url:
+        # SQLAlchemyJobStore speaks any SQLAlchemy URL; on Postgres the
+        # jobstore belongs next to the rest of the data, not on a local disk
+        # that may not persist. SQLAlchemy still defaults a bare
+        # postgresql:// URL to psycopg2, which isn't installed — psycopg 3 is
+        # — so name the driver explicitly.
+        db_url = settings.database_url
+        if db_url.startswith("postgresql://"):
+            db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
+        elif db_url.startswith("postgres://"):
+            db_url = db_url.replace("postgres://", "postgresql+psycopg://", 1)
+    elif target_db != ":memory:":
         Path(target_db).parent.mkdir(parents=True, exist_ok=True)
         db_url = f"sqlite:///{target_db}"
     else:
@@ -227,19 +254,83 @@ def validate_cron_expression(cron_expression: str) -> CronTrigger:
         raise ValueError(f"Invalid cron expression '{cron_expression}': {exc}") from exc
 
 
-def schedule_query_job(query_id: int, cron_expression: str, job_id: Optional[str] = None) -> str:
+def compute_next_run(cron_expression: str, after: Optional[datetime] = None) -> str:
+    """Next UTC fire time for `cron_expression`, as an ISO-8601 string.
+
+    Uses APScheduler's own CronTrigger so external mode and embedded mode
+    agree on what a given expression means — CronTrigger computes fire times
+    without a running scheduler.
+    """
     trigger = validate_cron_expression(cron_expression)
-    scheduler = get_scheduler() or init_scheduler()
+    previous = after or datetime.now(timezone.utc)
+    next_fire = trigger.get_next_fire_time(None, previous)
+    if next_fire is None:
+        raise ValueError(f"Cron expression '{cron_expression}' has no future fire time")
+    return next_fire.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+
+
+def schedule_query_job(query_id: int, cron_expression: str, job_id: Optional[str] = None) -> str:
+    from app.core.scheduled_query_store import set_next_run_at
+
+    validate_cron_expression(cron_expression)
     effective_job_id = job_id or f"query-{query_id}"
+
+    # Both modes record next_run_at: it is the source of truth for external
+    # ticks, and harmless bookkeeping when APScheduler owns the firing. That
+    # also means switching SCHEDULER_MODE doesn't strand existing schedules.
+    next_run_at = compute_next_run(cron_expression)
+    set_next_run_at(query_id, next_run_at)
+
+    if is_external_mode():
+        logger.info(
+            "Scheduled query %s for external cron at %s (schedule '%s')",
+            query_id,
+            next_run_at,
+            cron_expression,
+        )
+        return effective_job_id
+
+    scheduler = get_scheduler() or init_scheduler()
     scheduler.add_job(
         run_scheduled_query,
-        trigger=trigger,
+        trigger=validate_cron_expression(cron_expression),
         args=[query_id],
         id=effective_job_id,
         replace_existing=True,
     )
     logger.info("Scheduled query job '%s' with schedule '%s'", effective_job_id, cron_expression)
     return effective_job_id
+
+
+async def run_due_queries() -> dict:
+    """Run every scheduled query whose next_run_at has passed, then reschedule it.
+
+    Driven by an external cron in serverless deployments. next_run_at is
+    advanced even when a run fails, so one broken query can't wedge the tick
+    into retrying it forever — the failure is recorded as a run instead (see
+    run_scheduled_query).
+    """
+    from app.core.scheduled_query_store import get_due_queries, set_next_run_at
+
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+    due = get_due_queries(now_iso)
+
+    ran: List[int] = []
+    for query in due:
+        query_id = query["id"]
+        try:
+            await run_scheduled_query(query_id)
+            ran.append(query_id)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("Scheduled query %s raised during tick: %s", query_id, exc)
+        finally:
+            try:
+                set_next_run_at(query_id, compute_next_run(query["cron_expression"]))
+            except ValueError as exc:
+                logger.warning("Could not reschedule query %s: %s", query_id, exc)
+                set_next_run_at(query_id, None)
+
+    return {"due": len(due), "ran": ran, "checked_at": now_iso}
 
 
 def list_scheduled_jobs() -> List[Dict[str, Any]]:

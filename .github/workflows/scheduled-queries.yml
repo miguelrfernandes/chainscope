@@ -1,0 +1,40 @@
+name: Run due scheduled queries
+
+# Drives the backend's scheduled queries from outside the process.
+#
+# On the VPS an in-process APScheduler fired these. On Vercel nothing is
+# alive between requests, so the schedule lives in the database
+# (scheduled_queries.next_run_at) and this workflow pokes the backend to run
+# whatever has come due. Vercel's own cron is not used because the Hobby plan
+# caps it at one firing per day, which would make every user-defined cron
+# expression a lie.
+#
+# Required repository secrets:
+#   BACKEND_URL  - deployed backend origin, e.g. https://chainscope-api.vercel.app
+#   CRON_SECRET  - must match the CRON_SECRET env var set on the backend
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST /api/scheduled-queries/tick
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BACKEND_URL:-}" ] || [ -z "${CRON_SECRET:-}" ]; then
+            echo "BACKEND_URL and CRON_SECRET must both be set as repository secrets" >&2
+            exit 1
+          fi
+          # --fail-with-body so an auth or server error fails the run loudly
+          # with the backend's reason, rather than silently "succeeding".
+          curl --fail-with-body -sS -X POST \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            --max-time 300 \
+            "${BACKEND_URL%/}/api/scheduled-queries/tick"

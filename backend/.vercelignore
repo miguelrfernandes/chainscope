@@ -1,0 +1,10 @@
+# Keep the function bundle to what the app actually needs at runtime — the
+# Python bundle limit is 500MB and a smaller bundle also means faster cold
+# starts, which matter more here than usual since the host scales to zero.
+.venv
+tests
+evals
+*.db
+.env
+.pytest_cache
+__pycache__

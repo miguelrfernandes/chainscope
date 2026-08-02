@@ -74,9 +74,20 @@ Before considering frontend work done, run `just lint-frontend` and
 ## Git workflow
 
 **Work directly on `main`**. Feature branches slow down iteration during
-the hackathon. The auto-deploy workflow (GitHub Actions) watches `main`
-and redeploys the VPS on every push to `backend/**` or `deploy/**`, so
-keeping commits small and pushing frequently gives fast feedback.
+the hackathon. Both frontend and backend deploy from `main` via Vercel's
+GitHub integration, so keeping commits small and pushing frequently gives
+fast feedback.
+
+The backend is a separate Vercel project rooted at `backend/`. Two things
+to remember when touching it:
+
+- After any dependency change, regenerate `backend/requirements.txt` —
+  that, not `pyproject.toml`, is what Vercel installs from:
+  `cd backend && uv lock && uv export --frozen --no-dev --no-hashes --no-emit-project -o requirements.txt`
+- Serverless has no disk and no process between requests, so the deployed
+  backend runs on Postgres (`DATABASE_URL`) with `SCHEDULER_MODE=external`;
+  a GitHub Actions cron drives scheduled queries. Locally, leave both unset
+  to keep SQLite + in-process APScheduler. See docs/setup.md.
 
 - **Small, frequent commits**: Push regularly rather than batching up large
   diffs. Each commit should be one logical change with a clear message.

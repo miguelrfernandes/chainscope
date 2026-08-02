@@ -1,12 +1,10 @@
 name: Deploy backend to VPS
 
+# The backend now deploys to Vercel, which builds from GitHub directly and
+# needs no workflow of its own. This VPS path is kept for rollback but is
+# manual-only: leaving it on `push` would fail on every commit once the VPS
+# is gone. Run it from the Actions tab if you need the VPS back.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "backend/**"
-      - "deploy/**"
-      - ".github/workflows/deploy.yml"
   workflow_dispatch: {}
 
 jobs:
